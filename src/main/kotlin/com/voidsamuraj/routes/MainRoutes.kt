@@ -7,7 +7,7 @@ import io.ktor.server.routing.*
 
 
 fun Route.mainRoutes(){
-    route("/klienci"){
+    route("/index"){
         get {
             call.respondTemplate(template="index.ftl", model=mapOf("files" to files))
         }

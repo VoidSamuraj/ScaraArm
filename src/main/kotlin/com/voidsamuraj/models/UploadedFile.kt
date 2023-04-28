@@ -12,8 +12,3 @@ data class UploadedFile(val id:String, val userId:String, val file: Blob){
         return Base64.getEncoder().encodeToString(bytes)
     }
 }
-/*
-fun SerialBlob.blobToBase64(): String {
-    val bytes = this.binaryStream.readBytes()
-    return Base64.getEncoder().encodeToString(bytes)
-}*/

@@ -8,15 +8,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureSerialization() {
     install(ContentNegotiation) {
-
         json()
-        /*json(Json {
-            serializersModule = SerializersModule {
-                polymorphic(ContentConverter::class) {
-                    subclass(FreeMarkerContent::class, FreeMarkerContent.serializer())
-                }
-            }
-        })*/
     }
 
     routing {
