@@ -26,28 +26,31 @@ body {
     cursor: pointer;
 
 }
+#arm canvas{
+    width:100% !important;
+    height:100% !important;
+    position: absolute;
+    top:0;
+    left:0;
+}
+ canvas {
+        display: block;
+      }
+
 #burger-button{
   position: fixed;
 }
 
-#menu-button{
+.menu-button{
   background-color: rgba(0,0,0,0);
   color: #292929;
   border-radius:2px;
   width: 220px;
 }
-#menu-button:hover{
+.menu-button:hover{
   background-color: #5A5A5A;
 }
-#menu-button-icon{
-  background-color: rgba(0,0,0,0);
-  color: #292929;
-  border-radius:2px;
-  width: 220px;
-}
-#menu-button-icon:hover{
-  background-color: #5A5A5A;
-}
+
 
 nav {
   width: 250px;
