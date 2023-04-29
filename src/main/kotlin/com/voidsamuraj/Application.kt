@@ -29,6 +29,7 @@ fun Application.module() {
     configureMonitoring()
     configureSecurity()
     configureRouting()
+
     /*routing {
         route("/klienci") {
             get {
