@@ -90,11 +90,3 @@ li>svg{
    text-align: center;
 }
 
-/*
-.width((if (breakpoint> Breakpoint.SM) MENU_MAX_WIDTH else MENU_MIN_WIDTH).px)
-            .zIndex(1)
-            .translateX(xPos)
-            .opacity(opacity)
-            .transition(CSSTransition("opacity,translate", 500.ms)),
-
-*/

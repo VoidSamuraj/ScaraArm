@@ -35,3 +35,5 @@ out/
 ### VS Code ###
 .vscode/
 /src/main/resources/templates/index.html
+/src/main/resources/templates/index.js
+/src/main/resources/templates/index.css
