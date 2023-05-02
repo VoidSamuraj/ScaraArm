@@ -6,6 +6,7 @@ var isDragging=false;
 const panelSize=20;
 const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','ramie1','ramie2','tool'];
+const arm2Movement=1.2;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
 
@@ -23,6 +24,7 @@ var editMode=false;
 
 var arm1Angle=0;
 var arm2Angle=0;
+
 
 
 
@@ -75,7 +77,7 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setClearColor(0x1b1b1b);
 
 addLight();
-addGrid();
+//addGrid();
 // Rysowanie sceny
 function animate() {
   requestAnimationFrame(animate);
@@ -108,34 +110,34 @@ rotation1.add(axesHelper);
 rotation2.add(axesHelper2);
 
 
-
 scene.add(rotation1);
 scene.add(rotation2);
 scene.add(baseMesh);
 
 drawLines();
 
-
 function rotateArm1(angle){
+
+    rotateArm2(-arm2Angle);
     rotation1.translateX(panelSize/4);
     rotation2.translateX(panelSize/4);
-
-    const stopnie=-angle * Math.PI / 180
-    const axis = new THREE.Vector3(0, 1, 0);
-    rotation1.rotateOnAxis(axis, stopnie);
-    rotation2.rotateOnAxis(axis, stopnie);
+    const stopnie=-angle * Math.PI / 180;
+    rotation1.rotateY(stopnie);
+    rotation2.rotateY(stopnie);
 
     rotation1.translateX(-panelSize/4);
     rotation2.translateX(-panelSize/4);
+    rotateArm2(arm2Angle);
 }
+
 function rotateArm2(angle){
-    rotation2.translateX(1);
 
-    const stopnie=-angle * Math.PI / 180
-    const axis = new THREE.Vector3(0, 1, 0);
-    rotation2.rotateOnAxis(axis, stopnie);
+    rotation2.translateX(arm2Movement);
 
-    rotation2.translateX(-1);
+    const stopnie=-angle * Math.PI / 180;
+    rotation2.rotateY(stopnie);
+
+    rotation2.translateX(-arm2Movement);
 }
 
 
@@ -216,12 +218,7 @@ function drawLines(){
        panelSize/4, -1, -panelSize/2,
        panelSize/4, -1, panelSize/2,
     ]);
-    /*
-    const blueArray = new Float32Array([
-          panelSize/4, -1, 0,
-          -panelSize/2, -1, 0,
-    ]);
-    */
+
     redGeometry.setAttribute('position', new THREE.BufferAttribute(redArray, 3));
     greenGeometry.setAttribute('position', new THREE.BufferAttribute(greenArray, 3));
 
