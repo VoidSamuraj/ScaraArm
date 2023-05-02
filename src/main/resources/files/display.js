@@ -18,6 +18,9 @@ var arm2Mesh=new THREE.Object3D();
 var toolMesh=new THREE.Object3D();
 var lastSelectedMesh;
 
+const axesHelper = new THREE.AxesHelper(3);
+const axesHelper2 = new THREE.AxesHelper(3);
+
 var arm1Pos= new THREE.Vector2();
 var arm2Pos= new THREE.Vector2();
 
@@ -107,11 +110,9 @@ rotation2.add(toolMesh);
 rotation1.add(arm1Mesh);
 rotation1.add(rotation2);
 
-addHelpers();
+setupHelpers();
 
-function addHelpers(){
-    const axesHelper = new THREE.AxesHelper(3);
-    const axesHelper2 = new THREE.AxesHelper(3);
+function setupHelpers(){
 
     axesHelper.rotateX(-Math.PI/2);
     axesHelper.rotateZ(Math.PI/2);
@@ -123,6 +124,8 @@ function addHelpers(){
     axesHelper2.translateY(-arm2Movement);
     axesHelper2.translateZ(6.1);
 
+    axesHelper.visible=false;
+    axesHelper2.visible=false;
 
     rotation1.add(axesHelper);
     rotation2.add(axesHelper2);
@@ -334,6 +337,10 @@ function selectSTL(){
       const intersects = raycaster.intersectObjects(meshes);
 
       lastSelectedMesh.children[0].material.color.set(armColor);
+
+      axesHelper.visible=false;
+      axesHelper2.visible=false;
+
       editMode=false;
 
       if (intersects.length > 0) {
@@ -346,9 +353,11 @@ function selectSTL(){
                     break;
                 case stlNames[1]:
                      lastSelectedMesh=meshes[1];
+                       axesHelper.visible=true;
                     break;
                 case stlNames[2]:
                      lastSelectedMesh=meshes[2];
+                     axesHelper2.visible=true;
                     break;
                 case stlNames[3]:
                      lastSelectedMesh=meshes[3];
