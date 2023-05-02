@@ -5,10 +5,26 @@ var przesuwanie=false;
 var isDragging=false;
 const panelSize=20;
 const lastMouseClicked = new THREE.Vector2();
+const stlNames=['blok','ramie1','ramie2','tool'];
+const armColor=0xffa31a;
+const selectColor=0xff0000;
+
+
 var baseMesh=new THREE.Object3D();
 var arm1Mesh=new THREE.Object3D();
 var arm2Mesh=new THREE.Object3D();
 var toolMesh=new THREE.Object3D();
+var lastSelectedMesh;
+
+var arm1Pos= new THREE.Vector2();
+var arm2Pos= new THREE.Vector2();
+
+var editMode=false;
+
+var arm1Angle=0;
+var arm2Angle=0;
+
+
 
 const rotation1 = new THREE.Group();
 const rotation2 = new THREE.Group();
@@ -48,7 +64,7 @@ const camera = new THREE.OrthographicCamera(
 camera.position.set(0, 0, 20);
 //camera.inverted = true;
 
-// Punkt obrotu
+// Punkt obrotu kamery
 const pivotPoint = new THREE.Object3D();
 pivotPoint.add(camera);
 scene.add(pivotPoint);
@@ -71,67 +87,57 @@ animate();
 rotateCamera(pivotPoint, canvas);
 //przesuwanie
 move();
-zoomCamera(camera,canvas);
+scroll(camera,canvas);
 
 
 //stl
-loadSTL('blok',mesh => { baseMesh.add(mesh); });
-loadSTL('ramie1',mesh => { arm1Mesh.add(mesh); });
-loadSTL('ramie2',mesh => { arm2Mesh.add(mesh); });
-loadSTL('lapa',mesh => { toolMesh.add(mesh); });
+loadSTL(stlNames[0],mesh => { baseMesh.add(mesh); });
+loadSTL(stlNames[1],mesh => { arm1Mesh.add(mesh); });
+loadSTL(stlNames[2],mesh => { arm2Mesh.add(mesh); });
+loadSTL(stlNames[3],mesh => { toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
 
-//rotation2.add(arm2Mesh);
-//rotation2.add(toolMesh);
+rotation2.add(arm2Mesh);
+rotation2.add(toolMesh);
 
 rotation1.add(arm1Mesh);
-rotation1.add(arm2Mesh);
-rotation1.add(toolMesh);
+rotation1.add(rotation2);
 
-//rotation1.add(rotation2);
+const axesHelper = new THREE.AxesHelper(10); // 10 to długość osi
+const axesHelper2 = new THREE.AxesHelper(10); // 10 to długość osi
+rotation1.add(axesHelper);
+rotation2.add(axesHelper2);
 
 
-
-
-//rotation1.pivot = new THREE.Vector3(  0,0,panelSize/4*100);
-//rotation1.position.set( panelSize/4,0,0 );
 
 scene.add(rotation1);
 scene.add(rotation2);
 scene.add(baseMesh);
 
-//const axis = new THREE.Vector3( 0, 1, 0 );
-
-//rotation1.rotateAroundAxis( axis, 90 * Math.PI / 180 );
-//rotation1.position.set(0, panelSize/4, 0);
-//rotation1.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-/*
-const axis = new THREE.Vector3(2, 0, 5).normalize();
-const angle = Math.PI / 2; // 90 stopni w radianach
-
-rotation1.rotateOnWorldAxis(axis, angle);
-*/
-
-rotation1.translateX(panelSize/4);
-rotation1.translateY(0);
-rotation1.translateZ(0);
-
-const axis = new THREE.Vector3(0, 1, 0);
-rotation1.rotateOnAxis(axis, -Math.PI / 2);
-
-rotation1.translateX(-panelSize/4);
-rotation1.translateY(0);
-rotation1.translateZ(0);
-
-
-/*
-const pp = new THREE.Vector3(-panelSize/4, 0,0); // przesunięcie
-rotation1.position.set(pp.x, pp.y, pp.z); // obrót jest cały czas wokół 0,0,0
-rotation1.rotateY(Math.PI / 2);
-const pp2 = new THREE.Vector3(0, 0,0); // przesunięcie
-*/
-//rotation1.position.set(pp2.x, pp2.y, pp2.z); // obrót jest cały czas wokół 0,0,0
-
 drawLines();
+
+
+function rotateArm1(angle){
+    rotation1.translateX(panelSize/4);
+    rotation2.translateX(panelSize/4);
+
+    const stopnie=-angle * Math.PI / 180
+    const axis = new THREE.Vector3(0, 1, 0);
+    rotation1.rotateOnAxis(axis, stopnie);
+    rotation2.rotateOnAxis(axis, stopnie);
+
+    rotation1.translateX(-panelSize/4);
+    rotation2.translateX(-panelSize/4);
+}
+function rotateArm2(angle){
+    rotation2.translateX(1);
+
+    const stopnie=-angle * Math.PI / 180
+    const axis = new THREE.Vector3(0, 1, 0);
+    rotation2.rotateOnAxis(axis, stopnie);
+
+    rotation2.translateX(-1);
+}
+
 
 
 // Światło
@@ -176,7 +182,7 @@ function loadSTL(nazwa,callback){
     loader.load(`/static/stl/${nazwa}.stl`, (geometry) => {
 
           const shadowMaterial = new THREE.MeshStandardMaterial({
-                                       color: 0xffa31a,
+                                       color: armColor,
                                        roughness: 0.8, // zmniejszenie roughness
                                        lightMapIntensity: 1, // zwiększenie lightMapIntensity
                                      });
@@ -191,6 +197,7 @@ function loadSTL(nazwa,callback){
 
           mesh.rotation.x=-90 * Math.PI / 180;
 
+          mesh.name=nazwa;
           callback(mesh);
 
     });
@@ -248,20 +255,18 @@ function rotateCamera(pivotPoint, canvas) {
 
          if (event.button === 1) {
              if(przesuwanie){
-                 //zapisz współrzędne po naciśnięciu
                  previousMousePosition.set(event.clientX, event.clientY);
 
                  canvas.addEventListener('mousemove', mousemoveMovement);
                  canvas.addEventListener('mouseup', mouseupMovement);
             }else{
-                //zapisz współrzędne po naciśnięciu
                 previousMousePosition.set(event.clientX, event.clientY);
 
                 canvas.addEventListener('mousemove', mousemoveRotation);
                 canvas.addEventListener('mouseup', mouseupRotation);
             }
         }else if(event.button === 0){
-               canvas.addEventListener('mousemove', STLMoveEvent);
+               previousMousePosition.set(event.clientX, event.clientY);
                canvas.addEventListener('mouseup', STLUpEvent);
         }
 
@@ -279,7 +284,6 @@ function rotateCamera(pivotPoint, canvas) {
         pivotPoint.translateY((previousMousePosition.y-event.clientY) * sensitivity);
         previousMousePosition.set(event.clientX, event.clientY);
     }
-    function STLMoveEvent(event) {isDragging=true;}
 
     function mouseupRotation() {
         canvas.removeEventListener('mousemove', mousemoveRotation);
@@ -290,9 +294,8 @@ function rotateCamera(pivotPoint, canvas) {
             canvas.removeEventListener('mouseup', mousemoveMovement);
     }
     function STLUpEvent(event) {
-        if(!isDragging)
-            selectSTL();
-        isDragging=false;
+        selectSTL();
+        canvas.removeEventListener('mouseup', STLUpEvent);
     }
 
 }
@@ -309,25 +312,41 @@ function move(){
         }
     });
 }
+
 function selectSTL(){
-        console.log('wlazl selectSTL!');
-      // Utwórz Raycaster, który sprawdzi, czy kliknięcie myszą przecina jakiś obiekt
+      // check if clicked on object
       raycaster.setFromCamera(lastMouseClicked, camera);
+      const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
 
-       const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
-
-      // Sprawdź, czy Raycaster przecina obiekt STL
       const intersects = raycaster.intersectObjects(meshes);
 
-      // Jeśli tak, wykonaj odpowiednie akcje
+      lastSelectedMesh.children[0].material.color.set(armColor);
+      editMode=false;
+
       if (intersects.length > 0) {
-           // Kliknięto na obiekt STL
-            console.log('Kliknięto na obiekt STL!');
+            //closest object
+            const object = intersects[0].object;
+            editMode=true;
+            switch(object.name){
+                case stlNames[0]:
+                    lastSelectedMesh=meshes[0];
+                    break;
+                case stlNames[1]:
+                     lastSelectedMesh=meshes[1];
+                    break;
+                case stlNames[2]:
+                     lastSelectedMesh=meshes[2];
+                    break;
+                case stlNames[3]:
+                     lastSelectedMesh=meshes[3];
+                    break;
+            }
+            lastSelectedMesh.children[0].material.color.set(selectColor);
       }
 }
 
 
-function zoomCamera(camera, canvas) {
+function scroll(camera, canvas) {
   let zoomLevel = 100;
   camera.zoom = zoomLevel;
   camera.updateProjectionMatrix();
@@ -336,18 +355,37 @@ function zoomCamera(camera, canvas) {
     // zapobiegaj domyślnej akcji
     event.preventDefault();
 
-    // zwiększanie przybliżenia lub oddalanie w zależności od kierunku przewijania
-    const zoomChange = event.deltaY > 0 ? 5 : -5; //0.1
-    zoomLevel += zoomChange;
+    if(editMode){
+        const zoomChange = event.deltaY > 0 ? 1 : -1;
+        switch(lastSelectedMesh.children[0].name){
 
-    // ograniczenie zakresu przybliżenia
-    zoomLevel = Math.max(zoomLevel, 50.0);
-    zoomLevel = Math.min(zoomLevel, 250.0);
+            case stlNames[1]:
+                arm1Angle+=zoomChange;
+                rotateArm1(zoomChange);
+                break;
+            case stlNames[2]:
+                arm2Angle+=zoomChange;
+                rotateArm2(zoomChange);
+                break;
+            case stlNames[3]:
 
-    // zmiana wartości przybliżenia kamery
-    camera.zoom = zoomLevel;
+                break;
+        }
 
-    // odświeżenie kamery
-    camera.updateProjectionMatrix();
+    }else{
+
+        const zoomChange = event.deltaY > 0 ? 5 : -5;
+        zoomLevel += zoomChange;
+
+        // ograniczenie zakresu przybliżenia
+        zoomLevel = Math.max(zoomLevel, 50.0);
+        zoomLevel = Math.min(zoomLevel, 250.0);
+
+        // zmiana wartości przybliżenia kamery
+        camera.zoom = zoomLevel;
+
+        // odświeżenie kamery
+        camera.updateProjectionMatrix();
+    }
   });
 }
