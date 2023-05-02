@@ -9,7 +9,8 @@ const stlNames=['blok','ramie1','ramie2','tool'];
 const arm2Movement=1.2;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
-
+const maxHeight=3.4;
+var currentHeight=0;
 
 var baseMesh=new THREE.Object3D();
 var arm1Mesh=new THREE.Object3D();
@@ -39,7 +40,7 @@ document.getElementById('manual').addEventListener('click', function() {
              menu.style.left = '-250px';
  });
 
-
+/*
 THREE.Group.prototype.rotateAroundAxis = function(axis, radians) {
     let rotWorldMatrix = new THREE.Matrix4();
     rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
@@ -47,6 +48,7 @@ THREE.Group.prototype.rotateAroundAxis = function(axis, radians) {
     this.matrix = rotWorldMatrix;
     this.rotation.setFromRotationMatrix(this.matrix);
 };
+*/
 // Inicjalizacja sceny
 const scene = new THREE.Scene();
 
@@ -63,7 +65,7 @@ const camera = new THREE.OrthographicCamera(
   1, // bliski plan
   1000 // daleki plan
 );
-camera.position.set(0, 0, 20);
+camera.position.set(0, 5, 20);
 //camera.inverted = true;
 
 // Punkt obrotu kamery
@@ -77,7 +79,8 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setClearColor(0x1b1b1b);
 
 addLight();
-//addGrid();
+addGrid();
+
 // Rysowanie sceny
 function animate() {
   requestAnimationFrame(animate);
@@ -104,11 +107,26 @@ rotation2.add(toolMesh);
 rotation1.add(arm1Mesh);
 rotation1.add(rotation2);
 
-const axesHelper = new THREE.AxesHelper(10); // 10 to długość osi
-const axesHelper2 = new THREE.AxesHelper(10); // 10 to długość osi
-rotation1.add(axesHelper);
-rotation2.add(axesHelper2);
+addHelpers();
 
+function addHelpers(){
+    const axesHelper = new THREE.AxesHelper(3);
+    const axesHelper2 = new THREE.AxesHelper(3);
+
+    axesHelper.rotateX(-Math.PI/2);
+    axesHelper.rotateZ(Math.PI/2);
+    axesHelper.translateY(-panelSize/4);
+    axesHelper.translateZ(4.3);
+
+    axesHelper2.rotateX(-Math.PI/2);
+    axesHelper2.rotateZ(Math.PI/2);
+    axesHelper2.translateY(-arm2Movement);
+    axesHelper2.translateZ(6.1);
+
+
+    rotation1.add(axesHelper);
+    rotation2.add(axesHelper2);
+}
 
 scene.add(rotation1);
 scene.add(rotation2);
@@ -186,7 +204,7 @@ function loadSTL(nazwa,callback){
           const shadowMaterial = new THREE.MeshStandardMaterial({
                                        color: armColor,
                                        roughness: 0.8, // zmniejszenie roughness
-                                       lightMapIntensity: 1, // zwiększenie lightMapIntensity
+                                       lightMapIntensity: 0.8, // zwiększenie lightMapIntensity
                                      });
 
           shadowMaterial.castShadow = true;
@@ -210,11 +228,11 @@ function drawLines(){
     const redGeometry = new THREE.BufferGeometry();
     const greenGeometry = new THREE.BufferGeometry();
 
-    const redArray = new Float32Array([
+    const greenArray = new Float32Array([
       panelSize/4, -1, 0,
       -panelSize/2, -1, 0,
     ]);
-    const greenArray = new Float32Array([
+    const redArray = new Float32Array([
        panelSize/4, -1, -panelSize/2,
        panelSize/4, -1, panelSize/2,
     ]);
@@ -224,12 +242,10 @@ function drawLines(){
 
 
     const redMaterial = new THREE.LineBasicMaterial({
-      color: 0xff0000,
-      linewidth: 2
+      color: 0xff0000
     });
     const greenMaterial = new THREE.LineBasicMaterial({
-      color: 0x00ff00,
-      linewidth: 2
+      color: 0x00ff00
     });
     const redLine = new THREE.Line(redGeometry, redMaterial);
     const greenLine = new THREE.Line(greenGeometry, greenMaterial);
@@ -277,8 +293,8 @@ function rotateCamera(pivotPoint, canvas) {
     }
     function mousemoveMovement(event) {
         const sensitivity = 0.005;
-        pivotPoint.translateX((event.clientX-previousMousePosition.x) * sensitivity);
-        pivotPoint.translateY((previousMousePosition.y-event.clientY) * sensitivity);
+        pivotPoint.translateX(-(event.clientX-previousMousePosition.x) * sensitivity);
+        pivotPoint.translateY(-(previousMousePosition.y-event.clientY) * sensitivity);
         previousMousePosition.set(event.clientX, event.clientY);
     }
 
@@ -344,7 +360,7 @@ function selectSTL(){
 
 
 function scroll(camera, canvas) {
-  let zoomLevel = 100;
+  let zoomLevel = 80;
   camera.zoom = zoomLevel;
   camera.updateProjectionMatrix();
 
@@ -365,7 +381,11 @@ function scroll(camera, canvas) {
                 rotateArm2(zoomChange);
                 break;
             case stlNames[3]:
-
+                if((zoomChange>0&&currentHeight<maxHeight)||(zoomChange<0&&currentHeight>0)){
+                    const scale=0.1;
+                    currentHeight+=zoomChange*scale;
+                    toolMesh.translateY(zoomChange*scale);
+                }
                 break;
         }
 
