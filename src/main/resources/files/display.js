@@ -20,6 +20,7 @@ var lastSelectedMesh;
 
 const axesHelper = new THREE.AxesHelper(3);
 const axesHelper2 = new THREE.AxesHelper(3);
+//const axesCameraHelper = new THREE.AxesHelper(1);
 
 var arm1Pos= new THREE.Vector2();
 var arm2Pos= new THREE.Vector2();
@@ -37,25 +38,17 @@ const rotation2 = new THREE.Group();
 
 const raycaster = new THREE.Raycaster();
 
-const canvas= document.getElementById('myCanvas')
+const canvas= document.getElementById('myCanvas');
+const canvasHelper= document.getElementById('pivot');
 
-document.getElementById('manual').addEventListener('click', function() {
-             menu.style.left = '-250px';
- });
 
-/*
-THREE.Group.prototype.rotateAroundAxis = function(axis, radians) {
-    let rotWorldMatrix = new THREE.Matrix4();
-    rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
-    rotWorldMatrix.multiply(this.matrix);
-    this.matrix = rotWorldMatrix;
-    this.rotation.setFromRotationMatrix(this.matrix);
-};
-*/
+
 // Inicjalizacja sceny
 const scene = new THREE.Scene();
+const sceneHelper = new THREE.Scene();
 
 const loader = new STLLoader();
+
 
 // Kamera
 const width = window.innerWidth;
@@ -69,17 +62,71 @@ const camera = new THREE.OrthographicCamera(
   1000 // daleki plan
 );
 camera.position.set(0, 5, 20);
-//camera.inverted = true;
+
+/*
+const cameraCanvasHelper = new THREE.OrthographicCamera(
+      canvasHelper.width / -2, // lewy kraniec
+      canvasHelper.width / 2, // prawy kraniec
+      canvasHelper.height / 2, // górny kraniec
+      canvasHelper.height / -2, // dolny kraniec
+      0.01, // bliski plan
+      1000 // daleki plan
+);*/
+const cameraCanvasHelper = new THREE.PerspectiveCamera(75, canvasHelper.width / canvasHelper.height, 0.01, 1000);
+
+const pivotPointHelper = new THREE.Object3D();
+
+function setupCanvasHelper(){
+
+    cameraCanvasHelper.updateProjectionMatrix();
+
+    const geoR = new THREE.CapsuleGeometry( 0.02, 0.8, 4, 8 );
+    const geoG = new THREE.CapsuleGeometry( 0.02, 0.8, 4, 8 );
+    const geoB = new THREE.CapsuleGeometry( 0.02, 0.8, 4, 8 );
+
+    const red = new THREE.MeshBasicMaterial( {color: 0xff0000} );
+    const green = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+    const blue = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
+
+    const redC = new THREE.Mesh( geoR, red );
+    const greenC = new THREE.Mesh( geoG, green );
+    const blueC = new THREE.Mesh( geoB, blue );
+
+    redC.rotateX(Math.PI/2);
+    redC.rotateY(Math.PI/2);
+    redC.position.set(0,0,-0.41);
+
+    greenC.rotateY(Math.PI/2);
+    greenC.rotateX(Math.PI/2);
+    greenC.position.set(-0.41,0,0);
+
+    blueC.position.set(0,0.41,0);
+    sceneHelper.add(redC);
+    sceneHelper.add(greenC);
+    sceneHelper.add(blueC);
+
+    cameraCanvasHelper.position.set(0, 0, 2);
+    sceneHelper.add(cameraCanvasHelper);
+    pivotPointHelper.add(cameraCanvasHelper);
+    sceneHelper.add(pivotPointHelper);
+}
+
 
 // Punkt obrotu kamery
 const pivotPoint = new THREE.Object3D();
 pivotPoint.add(camera);
 scene.add(pivotPoint);
 
+
+
 // Renderer
 const renderer = new THREE.WebGLRenderer({ canvas: canvas });
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setClearColor(0x1b1b1b);
+
+const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper });
+rendererHelper.setSize( canvasHelper.width, canvasHelper.height );
+rendererHelper.setClearColor(0x1b1b1b);
 
 addLight();
 addGrid();
@@ -88,11 +135,12 @@ addGrid();
 function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
+  rendererHelper.render(sceneHelper, cameraCanvasHelper);
 }
 animate();
 
 //obrot
-rotateCamera(pivotPoint, canvas);
+rotateCamera(pivotPoint,pivotPointHelper, canvas);
 //przesuwanie
 move();
 scroll(camera,canvas);
@@ -113,6 +161,8 @@ rotation1.add(rotation2);
 setupHelpers();
 
 function setupHelpers(){
+
+    setupCanvasHelper();
 
     axesHelper.rotateX(-Math.PI/2);
     axesHelper.rotateZ(Math.PI/2);
@@ -258,7 +308,7 @@ function drawLines(){
 
 }
 
-function rotateCamera(pivotPoint, canvas) {
+function rotateCamera(pivotPoint,pivotPointHelper,canvas) {
     const previousMousePosition = new THREE.Vector2();
 
 
@@ -292,6 +342,9 @@ function rotateCamera(pivotPoint, canvas) {
         const sensitivity = 0.005;
         pivotPoint.rotation.y -= (event.clientX-previousMousePosition.x) * sensitivity;
         pivotPoint.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
+        pivotPointHelper.rotation.y -= (event.clientX-previousMousePosition.x) * sensitivity;
+        pivotPointHelper.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
+
         previousMousePosition.set(event.clientX, event.clientY);
     }
     function mousemoveMovement(event) {

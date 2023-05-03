@@ -26,12 +26,20 @@ body {
     cursor: pointer;
 
 }
-#arm canvas{
+#arm canvas#myCanvas{
     width:100% !important;
     height:100% !important;
     position: absolute;
     top:0;
     left:0;
+}
+#pivot{
+    pointer-events: none;
+    width:300px !important;
+    height:300px !important;
+    position: absolute;
+    top:0;
+    right:0;
 }
  canvas {
         display: block;
