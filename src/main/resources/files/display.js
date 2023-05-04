@@ -1,5 +1,6 @@
 import * as THREE from '/static/three/build/three.module.js'
 import { STLLoader } from '/static/three/examples/jsm/loaders/STLLoader.js';
+//import { TextBufferGeometry } from '/static/three/examples/jsm/geometries/TextGeometry.js';
 
 var przesuwanie=false;
 var isDragging=false;
@@ -10,7 +11,11 @@ const arm2Movement=1.2;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
 const maxHeight=3.4;
+const MAX_ARM1_ANGLE=120;
+const MAX_ARM2_ANGLE=160;
+
 var currentHeight=0;
+
 
 var baseMesh=new THREE.Object3D();
 var arm1Mesh=new THREE.Object3D();
@@ -20,7 +25,6 @@ var lastSelectedMesh;
 
 const axesHelper = new THREE.AxesHelper(3);
 const axesHelper2 = new THREE.AxesHelper(3);
-//const axesCameraHelper = new THREE.AxesHelper(1);
 
 var arm1Pos= new THREE.Vector2();
 var arm2Pos= new THREE.Vector2();
@@ -30,9 +34,6 @@ var editMode=false;
 var arm1Angle=0;
 var arm2Angle=0;
 
-
-
-
 const rotation1 = new THREE.Group();
 const rotation2 = new THREE.Group();
 
@@ -41,14 +42,37 @@ const raycaster = new THREE.Raycaster();
 const canvas= document.getElementById('myCanvas');
 const canvasHelper= document.getElementById('pivot');
 
-
-
 // Inicjalizacja sceny
 const scene = new THREE.Scene();
 const sceneHelper = new THREE.Scene();
 
 const loader = new STLLoader();
 
+const textGeometry1 = new THREE.PlaneGeometry(0.5, 0.5);
+const textGeometry2 = new THREE.PlaneGeometry(0.5, 0.5);
+const textMaterial1 = new THREE.MeshBasicMaterial({ transparent: true });
+const textMaterial2 = new THREE.MeshBasicMaterial({ transparent: true });
+
+// Stwórz Mesh z użyciem geometrii tekstu i materiału tekstu
+const arm1Text = new THREE.Mesh(textGeometry1, textMaterial1);
+scene.add(arm1Text);
+const arm2Text = new THREE.Mesh(textGeometry2, textMaterial2);
+scene.add(arm2Text);
+
+const circleMesh1= createCircle(5,0,4.26,0.4);
+const circleMesh2= createCircle(1,0,6.06,0.4);
+
+var ringMesh1= createRing(5,0,4.26,0.4,0.5,0);
+ringMesh1.rotateX(Math.PI);
+
+var ringMesh2= createRing(1,0,6.06,0.4,0.5,0);
+
+
+arm1Text.rotateX(-Math.PI/2);
+arm2Text.rotateX(-Math.PI/2);
+
+updateTextTexture("0",30,arm1Text,5,0,4.26);
+updateTextTexture("0",30,arm2Text,1,0,6.06);
 
 // Kamera
 const width = window.innerWidth;
@@ -63,15 +87,6 @@ const camera = new THREE.OrthographicCamera(
 );
 camera.position.set(0, 5, 20);
 
-/*
-const cameraCanvasHelper = new THREE.OrthographicCamera(
-      canvasHelper.width / -2, // lewy kraniec
-      canvasHelper.width / 2, // prawy kraniec
-      canvasHelper.height / 2, // górny kraniec
-      canvasHelper.height / -2, // dolny kraniec
-      0.01, // bliski plan
-      1000 // daleki plan
-);*/
 const cameraCanvasHelper = new THREE.PerspectiveCamera(75, canvasHelper.width / canvasHelper.height, 0.01, 1000);
 
 const pivotPointHelper = new THREE.Object3D();
@@ -109,6 +124,67 @@ function setupCanvasHelper(){
     sceneHelper.add(cameraCanvasHelper);
     pivotPointHelper.add(cameraCanvasHelper);
     sceneHelper.add(pivotPointHelper);
+}
+
+
+
+function createCircle(x,y,z,size){
+var circleMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 30), new THREE.MeshBasicMaterial({ color: 0x454545 }));
+circleMesh.rotateX(-Math.PI/2);
+circleMesh.position.set(x, z, y);
+scene.add(circleMesh);
+return circleMesh;
+}
+function createRing(x,y,z,min,max,degree){
+var ringMesh = new THREE.Mesh(new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide }));
+ringMesh.rotateX(-Math.PI/2);
+ringMesh.rotateZ(-Math.PI);
+ringMesh.position.set(x, z, y);
+scene.add(ringMesh);
+return ringMesh;
+}
+
+function updateRing(ringMesh,min,max,degree){
+    ringMesh.geometry.dispose();
+    ringMesh.geometry = new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180)
+    ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide })
+}
+
+function setMeshPosition(mesh,x,y,z){
+  mesh.position.set(x,z+0.01,y-0.1);
+}
+function updateTextTexture(text, size, mesh,x,y,z) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  var fontSize=size;
+  if(text.length==3)
+    fontSize=parseInt(fontSize*2/3);
+  else if(text.length==1)
+    fontSize=parseInt(fontSize*3/2);
+
+  ctx.font = fontSize + 'px Arial';
+  const textWidth = ctx.measureText(text).width;
+  canvas.width = textWidth;
+  canvas.height = fontSize;
+
+  ctx.font = fontSize + 'px Arial';
+  ctx.fillStyle = "#bfbfbf";
+  ctx.fillText(text, 0, fontSize);
+
+  const texture = new THREE.Texture(canvas);
+  texture.needsUpdate = true;
+
+  const halfWidth = textWidth / 2;
+
+// Przesuń teksturę o połowę szerokości w lewo
+  texture.offset.y = 0.5 - (halfWidth / textWidth);
+  texture.offset.x = 0.5 - (fontSize/2 / fontSize);
+  //texture.offset.y = 0.5;
+  //texture.offset.z = 0.5;
+
+
+  mesh.position.set(x,z+0.01,y-0.1);
+  mesh.material.map = texture;
 }
 
 
@@ -154,6 +230,9 @@ loadSTL(stlNames[3],mesh => { toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
 
 rotation2.add(arm2Mesh);
 rotation2.add(toolMesh);
+rotation2.add(arm2Text);
+rotation2.add(circleMesh2);
+rotation2.add(ringMesh2);
 
 rotation1.add(arm1Mesh);
 rotation1.add(rotation2);
@@ -167,7 +246,7 @@ function setupHelpers(){
     axesHelper.rotateX(-Math.PI/2);
     axesHelper.rotateZ(Math.PI/2);
     axesHelper.translateY(-panelSize/4);
-    axesHelper.translateZ(4.3);
+    axesHelper.translateZ(4.3);circleMesh2
 
     axesHelper2.rotateX(-Math.PI/2);
     axesHelper2.rotateZ(Math.PI/2);
@@ -343,6 +422,14 @@ function rotateCamera(pivotPoint,pivotPointHelper,canvas) {
         pivotPoint.rotation.y -= (event.clientX-previousMousePosition.x) * sensitivity;
         pivotPoint.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
         pivotPointHelper.rotation.y -= (event.clientX-previousMousePosition.x) * sensitivity;
+
+        arm1Text.translateY(-0.1);
+        arm2Text.translateY(-0.1);
+        arm1Text.rotation.z -= (event.clientX-previousMousePosition.x) * sensitivity;
+        arm2Text.rotation.z -= (event.clientX-previousMousePosition.x) * sensitivity;
+        arm1Text.translateY(0.1);
+        arm2Text.translateY(0.1);
+
         pivotPointHelper.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
 
         previousMousePosition.set(event.clientX, event.clientY);
@@ -420,7 +507,6 @@ function selectSTL(){
       }
 }
 
-
 function scroll(camera, canvas) {
   let zoomLevel = 80;
   camera.zoom = zoomLevel;
@@ -435,12 +521,30 @@ function scroll(camera, canvas) {
         switch(lastSelectedMesh.children[0].name){
 
             case stlNames[1]:
-                arm1Angle+=zoomChange;
-                rotateArm1(zoomChange);
+                if((arm1Angle+zoomChange)>=-MAX_ARM1_ANGLE&&(arm1Angle+zoomChange)<=MAX_ARM1_ANGLE){
+                    arm1Angle+=zoomChange;
+                    rotateArm1(zoomChange);
+                    updateTextTexture((arm1Angle%360).toString(),30,arm1Text,5,0,4.26);
+                    updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
+
+                    arm2Text.translateY(0.1);
+                    arm2Text.rotation.z += zoomChange * Math.PI / 180;
+                    arm2Text.translateY(-0.1);
+
+                }
                 break;
             case stlNames[2]:
-                arm2Angle+=zoomChange;
-                rotateArm2(zoomChange);
+                if((arm2Angle+zoomChange)>=-MAX_ARM2_ANGLE&&(arm2Angle+zoomChange)<=MAX_ARM2_ANGLE){
+                    arm2Angle+=zoomChange;
+                    rotateArm2(zoomChange);
+                    updateTextTexture((arm2Angle%360).toString(),26,arm2Text,1,0,6.06);
+                    updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
+                    //arm2Text.position.set(1,6.07,0.1);
+                    arm2Text.translateY(-0.1);
+                    arm2Text.rotation.z += zoomChange * Math.PI / 180;
+                    arm2Text.translateY(+0.1);
+                    //arm2Text.position.set(1,6.07,-0.1);
+                }
                 break;
             case stlNames[3]:
                 if((zoomChange>0&&currentHeight<maxHeight)||(zoomChange<0&&currentHeight>0)){
