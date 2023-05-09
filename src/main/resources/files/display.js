@@ -60,19 +60,21 @@ const arm2Text = new THREE.Mesh(textGeometry2, textMaterial2);
 scene.add(arm2Text);
 
 const circleMesh1= createCircle(5,0,4.26,0.4);
-const circleMesh2= createCircle(1,0,6.06,0.4);
+
+const circleMesh2= createCircle(arm2Movement,0,6.06,0.4);
 
 var ringMesh1= createRing(5,0,4.26,0.4,0.5,0);
 ringMesh1.rotateX(Math.PI);
 
-var ringMesh2= createRing(1,0,6.06,0.4,0.5,0);
+var ringMesh2= createRing(arm2Movement,0,6.06,0.4,0.5,0);
 
 
 arm1Text.rotateX(-Math.PI/2);
 arm2Text.rotateX(-Math.PI/2);
 
+
 updateTextTexture("0",30,arm1Text,5,0,4.26);
-updateTextTexture("0",30,arm2Text,1,0,6.06);
+updateTextTexture("0",30,arm2Text,arm2Movement,0,6.06);
 
 // Kamera
 const width = window.innerWidth;
@@ -150,9 +152,6 @@ function updateRing(ringMesh,min,max,degree){
     ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide })
 }
 
-function setMeshPosition(mesh,x,y,z){
-  mesh.position.set(x,z+0.01,y-0.1);
-}
 function updateTextTexture(text, size, mesh,x,y,z) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -176,14 +175,7 @@ function updateTextTexture(text, size, mesh,x,y,z) {
 
   const halfWidth = textWidth / 2;
 
-// Przesuń teksturę o połowę szerokości w lewo
-  texture.offset.y = 0.5 - (halfWidth / textWidth);
-  texture.offset.x = 0.5 - (fontSize/2 / fontSize);
-  //texture.offset.y = 0.5;
-  //texture.offset.z = 0.5;
-
-
-  mesh.position.set(x,z+0.01,y-0.1);
+  mesh.position.set(x,z+0.01,y/*-0.1*/);
   mesh.material.map = texture;
 }
 
@@ -423,12 +415,8 @@ function rotateCamera(pivotPoint,pivotPointHelper,canvas) {
         pivotPoint.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
         pivotPointHelper.rotation.y -= (event.clientX-previousMousePosition.x) * sensitivity;
 
-        arm1Text.translateY(-0.1);
-        arm2Text.translateY(-0.1);
         arm1Text.rotation.z -= (event.clientX-previousMousePosition.x) * sensitivity;
         arm2Text.rotation.z -= (event.clientX-previousMousePosition.x) * sensitivity;
-        arm1Text.translateY(0.1);
-        arm2Text.translateY(0.1);
 
         pivotPointHelper.rotation.x -= (event.clientY-previousMousePosition.y) * sensitivity;
 
@@ -526,10 +514,7 @@ function scroll(camera, canvas) {
                     rotateArm1(zoomChange);
                     updateTextTexture((arm1Angle%360).toString(),30,arm1Text,5,0,4.26);
                     updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
-
-                    arm2Text.translateY(0.1);
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
-                    arm2Text.translateY(-0.1);
 
                 }
                 break;
@@ -537,13 +522,10 @@ function scroll(camera, canvas) {
                 if((arm2Angle+zoomChange)>=-MAX_ARM2_ANGLE&&(arm2Angle+zoomChange)<=MAX_ARM2_ANGLE){
                     arm2Angle+=zoomChange;
                     rotateArm2(zoomChange);
-                    updateTextTexture((arm2Angle%360).toString(),26,arm2Text,1,0,6.06);
+                    updateTextTexture((arm2Angle%360).toString(),26,arm2Text,arm2Movement,0,6.06);
                     updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
-                    //arm2Text.position.set(1,6.07,0.1);
-                    arm2Text.translateY(-0.1);
+
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
-                    arm2Text.translateY(+0.1);
-                    //arm2Text.position.set(1,6.07,-0.1);
                 }
                 break;
             case stlNames[3]:
