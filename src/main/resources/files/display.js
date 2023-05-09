@@ -15,7 +15,8 @@ const MAX_ARM1_ANGLE=120;
 const MAX_ARM2_ANGLE=160;
 
 var currentHeight=0;
-
+var currentToolX=0;
+var currentToolY=9.55;
 
 var baseMesh=new THREE.Object3D();
 var arm1Mesh=new THREE.Object3D();
@@ -30,6 +31,7 @@ var arm1Pos= new THREE.Vector2();
 var arm2Pos= new THREE.Vector2();
 
 var editMode=false;
+var toolEditMode=false;
 
 var arm1Angle=0;
 var arm2Angle=0;
@@ -128,8 +130,6 @@ function setupCanvasHelper(){
     sceneHelper.add(pivotPointHelper);
 }
 
-
-
 function createCircle(x,y,z,size){
 var circleMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 30), new THREE.MeshBasicMaterial({ color: 0x454545 }));
 circleMesh.rotateX(-Math.PI/2);
@@ -137,6 +137,7 @@ circleMesh.position.set(x, z, y);
 scene.add(circleMesh);
 return circleMesh;
 }
+
 function createRing(x,y,z,min,max,degree){
 var ringMesh = new THREE.Mesh(new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide }));
 ringMesh.rotateX(-Math.PI/2);
@@ -238,7 +239,7 @@ function setupHelpers(){
     axesHelper.rotateX(-Math.PI/2);
     axesHelper.rotateZ(Math.PI/2);
     axesHelper.translateY(-panelSize/4);
-    axesHelper.translateZ(4.3);circleMesh2
+    axesHelper.translateZ(4.3);
 
     axesHelper2.rotateX(-Math.PI/2);
     axesHelper2.rotateZ(Math.PI/2);
@@ -273,7 +274,6 @@ function rotateArm1(angle){
 }
 
 function rotateArm2(angle){
-
     rotation2.translateX(arm2Movement);
 
     const stopnie=-angle * Math.PI / 180;
@@ -448,12 +448,35 @@ function move(){
     document.addEventListener('keydown', (event) => {
         if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
             przesuwanie=true;
+        }if(toolEditMode){
+            if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
+                currentToolY-=0.05;
+                updateToolPos();
+            }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
+                currentToolY+=0.05;
+                updateToolPos();
+            }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
+                currentToolX-=0.05;
+                updateToolPos();
+            }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
+                currentToolX+=0.05;
+                updateToolPos();
+            }
         }
     });
     document.addEventListener('keyup', (event) => {
         if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
             przesuwanie=false;
-        }
+        }/*else if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
+
+        }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
+
+        }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
+
+        }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
+
+        }*/
+
     });
 }
 
@@ -470,6 +493,7 @@ function selectSTL(){
       axesHelper2.visible=false;
 
       editMode=false;
+      toolEditMode=false;
 
       if (intersects.length > 0) {
             //closest object
@@ -489,10 +513,46 @@ function selectSTL(){
                     break;
                 case stlNames[3]:
                      lastSelectedMesh=meshes[3];
+                     toolEditMode=true;
                     break;
             }
             lastSelectedMesh.children[0].material.color.set(selectColor);
       }
+}
+
+function updateToolPos(){
+    // Wyznacz położenie i orientację narzędzia
+    const arm1Length=3.8;
+    const arm2Length=5.75;
+
+    // Wykorzystaj trygonometrię, aby wyznaczyć kąty
+    const newArm2Angle = Math.atan2(currentToolY - 0,  - panelSize/4) - Math.atan2(arm2Length, arm1Length);
+    const newArm1Angle = Math.atan2(currentToolY - 0, currentToolX - panelSize/4) - Math.atan2(arm2Length * Math.sin(newArm2Angle), arm1Length);
+
+    console.log( "BEF");
+    console.log( newArm1Angle);
+    console.log( newArm2Angle);
+    console.log( "NOW");
+    console.log( rotation1.rotation.y);
+    console.log( rotation2.rotation.y);
+    arm1Angle=(newArm1Angle+rotation1.rotation.y) *180/Math.PI;
+    arm2Angle=(newArm2Angle+rotation2.rotation.y)*180/Math.PI;
+    rotateArm1(arm1Angle);
+    rotateArm2(arm2Angle);
+
+
+    // Ustaw wartości kątów dla przegubów
+   // arm1.rotation.z = arm1Angle;
+//    arm2.rotation.z = arm2Angle;
+
+
+
+
+    // Zaktualizuj rotacje elementów
+//    rotation1.rotation.z = -Math.PI / 2;
+  //  rotation2.rotation.z = -Math.PI / 2;
+
+
 }
 
 function scroll(camera, canvas) {
