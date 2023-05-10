@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Scara Arm</title>
-    <link rel="stylesheet" href="/static/index.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
     <body >
 
@@ -32,7 +32,7 @@
         </ul>
     </nav>
 
-    <script src="/static/index.js"></script>
+    <script src="/static/navigation.js"></script>
     <script type="module" src="/static/display.js"></script>
     <script type="module" src="/static/three/build/three.module.js"></script>
 
