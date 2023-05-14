@@ -39,7 +39,8 @@ var editMode=false;
 var toolEditMode=false;
 
 var arm1Angle=0;
-var arm2Angle=0;
+var arm2Angle=0;    //rotation of arm1 changes arm2 rotation
+var arm2AngleOnly=0;
 
 const rotation1 = new THREE.Group();
 const rotation2 = new THREE.Group();
@@ -223,18 +224,18 @@ function move(){
             przesuwanie=true;
         }if(toolEditMode){
             if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
-                currentToolY-=0.05;
+                currentToolX+=0.5;
                 updateToolPos();
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
-              //  currentToolY+=0.05;
+                //currentToolX-=0.5;
 
                 currentToolX=6.9;
                 updateToolPos();
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
-                currentToolX-=0.05;
+                currentToolY+=0.5;
                 updateToolPos();
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
-                currentToolX+=0.05;
+                currentToolY-=0.5;
                 updateToolPos();
             }
         }
@@ -248,49 +249,57 @@ function move(){
 
 function updateToolPos(){
 
-const Lr = 3.8;
-const Sr = 5.75;
-const newRadius = Math.hypot(currentToolX, currentToolY);
+    const Lr = 3.8;
+    const Sr = 5.75;
+    const newRadius = Math.hypot(currentToolX, currentToolY);
 
-if (newRadius > 9.55) {
-console.error("Object is outside workspace R<${newRadius}");
-}
+    if (newRadius > 9.55) {
+    console.error("Object is outside workspace R<${newRadius}");
+    }
+    const gamma = Math.atan2(currentToolY, currentToolX);
+    const toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+    const beta = Math.acos(toBeta);
 
-const gamma = Math.atan2(currentToolY, currentToolX);
-const toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
-const beta = Math.acos(toBeta);
+    const toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+    const alpha = Math.acos(toAlpha);
 
-const toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
-const alpha = Math.acos(toAlpha);
+    const angle = gamma + alpha;
+    var arm1AngleNew = (angle  * (180 / Math.PI))-arm1Angle;
+    var arm2AngleNew = 180- (beta * (180 / Math.PI)/*-arm1Angle*/)-arm2AngleOnly;       //coś z odejmowaniem
 
-const angle = gamma + alpha;
-console.log("cale");
-//console.log((angle ) * (180 / Math.PI));
-console.log((beta ) * (180 / Math.PI));
-arm1Angle = (angle - rotation1.rotation.y) * (180 / Math.PI);
-var arm2AngleNew = 180-(/*Math.PI -*/ beta - rotation2.rotation.y) * (180 / Math.PI);       //coś z odejmowaniem
+    if (isNaN(arm1AngleNew)) {
+    arm1AngleNew = 0;
+    }
 
+    if (isNaN(arm2AngleNew)) {
+    arm2AngleNew = 0;
+    }
+console.log("do wykręcenia");
+     console.log(arm1AngleNew);
+     console.log(arm2AngleNew);
+     console.log("rotacja PRZED");
+            console.log(arm1Angle);
+            console.log(arm2Angle);
+    if(arm1AngleNew!=0){
+        rotateArm1(-arm1AngleNew, rotation1, arm2Angle/*(rotation2.rotation.y * (180 / Math.PI))%360*/, rotation2, arm2Movement, panelSize); //może arm2AngleOnly
+        updateTextTexture(Math.round(-arm1AngleNew%360).toString(),30,arm1Text,5,0,4.26);
+        updateRing(ringMesh1,0.4,0.5,-arm1AngleNew%360);
+        arm1Angle+=arm1AngleNew;
 
-console.log("rotacja teraz");
-//console.log((rotation1.rotation.y ) * (180 / Math.PI));
-console.log((rotation2.rotation.y ) * (180 / Math.PI));
-if (isNaN(arm1Angle)) {
-arm1Angle = 0;
-}
+    }
 
-if (isNaN(arm2AngleNew)) {
-arm2AngleNew = 0;
-}
-
-console.log("KATY");
-//console.log(arm1Angle);
-console.log(arm2AngleNew);
-rotateArm1(-arm1Angle, rotation1, arm2Angle, rotation2, arm2Movement, panelSize);
-if(arm2AngleNew!=0)
-    arm2Angle=arm2AngleNew;
-rotateArm2(rotation2, arm2AngleNew, arm2Movement);
-console.log("----------------------------");
-
+    if(arm2AngleNew!=0){
+        arm2Angle=arm2AngleNew;
+        rotateArm2(rotation2, arm2AngleNew, arm2Movement);
+        updateTextTexture((Math.round(arm2AngleNew%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+        updateRing(ringMesh2,0.4,0.5,arm2AngleNew%360);
+        arm2Angle+=arm2AngleNew;
+        arm2AngleOnly=arm2AngleNew;
+    }
+     console.log("rotacjaTERAZ");
+        console.log(arm1Angle);
+        console.log(arm2Angle);
+     console.log(beta * (180 / Math.PI));
 }
 
 function scroll(camera, canvas) {
@@ -310,7 +319,7 @@ function scroll(camera, canvas) {
                 if((arm1Angle+zoomChange)>=-MAX_ARM1_ANGLE&&(arm1Angle+zoomChange)<=MAX_ARM1_ANGLE){
                     arm1Angle+=zoomChange;
                     rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
-                    updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
+                    updateTextTexture((Math.round((rotation1.rotation.y * (180 / Math.PI))%360)).toString(),30,arm1Text,5,0,4.26);
                     updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
 
@@ -320,7 +329,7 @@ function scroll(camera, canvas) {
                 if((arm2Angle+zoomChange)>=-MAX_ARM2_ANGLE&&(arm2Angle+zoomChange)<=MAX_ARM2_ANGLE){
                     arm2Angle+=zoomChange;
                     rotateArm2(rotation2,zoomChange,arm2Movement);
-                    updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+                    updateTextTexture((Math.round(((rotation2.rotation.y- rotation1.rotation.y) * (180 / Math.PI))%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
                     updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
 
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
