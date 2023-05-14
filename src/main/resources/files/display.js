@@ -271,9 +271,7 @@ arm1Angle = (angle - rotation1.rotation.y) * (180 / Math.PI);
 var arm2AngleNew = 180-(/*Math.PI -*/ beta - rotation2.rotation.y) * (180 / Math.PI);       //coś z odejmowaniem
 
 
-console.log("rotacja teraz");
-//console.log((rotation1.rotation.y ) * (180 / Math.PI));
-console.log((rotation2.rotation.y ) * (180 / Math.PI));
+
 if (isNaN(arm1Angle)) {
 arm1Angle = 0;
 }
