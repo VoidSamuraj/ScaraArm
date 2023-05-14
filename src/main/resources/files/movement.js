@@ -15,7 +15,6 @@ export function rotateArm1(arm1Angle,rotation1,arm2Angle,rotation2,arm2Movement,
 }
 
 export function rotateArm2(rotation2,angle,arm2Movement){
-
     rotation2.translateX(arm2Movement);
 
     const stopnie=-angle * Math.PI / 180;
