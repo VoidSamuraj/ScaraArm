@@ -12,8 +12,9 @@ const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','ramie1','ramie2','tool'];
 const arm2Movement=1.2;
 const maxHeight=3.4;
-const MAX_ARM1_ANGLE=120;
+const MAX_ARM1_ANGLE=130;
 const MAX_ARM2_ANGLE=160;
+const armStep=0.1;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
 
@@ -224,20 +225,21 @@ function move(){
             przesuwanie=true;
         }if(toolEditMode){
             if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
-               // currentToolY-=0.05;
-                   currentToolX+=0.5;
-                updateToolPos();
+                   currentToolX+=armStep;
+                if(!updateToolPos())
+                    currentToolX-=armStep;
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
-              //  currentToolY+=0.05;
-                currentToolX-=0.5;
-                //currentToolX=6.9;
-                updateToolPos();
+                currentToolX-=armStep;
+                if(!updateToolPos())
+                   currentToolX+=armStep;
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
-                currentToolY-=0.5;
-                updateToolPos();
+                currentToolY+=armStep;
+                if(!updateToolPos())
+                    currentToolY-=armStep;
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
-                currentToolY+=0.5;
-                updateToolPos();
+                currentToolY-=armStep;
+                if(!updateToolPos())
+                    currentToolY+=armStep;
             }
         }
     });
@@ -256,6 +258,7 @@ function updateToolPos(){
 
     if (newRadius > 9.55) {
     console.error("Object is outside workspace R<${newRadius}");
+    return false;
     }
     const gamma = Math.atan2(currentToolY, currentToolX);
     const toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
@@ -265,7 +268,7 @@ function updateToolPos(){
     const alpha = Math.acos(toAlpha);
 
     const angle = gamma + alpha;
-    var arm1AngleNew = arm1Angle-(angle  * (180 / Math.PI)); //-arm1Angle
+    var arm1AngleNew = -(angle  * (180 / Math.PI)); //-arm1Angle
     var arm2AngleNew = 180- (beta * (180 / Math.PI)/*-arm1Angle*/)-arm2AngleOnly;       //coś z odejmowaniem
 
     if (isNaN(arm1AngleNew)) {
@@ -276,59 +279,50 @@ function updateToolPos(){
     arm2AngleNew = 0;
     }
 
+    var arm1AngleNewCp=arm1AngleNew-arm1Angle;
+    var arm2AngleNewCp=arm2AngleNew-arm2Angle;
+    var arm1AngleNewRound=Math.floor(arm1AngleNewCp);
+    var arm2AngleNewRound=Math.floor(arm2AngleNewCp);
+    let canRotate=true;
+    if(arm1AngleNew>=1||arm1AngleNew<=-1)
+        if(arm1AngleNew>MAX_ARM1_ANGLE || arm1AngleNew<-MAX_ARM1_ANGLE)
+            canRotate=false;
+    if(arm2AngleNew>=1||arm2AngleNew<=-1)
+        if(arm2AngleNew>MAX_ARM2_ANGLE || arm2AngleNew<-MAX_ARM2_ANGLE)
+            canRotate=false;
 
 
-console.log("do wykręcenia");
-     console.log(arm1AngleNew);
-     console.log(arm2AngleNew);
-     console.log("rotacja PRZED");
-            console.log(arm1Angle);
-            console.log(arm2Angle);
-
-    var arm1AngleNewCp=arm1AngleNew;
-    var arm2AngleNewCp=arm2AngleNew;
-    var arm1AngleNewRound=Math.floor(arm1AngleNew);
-    var arm2AngleNewRound=Math.floor(arm2AngleNew);
-
-                console.log("rotacja TERAZ");
-
-    let loop=Math.abs(Math.floor(arm1AngleNew)*Math.floor(arm2AngleNew));
+    let loop=Math.abs(Math.floor(arm1AngleNewCp)*Math.floor(arm2AngleNewCp));
     if(loop==0)
-        loop=Math.max(Math.abs(Math.floor(arm1AngleNew)),Math.abs(Math.floor(arm2AngleNew)));
+        loop=Math.max(Math.abs(Math.floor(arm1AngleNewCp)),Math.abs(Math.floor(arm2AngleNewCp)));
     let steps=0;
-   // console.log(loop);
     let arm1Add=Math.sign(arm1AngleNewCp);
     let arm2Add=Math.sign(arm2AngleNewCp);
     let arm1rot=0;
     let arm2rot=0;
-
-    if(arm1AngleNew!=0||arm2AngleNew!=0)
+    if(arm1AngleNewCp!=0||arm2AngleNewCp!=0)
         for(let i=0; i<=loop;i++){
-        if(((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0))||((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0))){
+        if(canRotate&&(((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0))||((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)))){
              setTimeout(function() {
 
                 if((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)){
-                     if((arm1Angle+arm1Add)>=-MAX_ARM1_ANGLE&&(arm1Angle+arm1Add)<=MAX_ARM1_ANGLE){
+
                          arm1Angle+=arm1Add;
                          rotateArm1(arm1Add,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
                          updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
                          updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
                          arm2Text.rotation.z += arm1Add * Math.PI / 180;
                          arm1AngleNewCp-=arm1Add;
-                     }else{
-                     }
+
                 }
                 if((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm1AngleNewRound==0)){
-                    if((arm2Angle+arm2Add)>=-MAX_ARM2_ANGLE&&(arm2Angle+arm2Add)<=MAX_ARM2_ANGLE){
                         arm2Angle+=arm2Add;
                         rotateArm2(rotation2,arm2Add,arm2Movement);
                         updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
                         updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
                         arm2Text.rotation.z += arm2Add * Math.PI / 180;
                         arm2AngleNewCp-=arm2Add;
-                        }else{
 
-                        }
                 }
                 //for less than 1
                 if(i==loop){
@@ -351,7 +345,11 @@ console.log("do wykręcenia");
                 ++steps;
             }
         }
-
+        if(!canRotate){
+            console.error("CANNOT ROTATE ANGLE OUT OF REACH");
+            return false;
+        }
+        return true;
 
 }
 
