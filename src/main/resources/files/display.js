@@ -225,18 +225,18 @@ function move(){
         }if(toolEditMode){
             if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
                // currentToolY-=0.05;
-                   currentToolX+=0.05;
+                   currentToolX+=0.5;
                 updateToolPos();
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
               //  currentToolY+=0.05;
-                currentToolX-=0.05;
+                currentToolX-=0.5;
                 //currentToolX=6.9;
                 updateToolPos();
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
-                currentToolY-=0.05;
+                currentToolY-=0.5;
                 updateToolPos();
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
-                currentToolY+=0.05;
+                currentToolY+=0.5;
                 updateToolPos();
             }
         }
@@ -296,51 +296,62 @@ console.log("do wykręcenia");
     if(loop==0)
         loop=Math.max(Math.abs(Math.floor(arm1AngleNew)),Math.abs(Math.floor(arm2AngleNew)));
     let steps=0;
-    console.log(loop);
+   // console.log(loop);
     let arm1Add=Math.sign(arm1AngleNewCp);
     let arm2Add=Math.sign(arm2AngleNewCp);
     let arm1rot=0;
     let arm2rot=0;
 
     if(arm1AngleNew!=0||arm2AngleNew!=0)
-    for(let i=0; i<loop;i++){
-    if(((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0))||((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0))){
-         setTimeout(function() {
+        for(let i=0; i<=loop;i++){
+        if(((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0))||((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0))){
+             setTimeout(function() {
 
-            if((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)){
-                 if((arm1Angle+arm1Add)>=-MAX_ARM1_ANGLE&&(arm1Angle+arm1Add)<=MAX_ARM1_ANGLE){
-                     arm1Angle+=arm1Add;
-                     console.log("arm1rot");
-                     console.log(++arm1rot);
-                     rotateArm1(arm1Add,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
-                     updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
-                     updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
-                     arm2Text.rotation.z += arm1Add * Math.PI / 180;
-                     arm1AngleNewCp-arm1Add;
-                 }else{
-                 }
+                if((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)){
+                     if((arm1Angle+arm1Add)>=-MAX_ARM1_ANGLE&&(arm1Angle+arm1Add)<=MAX_ARM1_ANGLE){
+                         arm1Angle+=arm1Add;
+                         rotateArm1(arm1Add,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
+                         updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
+                         updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
+                         arm2Text.rotation.z += arm1Add * Math.PI / 180;
+                         arm1AngleNewCp-=arm1Add;
+                     }else{
+                     }
+                }
+                if((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm1AngleNewRound==0)){
+                    if((arm2Angle+arm2Add)>=-MAX_ARM2_ANGLE&&(arm2Angle+arm2Add)<=MAX_ARM2_ANGLE){
+                        arm2Angle+=arm2Add;
+                        rotateArm2(rotation2,arm2Add,arm2Movement);
+                        updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+                        updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
+                        arm2Text.rotation.z += arm2Add * Math.PI / 180;
+                        arm2AngleNewCp-=arm2Add;
+                        }else{
+
+                        }
+                }
+                //for less than 1
+                if(i==loop){
+                    if((arm1Angle+arm1AngleNewCp)>=-MAX_ARM1_ANGLE&&(arm1Angle+arm1AngleNewCp)<=MAX_ARM1_ANGLE){
+                        arm1Angle+=arm1AngleNewCp;
+                        rotateArm1(arm1AngleNewCp,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
+                        updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
+                        updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
+                        arm2Text.rotation.z += arm1AngleNewCp * Math.PI / 180;
+                        }
+                    if((arm2Angle+arm2AngleNewCp)>=-MAX_ARM2_ANGLE&&(arm2Angle+arm2AngleNewCp)<=MAX_ARM2_ANGLE){
+                        arm2Angle+=arm2AngleNewCp;
+                        rotateArm2(rotation2,arm2AngleNewCp,arm2Movement);
+                        updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+                        updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
+                        arm2Text.rotation.z += arm2AngleNewCp * Math.PI / 180;
+                        }
+                }
+                }, 5 * steps);
+                ++steps;
             }
-            if((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm1AngleNewRound==0)){
-                if((arm2Angle+arm2Add)>=-MAX_ARM2_ANGLE&&(arm2Angle+arm2Add)<=MAX_ARM2_ANGLE){
-                    arm2Angle+=arm2Add;
-
-                     console.log("arm2rot");
-                     console.log(++arm2rot);
-
-                    rotateArm2(rotation2,arm2Add,arm2Movement);
-                    updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
-                    updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
-                    arm2Text.rotation.z += arm2Add * Math.PI / 180;
-                    arm2AngleNewCp-arm2Add;
-                    }else{
-
-                    }
-            }
-
-            }, 5 * steps);
-            ++steps;
         }
-    }
+
 
 }
 
