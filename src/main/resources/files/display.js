@@ -12,6 +12,7 @@ const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','ramie1','ramie2','tool'];
 const arm2Movement=1.2;
 const maxHeight=3.4;
+const minHeight=0;
 const MAX_ARM1_ANGLE=130;
 const MAX_ARM2_ANGLE=160;
 const armStep=0.1;
@@ -226,20 +227,54 @@ function move(){
         }if(toolEditMode){
             if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
                    currentToolX+=armStep;
-                if(!updateToolPos())
+                if(!canMove())
                     currentToolX-=armStep;
+                else{
+                     currentToolX-=armStep;
+                   //  for(let i=0;i<5;i++){
+                        currentToolX+=armStep;///5;
+                        moveToolToPosition()
+                   //  }
+                }
+
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
-                currentToolX-=armStep;
-                if(!updateToolPos())
-                   currentToolX+=armStep;
+                 currentToolX-=armStep;
+                if(!canMove())
+                    currentToolX+=armStep;
+                else{
+                     currentToolX+=armStep;
+                   //  for(let i=0;i<5;i++){
+                        currentToolX-=armStep;///5;
+                        moveToolToPosition()
+                    // }
+                }
+                /*currentToolX-=armStep;
+                if(!moveToolToPosition())
+                   currentToolX+=armStep;*/
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
                 currentToolY+=armStep;
-                if(!updateToolPos())
+               if(!canMove())
+                   currentToolY-=armStep;
+               else{
                     currentToolY-=armStep;
+                  //  for(let i=0;i<5;i++){
+                       currentToolY+=armStep;///5;
+                       moveToolToPosition()
+                   // }
+               }
+                /*if(!moveToolToPosition())
+                    currentToolY-=armStep;*/
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
                 currentToolY-=armStep;
-                if(!updateToolPos())
+                 if(!canMove())
                     currentToolY+=armStep;
+                 else{
+                     currentToolY+=armStep;
+                     for(let i=0;i<5;i++){
+                        currentToolY-=armStep;///5;
+                        moveToolToPosition()
+                   //  }
+               }
             }
         }
     });
@@ -249,27 +284,56 @@ function move(){
         }
     });
 }
-
-function updateToolPos(){
-
+function canMove(){
     const Lr = 3.8;
     const Sr = 5.75;
     const newRadius = Math.hypot(currentToolX, currentToolY);
 
     if (newRadius > 9.55) {
-    console.error("Object is outside workspace R<${newRadius}");
-    return false;
+        console.error("Object is outside workspace R<${newRadius}");
+        return false;
     }
-    const gamma = Math.atan2(currentToolY, currentToolX);
-    const toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
-    const beta = Math.acos(toBeta);
+    let gamma = Math.atan2(currentToolY, currentToolX);
+    let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+    let beta = Math.acos(toBeta);
 
-    const toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
-    const alpha = Math.acos(toAlpha);
+    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+    let alpha = Math.acos(toAlpha);
 
-    const angle = gamma + alpha;
-    var arm1AngleNew = -(angle  * (180 / Math.PI)); //-arm1Angle
-    var arm2AngleNew = 180- (beta * (180 / Math.PI)/*-arm1Angle*/)-arm2AngleOnly;       //coś z odejmowaniem
+    let angle = gamma + alpha;
+    var arm1AngleNew = -(angle  * (180 / Math.PI));
+    var arm2AngleNew = 180- (beta * (180 / Math.PI))-arm2AngleOnly;
+
+    if (isNaN(arm1AngleNew))
+        arm1AngleNew = 0;
+
+    if (isNaN(arm2AngleNew))
+        arm2AngleNew = 0;
+
+    if(arm1AngleNew>MAX_ARM1_ANGLE || arm1AngleNew<-MAX_ARM1_ANGLE)
+        return false;
+    if(arm2AngleNew>MAX_ARM2_ANGLE || arm2AngleNew<-MAX_ARM2_ANGLE)
+       return false;
+
+    return true;
+}
+
+function moveToolToPosition(){
+
+    const Lr = 3.8;
+    const Sr = 5.75;
+    let newRadius = Math.hypot(currentToolX, currentToolY);
+
+    let gamma = Math.atan2(currentToolY, currentToolX);
+    let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+    let beta = Math.acos(toBeta);
+
+    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+    let alpha = Math.acos(toAlpha);
+
+    let angle = gamma + alpha;
+    let arm1AngleNew = -(angle  * (180 / Math.PI));
+    let arm2AngleNew = 180- (beta * (180 / Math.PI))-arm2AngleOnly;
 
     if (isNaN(arm1AngleNew)) {
     arm1AngleNew = 0;
@@ -279,17 +343,15 @@ function updateToolPos(){
     arm2AngleNew = 0;
     }
 
-    var arm1AngleNewCp=arm1AngleNew-arm1Angle;
-    var arm2AngleNewCp=arm2AngleNew-arm2Angle;
-    var arm1AngleNewRound=Math.floor(arm1AngleNewCp);
-    var arm2AngleNewRound=Math.floor(arm2AngleNewCp);
+    let arm1AngleNewCp=arm1AngleNew-arm1Angle;
+    let arm2AngleNewCp=arm2AngleNew-arm2Angle;
+    let arm1AngleNewRound=Math.floor(arm1AngleNewCp);
+    let arm2AngleNewRound=Math.floor(arm2AngleNewCp);
     let canRotate=true;
-    if(arm1AngleNew>=1||arm1AngleNew<=-1)
-        if(arm1AngleNew>MAX_ARM1_ANGLE || arm1AngleNew<-MAX_ARM1_ANGLE)
-            canRotate=false;
-    if(arm2AngleNew>=1||arm2AngleNew<=-1)
-        if(arm2AngleNew>MAX_ARM2_ANGLE || arm2AngleNew<-MAX_ARM2_ANGLE)
-            canRotate=false;
+    if(arm1AngleNew>MAX_ARM1_ANGLE || arm1AngleNew<-MAX_ARM1_ANGLE)
+        canRotate=false;
+    if(arm2AngleNew>MAX_ARM2_ANGLE || arm2AngleNew<-MAX_ARM2_ANGLE)
+        canRotate=false;
 
 
     let loop=Math.abs(Math.floor(arm1AngleNewCp)*Math.floor(arm2AngleNewCp));
@@ -302,10 +364,12 @@ function updateToolPos(){
     let arm2rot=0;
     if(arm1AngleNewCp!=0||arm2AngleNewCp!=0)
         for(let i=0; i<=loop;i++){
-        if(canRotate&&(((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0))||((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)))){
-             setTimeout(function() {
 
-                if((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm2AngleNewRound==0)){
+        if(canRotate&&((arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0)||(arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0))){
+             setTimeout(function() {
+                let firstCheck=(arm1AngleNewCp>=1||arm1AngleNewCp<=-1)&&(i%arm1AngleNewRound==0);
+                let secondCheck=(arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm2AngleNewRound==0);
+                if(firstCheck){
 
                          arm1Angle+=arm1Add;
                          rotateArm1(arm1Add,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
@@ -315,7 +379,7 @@ function updateToolPos(){
                          arm1AngleNewCp-=arm1Add;
 
                 }
-                if((arm2AngleNewCp>=1||arm2AngleNewCp<=-1)&&(i%arm1AngleNewRound==0)){
+                if(secondCheck){
                         arm2Angle+=arm2Add;
                         rotateArm2(rotation2,arm2Add,arm2Movement);
                         updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
@@ -324,16 +388,18 @@ function updateToolPos(){
                         arm2AngleNewCp-=arm2Add;
 
                 }
+
+
                 //for less than 1
                 if(i==loop){
-                    if((arm1Angle+arm1AngleNewCp)>=-MAX_ARM1_ANGLE&&(arm1Angle+arm1AngleNewCp)<=MAX_ARM1_ANGLE){
+                    if(arm1AngleNewCp!=0){
                         arm1Angle+=arm1AngleNewCp;
                         rotateArm1(arm1AngleNewCp,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
                         updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
                         updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
                         arm2Text.rotation.z += arm1AngleNewCp * Math.PI / 180;
                         }
-                    if((arm2Angle+arm2AngleNewCp)>=-MAX_ARM2_ANGLE&&(arm2Angle+arm2AngleNewCp)<=MAX_ARM2_ANGLE){
+                    if(arm2AngleNewCp!=0){
                         arm2Angle+=arm2AngleNewCp;
                         rotateArm2(rotation2,arm2AngleNewCp,arm2Movement);
                         updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
@@ -343,13 +409,37 @@ function updateToolPos(){
                 }
                 }, 5 * steps);
                 ++steps;
+            }else if(canRotate && i==loop && ((arm1AngleNewCp!=0) || (arm2AngleNewCp!=0))){
+                setTimeout(function() {
+                    arm1Angle+=arm1AngleNewCp;
+                    rotateArm1(arm1AngleNewCp,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
+                    updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
+                    updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
+                    arm2Text.rotation.z += arm1AngleNewCp * Math.PI / 180;
+
+                    arm2Angle+=arm2AngleNewCp;
+                    rotateArm2(rotation2,arm2AngleNewCp,arm2Movement);
+                    updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+                    updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
+                    arm2Text.rotation.z += arm2AngleNewCp * Math.PI / 180;
+
+                }, 5 * steps);
             }
         }
-        if(!canRotate){
-            console.error("CANNOT ROTATE ANGLE OUT OF REACH");
-            return false;
-        }
-        return true;
+}
+
+function updateToolPos(){
+    let L1=3.8;
+    let L2=5.75;
+
+    let a1=arm1Angle* (Math.PI / 180);
+    let a2=arm2Angle* (Math.PI / 180);
+
+    let x = L1 * Math.cos(a1) + L2 * Math.cos(a1 + a2);
+    let y = L1 * Math.sin(a1) + L2 * Math.sin(a1 + a2);
+
+    currentToolX=x;
+    currentToolY=y;
 
 }
 
@@ -373,7 +463,7 @@ function scroll(camera, canvas) {
                     updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
                     updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
-
+                    updateToolPos();
                 }
                 break;
             case stlNames[2]:
@@ -382,12 +472,12 @@ function scroll(camera, canvas) {
                     rotateArm2(rotation2,zoomChange,arm2Movement);
                     updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
                     updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
-
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
+                    updateToolPos();
                 }
                 break;
             case stlNames[3]:
-                if((zoomChange>0&&currentHeight<maxHeight)||(zoomChange<0&&currentHeight>0)){
+                if((zoomChange>0&&currentHeight<maxHeight)||(zoomChange<0&&currentHeight>minHeight)){
                     const scale=0.1;
                     currentHeight+=zoomChange*scale;
                     toolMesh.translateY(zoomChange*scale);
