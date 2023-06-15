@@ -19,8 +19,8 @@ export function createRing(scene,x,y,z,min,max,degree){
 
 export function updateRing(ringMesh,min,max,degree){
     ringMesh.geometry.dispose();
-    ringMesh.geometry = new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180)
-    ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide })
+    ringMesh.geometry = new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180);
+    ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide });
 }
 
 export function addGrid(scene,panelSize,x,y,z){
@@ -109,4 +109,42 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
 
   mesh.position.set(x,z+0.01,y/*-0.1*/);
   mesh.material.map = texture;
+}
+
+
+export function drawArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE) {
+
+  //dystans( najbliższy dystans)
+
+    let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
+    let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
+    var distance = Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
+
+    const ringGeometry = new THREE.RingGeometry(distance, Lr+Sr, 64, 1, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
+
+    const circleGeometry = new THREE.CircleGeometry(Sr, 64);
+
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const fillMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
+
+    // Tworzenie obiektów LineSegments dla linii zasięgu i Mesh dla wypełnienia
+    const fillMesh = new THREE.Mesh(ringGeometry, fillMaterial);
+    const circleMesh = new THREE.Mesh(circleGeometry, lineMaterial);
+
+    // Ustawienie rotacji i pozycji obiektów
+
+     fillMesh.rotateX(-Math.PI/2);
+     fillMesh.rotateZ(-(MAX_ARM1_ANGLE-180)*Math.PI/180);
+     fillMesh.position.set(panelSize/4, -0.98,0);
+
+     const container = new THREE.Object3D();
+     container.add(circleMesh);
+     container.rotateX(-Math.PI/2);
+
+     circleMesh.translateX(-Lr);
+     container.rotateZ(MAX_ARM1_ANGLE*Math.PI/180);
+    container.position.set(panelSize/4, -0.97,0);
+    // Dodawanie obiektów do sceny
+    scene.add(fillMesh);
+    scene.add(container);
 }
