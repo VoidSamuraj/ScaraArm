@@ -18,6 +18,7 @@ const MAX_ARM2_ANGLE=160;
 const armStep=1;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
+const rightSide=true;//direction of arm(movement area)
 
 var currentHeight=0;
 var currentToolX=9.55;
@@ -117,7 +118,7 @@ rendererHelper.setClearColor(0x1b1b1b);
 addLight(scene,panelSize);
 addGrid(scene,panelSize,0, 0,-1);
 // rysowanie obszaru zasięgu
-//drawArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE);
+drawArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide);
 // Rysowanie sceny
 function animate() {
   requestAnimationFrame(animate);

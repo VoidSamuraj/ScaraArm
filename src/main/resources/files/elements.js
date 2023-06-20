@@ -112,7 +112,7 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
 }
 
 
-export function drawArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE) {
+export function drawArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide) {
 
   //dystans( najbliższy dystans)
 
@@ -120,31 +120,125 @@ export function drawArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_AN
     let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
     var distance = Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
 
-    const ringGeometry = new THREE.RingGeometry(distance, Lr+Sr, 64, 1, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
 
-    const circleGeometry = new THREE.CircleGeometry(Sr, 64);
+  const scale=50;
 
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
-    const fillMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true });
+    // main arc
+  const canvas1 = document.createElement('canvas');
+  const context1 = canvas1.getContext('2d');
+  canvas1.width = panelSize*scale;
+  canvas1.height = panelSize*scale;
+  const texture1 = new THREE.Texture(canvas1);
+  texture1.needsUpdate = true;
 
-    // Tworzenie obiektów LineSegments dla linii zasięgu i Mesh dla wypełnienia
-    const fillMesh = new THREE.Mesh(ringGeometry, fillMaterial);
-    const circleMesh = new THREE.Mesh(circleGeometry, lineMaterial);
 
-    // Ustawienie rotacji i pozycji obiektów
+    context1.beginPath();
+    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
+    context1.lineWidth = (Lr+Sr-distance)*scale;
+    context1.strokeStyle = '#ff0000';
+    context1.stroke();
 
-     fillMesh.rotateX(-Math.PI/2);
-     fillMesh.rotateZ(-(MAX_ARM1_ANGLE-180)*Math.PI/180);
-     fillMesh.position.set(panelSize/4, -0.98,0);
+    //part to cut
+  const canvas2 = document.createElement('canvas');
+  const context2 = canvas2.getContext('2d');
+  canvas2.width = panelSize*scale;
+  canvas2.height = panelSize*scale;
+  const texture2 = new THREE.Texture(canvas2);
+  texture2.needsUpdate = true;
 
-     const container = new THREE.Object3D();
-     container.add(circleMesh);
-     container.rotateX(-Math.PI/2);
+   context2.beginPath();
+    context2.lineWidth = Sr*scale;
+    context2.strokeStyle = '#ff0000';
+    context2.arc((panelSize/2+Lr)*scale, panelSize/2*scale, Sr/2*scale,0, 2*Math.PI);
+    context2.stroke();
 
-     circleMesh.translateX(-Lr);
-     container.rotateZ(MAX_ARM1_ANGLE*Math.PI/180);
-    container.position.set(panelSize/4, -0.97,0);
-    // Dodawanie obiektów do sceny
-    scene.add(fillMesh);
-    scene.add(container);
+  const canvas3 = document.createElement('canvas');
+  const context3 = canvas3.getContext('2d');
+  canvas3.width = panelSize*scale;
+  canvas3.height = panelSize*scale;
+  const texture3 = new THREE.Texture(canvas3);
+  texture3.needsUpdate = true;
+
+   //draw round end
+        context3.strokeStyle = '#ff0000';
+        context3.beginPath();
+        context3.lineWidth = Sr*scale;
+        var xp1=Lr;
+        var yp1=0;
+        var angle=MAX_ARM1_ANGLE*Math.PI/90;
+        var x1=(xp1*Math.cos(angle)-yp1*Math.sin(angle)+panelSize/2)*scale;
+        var y1=(xp1*Math.sin(angle)+yp1*Math.cos(angle)+panelSize/2)*scale;
+
+        context3.arc(x1, y1, Sr/2*scale,0, 2*Math.PI );
+        context3.stroke();
+
+//canvas to reverse and cut from canvas 3
+  const canvas4 = document.createElement('canvas');
+  const context4 = canvas4.getContext('2d');
+  canvas4.width = panelSize*scale;
+  canvas4.height = panelSize*scale;
+  const texture4 = new THREE.Texture(canvas4);
+  texture4.needsUpdate = true;
+        context4.beginPath();
+        context4.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, 2 * Math.PI);
+        context4.lineWidth = (Lr+Sr-distance)*scale;
+        context4.strokeStyle = '#ff0000';
+        context4.stroke();
+
+    context3.globalCompositeOperation = 'destination-in';
+    context3.drawImage(canvas4, 0, 0);
+    context3.globalCompositeOperation = 'source-over';
+
+    context1.beginPath();
+    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
+    context1.lineWidth = (Lr+Sr-distance)*scale;
+    context1.strokeStyle = '#ff0000';
+    context1.stroke();
+
+
+
+    //cut canvas 2 from canvas 1
+    context1.globalCompositeOperation = 'destination-out';
+    context1.drawImage(canvas2, 0, 0);
+    context1.globalCompositeOperation = 'source-over';
+    context1.drawImage(canvas3, 0, 0);
+
+        //fill gap after canvas 3 remove
+    context1.beginPath();
+    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, (MAX_ARM1_ANGLE - 40)*2 * Math.PI / 180,MAX_ARM1_ANGLE*2 * Math.PI / 180 );
+    context1.lineWidth = (Lr+Sr-distance)*scale;
+    context1.stroke();
+
+
+    //change opacity of canvas
+    var imageData = context1.getImageData(0, 0, canvas1.width, canvas1.height);
+    var data = imageData.data;
+
+    var alpha = 0.5;
+
+
+    for (var i = 0; i < data.length; i += 4) {
+        //{R,G,B,A}
+      data[i + 3] = alpha * data[i + 3]; //alpha
+    }
+
+    context1.putImageData(imageData, 0, 0);
+
+    const geometry = new THREE.PlaneGeometry(panelSize, panelSize);
+    const material = new THREE.MeshBasicMaterial({transparent: true, depthWrite: false, depthTest: true, wireframe: false});
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.material.map = texture1;
+
+
+mesh.rotateX(-Math.PI/2);
+if(rightSide)
+  mesh.rotateZ(MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
+else{
+    mesh.rotateZ(-MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
+    mesh.scale.y = -1;
+}
+  mesh.position.set(panelSize/4, -0.97,0);
+
+ scene.add(mesh);
+
 }
