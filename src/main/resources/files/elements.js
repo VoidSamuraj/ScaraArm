@@ -112,7 +112,7 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
 }
 
 
-export function drawArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide) {
+export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide) {
 
   //dystans( najbliższy dystans)
 
@@ -239,6 +239,5 @@ else{
 }
   mesh.position.set(panelSize/4, -0.97,0);
 
- scene.add(mesh);
-
+return mesh;
 }

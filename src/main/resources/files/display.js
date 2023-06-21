@@ -1,9 +1,8 @@
 import * as THREE from '/static/three/build/three.module.js'
 import {loadSTL}from '/static/stl.js'
-import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,drawArmRange}from '/static/elements.js'
+import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,getArmRange}from '/static/elements.js'
 import {setupHelpers}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
-//import { TextBufferGeometry } from '/static/three/examples/jsm/geometries/TextGeometry.js';
 
 var przesuwanie=false;
 var isDragging=false;
@@ -18,7 +17,11 @@ const MAX_ARM2_ANGLE=160;
 const armStep=1;
 const armColor=0xffa31a;
 const selectColor=0xff0000;
-const rightSide=true;//direction of arm(movement area)
+var rightSide = localStorage.getItem('rightSide');//direction of arm(movement area)
+if (rightSide === null)
+  rightSide = false;
+ else
+  rightSide = JSON.parse(rightSide);
 
 var currentHeight=0;
 var currentToolX=9.55;
@@ -118,7 +121,10 @@ rendererHelper.setClearColor(0x1b1b1b);
 addLight(scene,panelSize);
 addGrid(scene,panelSize,0, 0,-1);
 // rysowanie obszaru zasięgu
-drawArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide);
+
+
+var armRange= getArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide);
+scene.add(armRange);
 // Rysowanie sceny
 function animate() {
   requestAnimationFrame(animate);
@@ -156,6 +162,23 @@ scene.add(rotation2);
 scene.add(baseMesh);
 
 drawLines(scene, panelSize);
+const toggle=document.getElementById("toggle");
+toggle.checked=rightSide;
+toggle.addEventListener("change",function() {
+    //move tool to start positon
+    currentToolX=9.55;
+    currentToolY=0;//9.55
+    var time=moveToolToPosition();
+    //update direction after move
+    setTimeout(function(){
+        rightSide=toggle.checked;
+        localStorage.setItem('rightSide', rightSide);
+        scene.remove(armRange);
+        armRange=getArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide);
+        scene.add(armRange);
+    }, time*2);
+});
+
 
 function rotateCamera(pivotPoint,pivotPointHelper,canvas) {
     const previousMousePosition = new THREE.Vector2();
@@ -362,13 +385,13 @@ function moveToolToPosition() {
     function interpolateStep() {
       if (steps < totalSteps) {
         arm1Angle += arm1AngleNewCp / totalSteps; // Aktualizacja wartości obrotu ramienia 1
-        rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2Movement, panelSize); // Obrót ramienia 1
+        rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2Movement, panelSize,rightSide); // Obrót ramienia 1
         updateTextTexture((Math.round(arm1Angle % 360)).toString(), 30, arm1Text, 5, 0, 4.26); // Aktualizacja tekstury dla kąta ramienia 1
         updateRing(ringMesh1, 0.4, 0.5, arm1Angle % 360); // Aktualizacja pierścienia dla kąta ramienia 1
         arm2Text.rotation.z += arm1AngleNewCp / totalSteps * Math.PI / 180; // Aktualizacja rotacji tekstu dla kąta ramienia 1
 
         arm2Angle += arm2AngleNewCp / totalSteps; // Aktualizacja wartości obrotu ramienia 2
-        rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2Movement); // Obrót ramienia 2
+        rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2Movement,rightSide); // Obrót ramienia 2
         updateTextTexture((Math.round(arm2Angle % 360)).toString(), 26, arm2Text, arm2Movement, 0, 6.06); // Aktualizacja tekstury dla kąta ramienia 2
         updateRing(ringMesh2, 0.4, 0.5, arm2Angle % 360); // Aktualizacja pierścienia dla kąta ramienia 2
         arm2Text.rotation.z += arm2AngleNewCp / totalSteps * Math.PI / 180; // Aktualizacja rotacji tekstu dla kąta ramienia 2
@@ -379,7 +402,9 @@ function moveToolToPosition() {
     }
 
     interpolateStep();
+    return totalSteps*5
   }
+  return 0;
 }
 
 function updateToolPos(){
@@ -412,7 +437,7 @@ function scroll(camera, canvas) {
             case stlNames[1]:
                 if((arm1Angle+zoomChange)>=-MAX_ARM1_ANGLE&&(arm1Angle+zoomChange)<=MAX_ARM1_ANGLE){
                     arm1Angle+=zoomChange;
-                    rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2Movement,panelSize);
+                    rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2Movement,panelSize,rightSide);
                     updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
                     updateRing(ringMesh1,0.4,0.5,arm1Angle%360);
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
@@ -422,7 +447,7 @@ function scroll(camera, canvas) {
             case stlNames[2]:
                 if((arm2Angle+zoomChange)>=-MAX_ARM2_ANGLE&&(arm2Angle+zoomChange)<=MAX_ARM2_ANGLE){
                     arm2Angle+=zoomChange;
-                    rotateArm2(rotation2,zoomChange,arm2Movement);
+                    rotateArm2(rotation2,zoomChange,arm2Movement,rightSide);
                     updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
                     updateRing(ringMesh2,0.4,0.5,arm2Angle%360);
                     arm2Text.rotation.z += zoomChange * Math.PI / 180;
@@ -430,8 +455,8 @@ function scroll(camera, canvas) {
                 }
                 break;
             case stlNames[3]:
-                if((zoomChange>0&&currentHeight<maxHeight)||(zoomChange<0&&currentHeight>minHeight)){
-                    const scale=0.1;
+                const scale=0.1;
+                if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
                     currentHeight+=zoomChange*scale;
                     toolMesh.translateY(zoomChange*scale);
                 }

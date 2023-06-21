@@ -29,6 +29,13 @@
             </li>
             <li class="button menu-button" id="manual" ><a href="#">Manual control</a></li>
             <li class="button menu-button" ><a href="#">Load file</a></li>
+            <li class="button menu-button" >
+               <input id="toggle" class="toggle" type="checkbox" role="switch" name="toggle">
+               <label for="toggle" class="slot">
+               	<span class="slot__label">LEFT</span>
+               	<span class="slot__label">RIGHT</span>
+               </label>
+            </li>
         </ul>
     </nav>
 
