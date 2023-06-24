@@ -111,10 +111,15 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
   mesh.material.map = texture;
 }
 
-
+  //dystans( najbliższy dystans)
+export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr){
+    let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
+    let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
+    return Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
+}
 export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide) {
 
-  //dystans( najbliższy dystans)
+    distance=getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr);
 
     let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
     let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
