@@ -1,21 +1,32 @@
 package com.voidsamuraj
 
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
+import com.voidsamuraj.dao.DAOMethods
+import com.voidsamuraj.dao.DatabaseFactory
 import io.ktor.server.testing.*
 import kotlin.test.*
-import io.ktor.http.*
 import com.voidsamuraj.plugins.*
+import kotlinx.coroutines.runBlocking
 
 class ApplicationTest {
     @Test
     fun testRoot() = testApplication {
         application {
+            DatabaseFactory.init()
+
             configureRouting()
+
+            DAOMethods().apply {
+                runBlocking {
+                    val user=addNewUser("Karol", "1234","1,2,3")
+                    assertNotNull(user)
+                    assertNotNull(user.id)
+                    val newUser=getUser(user.id)
+                    assertNotNull(newUser)
+                    assertEquals(newUser.firstName, "Karol")
+                }
+            }
+
         }
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("Hello World!", bodyAsText())
-        }
+
     }
 }

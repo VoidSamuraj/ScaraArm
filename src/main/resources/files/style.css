@@ -198,7 +198,7 @@ nav .slot, nav a {
 #loadMenu{
     z-index: 2;
     background-color: #2C2F3E;
-     left: -300px;
+    left: -300px;
 }
 .upload-btn-wrapper {
     width: 100%;
@@ -230,8 +230,80 @@ nav .slot, nav a {
 #optionsMenu{
     z-index: 2;
     background-color: #2C2F3E;
-     left: -300px;
+    left: -300px;
 }
 .icons{
     margin: auto;
+}
+
+#auth{
+    background-color: #1C1E2A;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9998;
+    padding: 20px;
+    border-radius: 1.5em;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+#auth *{
+    font-size: 1.1em;
+}
+#auth>form{
+    display: flex;
+    flex-direction: column;
+}
+#auth input{
+    margin-top: 5px;
+    margin-bottom:20px;
+    background-color: #ffa31a;
+    height:2em;
+    width:auto;
+    text-align: center;
+}
+#auth label{
+    color: #ffa31a;
+}
+
+#auth button{
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    position: relative;
+
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    overflow: hidden;
+    height: 1em;
+
+    background-color: #ffa31a;
+    color: #f0f0f0;
+    border:  2px solid #f0f0f0;
+    border-radius: 1.5em;
+}
+#auth button:hover{
+    background-color: #a86400;
+}
+#auth>form> button:before {
+    content:"";
+    display:block;
+    position:absolute;
+    z-index:9999;
+    top:0px;
+    left:0px;
+    right:0px;
+    bottom:0px;
+    border:2px solid black;
+    border-radius: 1.5em;
+}
+#auth>form>div{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+#auth>form>div>button{
+    width: calc(50% - 20px);
 }

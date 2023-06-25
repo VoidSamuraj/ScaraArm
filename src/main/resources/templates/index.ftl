@@ -6,6 +6,7 @@
         <link rel="stylesheet" href="static/style.css">
     </head>
     <body>
+
         <div id="arm">
             <canvas id="myCanvas" ></canvas>
             <canvas id="pivot"></canvas>
@@ -56,7 +57,6 @@
         <script type="module" src="static/display.js"></script>
         <script type="module" src="/static/three/build/three.module.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
     </body>
 </html>
 

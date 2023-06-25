@@ -2,6 +2,10 @@ val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
 val codec_version:String by project
+val exposed_version: String by project
+val h2_version: String by project
+
+
 
 plugins {
     kotlin("jvm") version "1.8.10"
@@ -42,10 +46,17 @@ dependencies {
     implementation("io.ktor:ktor-client-serialization-jvm:1.6.4")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
     implementation("io.ktor:ktor-freemarker:1.6.4")
-    implementation("io.ktor:ktor-server-core:$ktor_version")
+    implementation("io.ktor:ktor-server-core:$2.2.4-eap-601")
     implementation("io.ktor:ktor-server-freemarker:2.1.2")
 
-    //implementation("org.freemarker:freemarker:$ktor_version")
+    implementation("io.ktor:ktor-server-sessions:$ktor_version")
 
-    implementation("org.mongodb:mongodb-driver-sync:4.2.3")
+    //database
+    implementation("org.jetbrains.exposed:exposed-core:$exposed_version")
+    implementation("org.jetbrains.exposed:exposed-dao:$exposed_version")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
+    implementation("com.h2database:h2:$h2_version")
+
+
+
 }
