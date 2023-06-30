@@ -1,0 +1,116 @@
+
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #1b1b1b;
+    font-family: "Roboto", sans-serif;
+}
+
+.button{
+    width: 48px;
+    height: 48px;
+    margin:5px;
+    padding:10px;
+    border-radius:5px;
+    color: black;
+    background-color: #454545;
+    box-shadow: 0px 0px 0px #454545;
+    cursor: auto;
+    transition: color, background-color 200ms;
+    transition: box-shadow 400ms;
+}
+.button:hover{
+    color: #f0f0f0;
+    background-color: #5A5A5A;
+    box-shadow: 0px 0px 6px #5A5A5A;
+    cursor: pointer;
+
+}
+
+input{
+    box-shadow: 0 0 0 0.1em inset;
+    cursor: pointer;
+    position: relative;
+    margin-right: 0.25em;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    background-color: #ffa31a;
+    border-radius: 1.5em;
+    height: 3em;
+    width:100%;
+}
+
+#auth{
+    background-color: #1C1E2A;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9998;
+    padding: 20px;
+    border-radius: 1.5em;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+#auth *{
+    font-size: 1.1em;
+}
+#auth>form{
+    display: flex;
+    flex-direction: column;
+}
+#auth input{
+    margin-top: 5px;
+    margin-bottom:20px;
+    background-color: #ffa31a;
+    height:2em;
+    width:auto;
+    text-align: center;
+}
+#auth label{
+    color: #ffa31a;
+}
+
+#auth button{
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    position: relative;
+
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    overflow: hidden;
+    height: 1em;
+
+    background-color: #ffa31a;
+    color: #f0f0f0;
+    border:  2px solid #f0f0f0;
+    border-radius: 1.5em;
+}
+#auth button:hover{
+    background-color: #a86400;
+}
+#auth>form> button:before {
+    content:"";
+    display:block;
+    position:absolute;
+    z-index:9999;
+    top:0px;
+    left:0px;
+    right:0px;
+    bottom:0px;
+    border:2px solid black;
+    border-radius: 1.5em;
+}
+#auth>form>div{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+#auth>form>div>button{
+    width: calc(50% - 20px);
+}

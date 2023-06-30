@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 class DAOMethods:DAOMethodsInterface {
     private fun resultRowToUser(row: ResultRow) = User(
         id = row[Users.id],
-        firstName = row[Users.firstName],
+        login = row[Users.login],
         password = row[Users.password],
         filesId = row[Users.filesId]
     )
@@ -18,26 +18,30 @@ class DAOMethods:DAOMethodsInterface {
             .map(::resultRowToUser)
             .singleOrNull()
     }
-
-    override suspend fun getUser(firstName: String, password: String): User? = dbQuery {
-        Users.select { (Users.firstName eq firstName).and(Users.password eq password)  }
+    override suspend fun getUserId(login: String): Int? = dbQuery {
+        Users.select { (Users.login eq login)}
             .map(::resultRowToUser)
-            .singleOrNull()
+            .singleOrNull()?.id
+    }
+    override suspend fun getUserPassword(login: String): String? = dbQuery {
+        Users.select { (Users.login eq login)}
+            .map(::resultRowToUser)
+            .singleOrNull()?.password
     }
 
 
-    override suspend fun addNewUser(firstName: String, password: String, filesId:String): User? = dbQuery  {
+    override suspend fun addNewUser(login: String, password: String, filesId:String): User? = dbQuery  {
         val insertStatement = Users.insert {
-            it[Users.firstName] = firstName
+            it[Users.login] = login
             it[Users.password] = password
             it[Users.filesId] = filesId
         }
         insertStatement.resultedValues?.singleOrNull()?.let(::resultRowToUser)
     }
 
-    override suspend fun editUser(id: Int, firstName: String?, password: String?, filesId: String?): Boolean = dbQuery {
+    override suspend fun editUser(id: Int, login: String?, password: String?, filesId: String?): Boolean = dbQuery {
         Users.update ({ Users.id eq id }) {
-            firstName?.let{firstName->  it[Users.firstName] = firstName}
+            login?.let{firstName->  it[Users.login] = firstName}
             password?.let{password-> it[Users.password] = password}
             filesId?.let {filesId->  it[Users.filesId] = filesId}
         } > 0
