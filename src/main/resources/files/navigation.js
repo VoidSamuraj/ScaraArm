@@ -126,9 +126,9 @@ document.getElementById('closeOptionsIcon').addEventListener('click', function()
     optionsMenu.style.left = '-226px';
     expanded=false;
 });
-direction.addEventListener('click',function(){
-    toggle.click();
-});
+
+direction.addEventListener('click',toggle.click());
+checkbox.addEventListener('click',toggle.click());
 
 document.getElementById('myfile').addEventListener('change', function() {
     let fileName = this.files[0].name;
