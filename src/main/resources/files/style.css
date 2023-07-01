@@ -84,6 +84,7 @@ nav ul {
 }
 
 
+
 li{
     display: flex;
     align-items: center;
@@ -212,7 +213,7 @@ nav .slot, nav a {
     display: inline-block;
 }
 
-#fileBtn {
+li button {
     border: 2px solid #f0f0f0;
     color: #f0f0f0;
     background-color: #ffa31a;
@@ -222,7 +223,16 @@ nav .slot, nav a {
     font-size: 20px;
     font-weight: bold;
 }
+li button:hover{
+    background-color:#a86400;
+}
 
+#logout{
+    background-color: #990000;
+}
+#logout:hover{
+    background-color: #ff0000;
+}
 .menu-button input[type=file] {
     font-size: 100px;
     height: 60px;
@@ -237,34 +247,39 @@ nav .slot, nav a {
     background-color: #2C2F3E;
     left: -300px;
 }
+
+#logoutBlock{
+    position: absolute;
+    bottom: 0px;
+}
 .icons{
     margin: auto;
 }
 
 #overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(255, 163, 26, 0.2);
-  z-index: 5;
-  display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 163, 26, 0.2);
+    z-index: 5;
+    display: none;
 }
 
 #popup {
-  position: fixed;
-  font-size: 1.5em;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 20px;
-  z-index: 6;
-  background-color: #1C1E2A;
-  color: #ffa31a;
-  border-radius: 1.5em;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  display: none;
+    position: fixed;
+    font-size: 1.5em;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    z-index: 6;
+    background-color: #1C1E2A;
+    color: #ffa31a;
+    border-radius: 1.5em;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    display: none;
 }
 #popup button{
     padding: 5px;

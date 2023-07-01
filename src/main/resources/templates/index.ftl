@@ -51,6 +51,11 @@
                         <span class="slot__label">Right</span>
                     </label>
                 </li>
+                <li class="button menu-button" id="logoutBlock">
+                    <div class="upload-btn-wrapper">
+                        <button id="logout">Logout</button>
+                    </div>
+                </li>
             </ul>
         </nav>
         <div id="overlay"></div>
@@ -94,8 +99,8 @@
                     if (xhr.status === 200) {
                         expirationTime=Date.now()+lifeTime;
                     }
-                     document.getElementById("overlay").style.display='none';
-                     document.getElementById("popup").style.display='none';
+                    document.getElementById("overlay").style.display='none';
+                    document.getElementById("popup").style.display='none';
                 };
                 xhr.send();
             }

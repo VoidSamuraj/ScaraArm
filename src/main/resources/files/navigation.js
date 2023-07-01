@@ -5,6 +5,8 @@ const loadMenu=document.getElementById('loadMenu');
 const optionsMenu=document.getElementById('optionsMenu');
 const direction=document.getElementById('switch');
 const checkbox=document.getElementById('toggle');
+const logout=document.getElementById('logout');
+
 
 const loadFileButton=document.getElementById('loadFile');
 const optionsButton=document.getElementById('options');
@@ -132,3 +134,20 @@ document.getElementById('myfile').addEventListener('change', function() {
     let fileName = this.files[0].name;
     document.getElementById('fileBtn').textContent = fileName;
 });
+
+logout.addEventListener('click', function() {
+
+    if (confirm("Are you sure you want to Logout?") == true) {
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', '/logout');
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                alert("Logged out successfully");
+                location.reload(true);
+            }
+        };
+        xhr.send();
+    }
+});
+

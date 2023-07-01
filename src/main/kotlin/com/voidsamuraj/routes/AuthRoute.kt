@@ -93,7 +93,10 @@ fun Route.authRoute(){
                 onFailure = { call.respondRedirect("/login")}
             )
         }
-
+    post("/logout") {
+        call.sessions.clear("TOKEN")
+        call.respondText("Logged out successfully")
+    }
 
 
 
