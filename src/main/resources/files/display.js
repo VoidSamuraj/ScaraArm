@@ -1,6 +1,6 @@
 import * as THREE from '/static/three/build/three.module.js'
 import {loadSTL}from '/static/stl.js'
-import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,getArmRange,getMinDistance}from '/static/elements.js'
+import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,getArmRange,getMinDistance,drawFile}from '/static/elements.js'
 import {setupHelpers}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 
@@ -520,3 +520,7 @@ function selectSTL(){
             }
       }
 }
+function drawFileOnScene(fileName){
+    drawFile(scene,fileName);
+}
+window.drawFileOnScene=drawFileOnScene;

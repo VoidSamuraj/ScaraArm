@@ -21,8 +21,16 @@ fun Route.fileRoute(){
             if(!dir.exists())
                 dir.mkdirs()
 
-            val files = dir.listFiles()?.map { it.name+";"+formatFileSize(it.length()) } ?: emptyList()
+            val files = dir.listFiles()?.map {it.name +";"+formatFileSize(it.length()) } ?: emptyList()
             call.respond(files)
+        }
+        get("/{fileName}"){
+            val fileName = call.parameters["fileName"]
+            val file=File(filesFolder+"/"+fileName)
+            if(file.exists())
+                call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+            else
+                call.respond(HttpStatusCode.NotFound,"File Not Found")
         }
         post ("/upload"){
             try {

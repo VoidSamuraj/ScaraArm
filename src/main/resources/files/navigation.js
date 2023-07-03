@@ -130,6 +130,23 @@ document.getElementById('closeOptionsIcon').addEventListener('click', function()
 direction.addEventListener('click',toggle.click());
 checkbox.addEventListener('click',toggle.click());
 
+logout.addEventListener('click', function() {
+
+    if (confirm("Are you sure you want to Logout?") == true) {
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', '/logout');
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                alert("Logged out successfully");
+                location.reload(true);
+            }
+        };formatFileSize(file.size)
+        xhr.send();
+    }
+});
+
+
 document.getElementById('myfile').addEventListener('change', function() {
     let fileName = this.files[0].name;
     document.getElementById('fileBtn').textContent = fileName;
@@ -149,26 +166,6 @@ document.getElementById('myfile').addEventListener('change', function() {
 
 
 });
-function saveFile(fileName){
-
-}
-
-logout.addEventListener('click', function() {
-
-    if (confirm("Are you sure you want to Logout?") == true) {
-        let xhr = new XMLHttpRequest();
-        xhr.open('POST', '/logout');
-
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                alert("Logged out successfully");
-                location.reload(true);
-            }
-        };formatFileSize(file.size)
-        xhr.send();
-    }
-});
-
 //File table
 function fillTable(){
 
@@ -207,7 +204,7 @@ function deleteFile(fileName){
     }
 }
 function loadFile(fileName){
-
+    drawFileOnScene(fileName);
 }
 
 

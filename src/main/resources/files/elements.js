@@ -1,5 +1,8 @@
 import * as THREE from '/static/three/build/three.module.js'
 
+
+const stlGroup = new THREE.Group();
+
 export function createCircle(scene,x,y,z,size){
     var circleMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 30), new THREE.MeshBasicMaterial({ color: 0x454545 }));
     circleMesh.rotateX(-Math.PI/2);
@@ -233,9 +236,10 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     const material = new THREE.MeshBasicMaterial({transparent: true, depthWrite: false, depthTest: true, wireframe: false});
     const mesh = new THREE.Mesh(geometry, material);
     mesh.material.map = texture1;
+    mesh.rotateX(-Math.PI/2);
 
+    drawFile(scene);
 
-mesh.rotateX(-Math.PI/2);
 if(rightSide)
   mesh.rotateZ(MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
 else{
@@ -245,4 +249,100 @@ else{
   mesh.position.set(panelSize/4, -0.97,0);
 
 return mesh;
+}
+
+export function drawFile(scene,fileName){
+    stlGroup.clear();
+    scene.add(stlGroup);
+    var totalAngle=-Math.PI/4;
+    var changedPos=false;
+    var points = [];
+
+    var xPos=0;
+    var yPos=0;
+    var zPos=0;
+    var changedSomething=false;
+    const scale=0.1;
+
+    if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
+    fetch('/files/'+fileName, { method: 'GET' })
+      .then(response => response.blob())
+      .then(blob => {
+
+        var reader = new FileReader();
+        reader.onload = function() {
+            var fileData = reader.result;
+            var lines = fileData.split('\n');
+            lines.forEach(line => {
+                if((!line.includes(';')) && line.includes("G1")){
+                    let commands=line.split(' ');
+                    changedSomething=false;
+                    commands.forEach(command=>{
+                        var firstCharacter = command.charAt(0);
+                        switch (firstCharacter) {
+                          case "X":
+                                xPos=parseFloat(command.slice(1))*scale;
+                                changedSomething=true;
+                                changedPos=true;
+                            break;
+                          case "Y":
+                                yPos=parseFloat(command.slice(1))*scale;
+                                changedSomething=true;
+                                changedPos=true;
+                            break;
+                          case "Z":
+                                zPos=parseFloat(command.slice(1))*scale;
+                                changedSomething=true;
+                            break;
+                          default:
+                            break;
+                        }
+
+                    });
+                    if(changedSomething){
+                    console.log("x"+xPos+" y"+yPos);
+                    if(changedPos)
+                        points.push(new THREE.Vector3(xPos, yPos, zPos));
+                    }
+                }
+
+            });
+
+            for(var i=0;i<points.length-1; i++){
+                totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.01,totalAngle);
+            }
+
+        };
+        reader.readAsText(blob); // Ustawienie formatu odczytu bloba (tekst)
+
+      })
+      .catch(error => {
+        console.error('Wystąpił błąd:', error);
+      });
+    stlGroup.rotateX(-Math.PI/2);
+    }
+}
+
+function draw3DLine(group,startPoint,endPoint,lineWidth,totalAngle){
+
+   var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
+    var world= new THREE.Vector3(0, 0, 0);
+    var height = direction.length();
+
+    var geometry = new THREE.CylinderGeometry(lineWidth, lineWidth, height, 6);
+    //var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+              const shadowMaterial = new THREE.MeshStandardMaterial({
+                                           color: 0x00ff00,
+                                           roughness: 0.8, // zmniejszenie roughness
+                                           lightMapIntensity: 0.8, // zwiększenie lightMapIntensity
+                                         });
+    var cylinder = new THREE.Mesh(geometry, shadowMaterial);
+    var angle =startPoint.angleTo(endPoint);
+    angle=Math.atan2( endPoint.x - startPoint.x,endPoint.y - startPoint.y);
+    cylinder.rotateZ(angle);
+    cylinder.position.copy(startPoint.clone().add(direction.multiplyScalar(0.5)));
+
+
+group.add(cylinder);
+return angle;
 }
