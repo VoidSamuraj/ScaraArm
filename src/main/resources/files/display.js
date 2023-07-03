@@ -54,7 +54,8 @@ const rotation2 = new THREE.Group();
 
 const canvas= document.getElementById('myCanvas');
 const canvasHelper= document.getElementById('pivot');
-
+const positionText= document.getElementById('positionText');
+positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
 // Inicjalizacja sceny
 const scene = new THREE.Scene();
 const sceneHelper = new THREE.Scene();
@@ -177,7 +178,6 @@ function rotateCamera(pivotPoint,pivotPointHelper,canvas) {
 
 
     canvas.addEventListener('mousedown', (event) => {
-        //zablokuj normalną obsługę
         event.preventDefault();
         isDragging=false;
         lastMouseClicked.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -248,9 +248,10 @@ async function move(){
                     currentToolX-=armStep;
                 else{
                      currentToolX-=armStep;
-                        currentToolX+=armStep;///5;
+                        currentToolX+=armStep;
                         moveToolToPosition();
                 }
+                positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
 
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
                  currentToolX-=armStep;
@@ -258,32 +259,30 @@ async function move(){
                     currentToolX+=armStep;
                 else{
                      currentToolX+=armStep;
-                        currentToolX-=armStep;///5;
+                        currentToolX-=armStep;
                         moveToolToPosition();
                 }
-                /*currentToolX-=armStep;
-                if(!moveToolToPosition())
-                   currentToolX+=armStep;*/
+                positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
                 currentToolY+=armStep;
                if(!canMove())
                    currentToolY-=armStep;
                else{
                     currentToolY-=armStep;
-                       currentToolY+=armStep;///5;
+                       currentToolY+=armStep;
                        moveToolToPosition();
                }
-                /*if(!moveToolToPosition())
-                    currentToolY-=armStep;*/
+                positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
                 currentToolY-=armStep;
                  if(!canMove())
                     currentToolY+=armStep;
                  else{
                      currentToolY+=armStep;
-                        currentToolY-=armStep;///5;
+                        currentToolY-=armStep;
                         moveToolToPosition();
-               }
+                }
+                positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }
         }
     });
@@ -330,71 +329,70 @@ function canMove(){
 }
 
 function moveToolToPosition() {
-  const Lr = 3.8; // Długość ramienia 1
-  const Sr = 5.75; // Długość ramienia 2
-  let newRadius = Math.hypot(currentToolX, currentToolY); // Obliczenie nowego promienia
+  const Lr = 3.8; // arm 1 length
+  const Sr = 5.75; // arm 2 length
+  let newRadius = Math.hypot(currentToolX, currentToolY);
 
-  let gamma = Math.atan2(currentToolY, currentToolX); // Obliczenie kąta gamma
-  let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr); // Obliczenie wartości cos(beta)
-  let beta = Math.acos(toBeta); // Obliczenie kąta beta
+  let gamma = Math.atan2(currentToolY, currentToolX);
+  let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+  let beta = Math.acos(toBeta);
 
-  let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius); // Obliczenie wartości cos(alpha)
-  let alpha = Math.acos(toAlpha); // Obliczenie kąta alpha
+  let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+  let alpha = Math.acos(toAlpha);
 
-  let angle = gamma + alpha; // Obliczenie kąta
-  let arm1AngleNew = -(angle * (180 / Math.PI)); // Nowy kąt dla ramienia 1
-  let arm2AngleNew = 180 - (beta * (180 / Math.PI)) - arm2AngleOnly; // Nowy kąt dla ramienia 2
+  let angle = gamma + alpha;
+  let arm1AngleNew = -(angle * (180 / Math.PI));
+  let arm2AngleNew = 180 - (beta * (180 / Math.PI)) - arm2AngleOnly;
 
   if (isNaN(arm1AngleNew)) {
-    arm1AngleNew = 0; // Ustal domyślną wartość, jeśli nowy kąt ramienia 1 jest niezdefiniowany (NaN)
+    arm1AngleNew = 0;
   }
 
   if (isNaN(arm2AngleNew)) {
-    arm2AngleNew = 0; // Ustal domyślną wartość, jeśli nowy kąt ramienia 2 jest niezdefiniowany (NaN)
+    arm2AngleNew = 0;
   }
 
-  let arm1AngleNewCp = arm1AngleNew - arm1Angle; // Różnica między nowym a obecnym kątem ramienia 1
-  let arm2AngleNewCp = arm2AngleNew - arm2Angle; // Różnica między nowym a obecnym kątem ramienia 2
-  let arm1AngleNewRound = Math.floor(arm1AngleNewCp); // Zaokrąglony do liczby całkowitej nowy kąt ramienia 1
-  let arm2AngleNewRound = Math.floor(arm2AngleNewCp); // Zaokrąglony do liczby całkowitej nowy kąt ramienia 2
-  let canRotate = true; // Flaga wskazująca, czy można obracać ramionami
+  let arm1AngleNewCp = arm1AngleNew - arm1Angle; // newAngle - oldAngle
+  let arm2AngleNewCp = arm2AngleNew - arm2Angle;
+  let arm1AngleNewRound = Math.floor(arm1AngleNewCp);
+  let arm2AngleNewRound = Math.floor(arm2AngleNewCp);
+  let canRotate = true;
 
-  // Sprawdź, czy nowy kąt ramienia 1 lub 2 przekracza maksymalne wartości
   if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
     canRotate = false;
   if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
     canRotate = false;
 
-  let steps = 0; // Licznik kroków interpolacji
-  let arm1Add = Math.sign(arm1AngleNewCp); // Kierunek obrotu dla ramienia 1 (1 dla dodatniego kąta, -1 dla ujemnego)
-  let arm2Add = Math.sign(arm2AngleNewCp); // Kierunek obrotu dla ramienia 2 (1 dla dodatniego kąta, -1 dla ujemnego)
-  let arm1rot = 0; // Aktualna wartość obrotu dla ramienia 1
-  let arm2rot = 0; // Aktualna wartość obrotu dla ramienia 2
+  let steps = 0; // interpolation steps
+  let arm1Add = Math.sign(arm1AngleNewCp); //direction
+  let arm2Add = Math.sign(arm2AngleNewCp);
+  let arm1rot = 0; // current rotation
+  let arm2rot = 0;
 
   if (canRotate && (arm1AngleNewCp != 0 || arm2AngleNewCp != 0)) {
-    const totalSteps = 20; // Całkowita liczba kroków interpolacji
+    const totalSteps = 20; // all interpolation steps
 
     function interpolateStep() {
       if (steps < totalSteps) {
-        arm1Angle += arm1AngleNewCp / totalSteps; // Aktualizacja wartości obrotu ramienia 1
-        rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2Movement, panelSize,rightSide); // Obrót ramienia 1
-        updateTextTexture((Math.round(arm1Angle % 360)).toString(), 30, arm1Text, 5, 0, 4.26); // Aktualizacja tekstury dla kąta ramienia 1
-        updateRing(ringMesh1, 0.4, 0.5, rightSide?(arm1Angle % 360):(-arm1Angle % 360)); // Aktualizacja pierścienia dla kąta ramienia 1
+        arm1Angle += arm1AngleNewCp / totalSteps; // update rotation
+        rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2Movement, panelSize,rightSide);
+        updateTextTexture((Math.round(arm1Angle % 360)).toString(), 30, arm1Text, 5, 0, 4.26);
+        updateRing(ringMesh1, 0.4, 0.5, rightSide?(arm1Angle % 360):(-arm1Angle % 360));
         if(rightSide)
-            arm2Text.rotation.z += arm1AngleNewCp / totalSteps * Math.PI / 180; // Aktualizacja rotacji tekstu dla kąta ramienia 1
+            arm2Text.rotation.z += arm1AngleNewCp / totalSteps * Math.PI / 180;
         else
             arm2Text.rotation.z -= arm1AngleNewCp / totalSteps * Math.PI / 180;
-        arm2Angle += arm2AngleNewCp / totalSteps; // Aktualizacja wartości obrotu ramienia 2
-        rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2Movement,rightSide); // Obrót ramienia 2
-        updateTextTexture((Math.round(arm2Angle % 360)).toString(), 26, arm2Text, arm2Movement, 0, 6.06); // Aktualizacja tekstury dla kąta ramienia 2
-        updateRing(ringMesh2, 0.4, 0.5, rightSide?(arm2Angle % 360):(-arm2Angle % 360)); // Aktualizacja pierścienia dla kąta ramienia 2
+        arm2Angle += arm2AngleNewCp / totalSteps;
+        rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2Movement,rightSide);
+        updateTextTexture((Math.round(arm2Angle % 360)).toString(), 26, arm2Text, arm2Movement, 0, 6.06);
+        updateRing(ringMesh2, 0.4, 0.5, rightSide?(arm2Angle % 360):(-arm2Angle % 360));
         if(rightSide)
-            arm2Text.rotation.z += arm2AngleNewCp / totalSteps * Math.PI / 180; // Aktualizacja rotacji tekstu dla kąta ramienia 2
+            arm2Text.rotation.z += arm2AngleNewCp / totalSteps * Math.PI / 180;
         else
-            arm2Text.rotation.z -= arm2AngleNewCp / totalSteps * Math.PI / 180; // Aktualizacja rotacji tekstu dla kąta ramienia 2
+            arm2Text.rotation.z -= arm2AngleNewCp / totalSteps * Math.PI / 180;
 
         steps++;
-        setTimeout(interpolateStep, 5);  // Zastosuj animację przy użyciu requestAnimationFrame zamiast setTimeout
+        setTimeout(interpolateStep, 5);
       }
     }
 
@@ -406,14 +404,15 @@ function updateToolPos(){
     let L1=3.8;
     let L2=5.75;
 
-    let a1=arm1Angle* (Math.PI / 180);
-    let a2=arm2Angle* (Math.PI / 180);
+    let a1=-arm1Angle* (Math.PI / 180);
+    let a2=-arm2Angle* (Math.PI / 180);
 
     let x = L1 * Math.cos(a1) + L2 * Math.cos(a1 + a2);
     let y = L1 * Math.sin(a1) + L2 * Math.sin(a1 + a2);
 
     currentToolX=x;
     currentToolY=y;
+    positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
 
 }
 function scroll(camera, canvas) {
@@ -471,14 +470,13 @@ function scroll(camera, canvas) {
         const zoomChange = event.deltaY > 0 ? 5 : -5;
         zoomLevel += zoomChange;
 
-        // ograniczenie zakresu przybliżenia
+        // zoom crop
         zoomLevel = Math.max(zoomLevel, 50.0);
         zoomLevel = Math.min(zoomLevel, 250.0);
 
-        // zmiana wartości przybliżenia kamery
         camera.zoom = zoomLevel;
 
-        // odświeżenie kamery
+        // refresh camera
         camera.updateProjectionMatrix();
     }
   });

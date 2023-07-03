@@ -37,6 +37,18 @@
                     </div>
                     <input type="file" name="myfile" id="myfile">
                 </li>
+                <li id="tableLi">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </li>
             </ul>
         </nav>
         <nav id="optionsMenu">
@@ -58,6 +70,10 @@
                 </li>
             </ul>
         </nav>
+        <div id="positionBox">
+            <p id="positionText">X=1000 Y=1000</p>
+        </div>
+
         <div id="overlay"></div>
         <div id="popup">
             <h1>Session Expire Warning</h1>

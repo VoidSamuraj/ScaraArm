@@ -52,6 +52,9 @@ canvas {
     border-radius:2px;
     width: 270px;
 }
+#loadMenu .menu-button{
+    width: 470px;
+}
 .first{
     background-color: rgba(0,0,0,0);
     color: #f0f0f0;
@@ -189,7 +192,7 @@ nav .slot, nav a {
 #firstMenu{
     width: 74px;
     left: 0px;
-    z-index: 3;
+    z-index: 4;
     background-color: #1C1E2A;
     transition: all 0.2s;
 }
@@ -199,12 +202,13 @@ nav .slot, nav a {
 
 }
 #firstMenu > ul:first-child{
-    z-index: 4;
+    z-index: 5;
 }
 #loadMenu{
-    z-index: 2;
+    z-index: 3;
     background-color: #2C2F3E;
-    left: -300px;
+    left: -500px;
+    width: 500px;
 }
 .upload-btn-wrapper {
     width: 100%;
@@ -226,12 +230,22 @@ li button {
 li button:hover{
     background-color:#a86400;
 }
+table button{
+    padding:5px;
+}
 
-#logout{
+#logout,td>button:nth-child(2){
     background-color: #990000;
 }
-#logout:hover{
+#logout:hover,td>button:nth-child(2):hover{
     background-color: #ff0000;
+}
+
+td>button:first-child{
+    background-color: #218838;
+}
+td>button:first-child:hover{
+    background-color: #28a745;
 }
 .menu-button input[type=file] {
     font-size: 100px;
@@ -243,9 +257,12 @@ li button:hover{
     opacity: 0;
 }
 #optionsMenu{
-    z-index: 2;
+    z-index: 3;
     background-color: #2C2F3E;
     left: -300px;
+}
+#loadMenu .menu-button input[type=file] {
+    width: 470px;
 }
 
 #logoutBlock{
@@ -263,7 +280,7 @@ li button:hover{
     width: 100%;
     height: 100%;
     background-color: rgba(255, 163, 26, 0.2);
-    z-index: 5;
+    z-index: 6;
     display: none;
 }
 
@@ -274,7 +291,7 @@ li button:hover{
     left: 50%;
     transform: translate(-50%, -50%);
     padding: 20px;
-    z-index: 6;
+    z-index: 7;
     background-color: #1C1E2A;
     color: #ffa31a;
     border-radius: 1.5em;
@@ -301,4 +318,69 @@ li button:hover{
 }
 #popup button:hover{
     background-color: #a86400;
+}
+
+tr>td:first-child{
+    width: 30px;;
+}
+td{
+    vertical-align: middle;
+    height: 100%;
+}
+td>label{
+    padding-left: 0px !important;
+}
+td>button{
+    font-size: 90%;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    width: 100%;
+}
+
+#tableLi{
+     overflow: auto;
+     display:block !important;
+     flex-direction: unset !important;
+}
+
+table{
+    color: #f0f0f0;
+    width:98%;
+    margin:1%;
+    font-size: 90%;
+    border-collapse: collapse;
+}
+td:not(:first-child) {
+  text-align: center;
+}
+table th{
+    text-align: center;
+}
+table td, table th {
+    border:1px solid #f0cc00;
+    padding:5px;
+}
+#positionBox{
+    position: absolute;
+    min-width: 300px;
+    text-align: center;
+    left: 50%;
+    top:20px;
+    transform: translate(-50%, 0%);
+    padding: 20px;
+    clip-path: polygon(8% 0, 92% 0,100% 50%, 92% 100%, 8% 100%,0 50%);
+    background-color: #2C2F3E;
+    z-index: 2;
+}
+
+#positionText{
+    margin: 0px;
+    color: transparent;
+    font-size: 1.5em;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    overflow: hidden;
+    height: 1em;
+    -webkit-text-stroke: 0.05em #ffa31a;
 }
