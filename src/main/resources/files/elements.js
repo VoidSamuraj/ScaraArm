@@ -238,8 +238,6 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     mesh.material.map = texture1;
     mesh.rotateX(-Math.PI/2);
 
-    drawFile(scene);
-
 if(rightSide)
   mesh.rotateZ(MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
 else{
@@ -251,10 +249,11 @@ else{
 return mesh;
 }
 
-export function drawFile(scene,fileName){
+export function drawFile(scene,fileName,onLineRead){
     stlGroup.clear();
+    stlGroup.rotateX(-Math.PI/2);
     scene.add(stlGroup);
-    var totalAngle=-Math.PI/4;
+    var totalAngle=0;//Math.PI/4;
     var changedPos=false;
     var points = [];
 
@@ -301,16 +300,23 @@ export function drawFile(scene,fileName){
                     });
                     if(changedSomething){
                     console.log("x"+xPos+" y"+yPos);
-                    if(changedPos)
+                //    if(changedPos)
                         points.push(new THREE.Vector3(xPos, yPos, zPos));
                     }
                 }
 
             });
 
-            for(var i=0;i<points.length-1; i++){
-                totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.01,totalAngle);
-            }
+
+     for(var i = 0; i < points.length - 1; i++) {
+      //(function(index) {
+        //setTimeout(function() {
+         // onLineRead(points[index + 1]);
+          //totalAngle+=draw3DLine(stlGroup,points[index],points[index+1],0.01,totalAngle);
+          totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.05,totalAngle);
+       // }, 1000 * index); // Czas opóźnienia w sekundach, zależny od indeksu
+      //})(i);
+    }
 
         };
         reader.readAsText(blob); // Ustawienie formatu odczytu bloba (tekst)
@@ -319,30 +325,45 @@ export function drawFile(scene,fileName){
       .catch(error => {
         console.error('Wystąpił błąd:', error);
       });
-    stlGroup.rotateX(-Math.PI/2);
     }
 }
 
-function draw3DLine(group,startPoint,endPoint,lineWidth,totalAngle){
+function draw3DLine(group,startPoint,endPoint,lineWidth){
+/*
+var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
+var height = direction.length();
 
-   var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
-    var world= new THREE.Vector3(0, 0, 0);
-    var height = direction.length();
+var geometry = new THREE.CylinderGeometry(lineWidth, lineWidth, height, 6);
+var shadowMaterial = new THREE.MeshStandardMaterial({
+  color: 0x00ff00,
+  roughness: 0.8,
+  lightMapIntensity: 0.8,
+});
+var cylinder = new THREE.Mesh(geometry, shadowMaterial);
 
-    var geometry = new THREE.CylinderGeometry(lineWidth, lineWidth, height, 6);
-    //var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-              const shadowMaterial = new THREE.MeshStandardMaterial({
-                                           color: 0x00ff00,
-                                           roughness: 0.8, // zmniejszenie roughness
-                                           lightMapIntensity: 0.8, // zwiększenie lightMapIntensity
-                                         });
-    var cylinder = new THREE.Mesh(geometry, shadowMaterial);
-    var angle =startPoint.angleTo(endPoint);
-    angle=Math.atan2( endPoint.x - startPoint.x,endPoint.y - startPoint.y);
-    cylinder.rotateZ(angle);
-    cylinder.position.copy(startPoint.clone().add(direction.multiplyScalar(0.5)));
+var angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+cylinder.rotation.z = angle;
+cylinder.position.copy(startPoint.clone().add(direction.multiplyScalar(0.5)));
 
 
 group.add(cylinder);
-return angle;
+*/
+
+var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
+var distance = direction.length();
+
+var tubeRadius = 0.5; // Grubość linii
+var tubularSegments = 16; // Liczba segmentów rurki
+
+var path = new THREE.LineCurve3(startPoint, endPoint);
+var geometry = new THREE.TubeBufferGeometry(path, tubularSegments, lineWidth, 8, true);
+
+var shadowMaterial = new THREE.MeshStandardMaterial({
+  color: 0x00ff00,
+  roughness: 0.8,
+  lightMapIntensity: 0.8,
+});
+var tubeMesh = new THREE.Mesh(geometry, shadowMaterial);
+
+group.add(tubeMesh);
 }

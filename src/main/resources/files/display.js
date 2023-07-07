@@ -245,8 +245,6 @@ async function move(){
                 if(!canMove())
                     currentToolX-=armStep;
                 else{
-                    currentToolX-=armStep;
-                    currentToolX+=armStep;
                     moveToolToPosition();
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
@@ -256,8 +254,6 @@ async function move(){
                 if(!canMove())
                     currentToolX+=armStep;
                 else{
-                    currentToolX+=armStep;
-                    currentToolX-=armStep;
                     moveToolToPosition();
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
@@ -266,8 +262,6 @@ async function move(){
                 if(!canMove())
                     currentToolY-=armStep;
                 else{
-                    currentToolY-=armStep;
-                    currentToolY+=armStep;
                     moveToolToPosition();
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
@@ -276,8 +270,6 @@ async function move(){
                 if(!canMove())
                     currentToolY+=armStep;
                 else{
-                    currentToolY+=armStep;
-                    currentToolY-=armStep;
                     moveToolToPosition();
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
@@ -392,6 +384,13 @@ function moveToolToPosition() {
         interpolateStep();
     }
 }
+function setToolPosition(vector){
+    currentToolX=vector.x;
+    currentToolY=vector.y;
+    currentHeight=vector.z;
+    toolMesh.translateY(vector.z-currentHeight);
+    moveToolToPosition();
+}
 
 function updateToolPos(){
     let L1=3.8;
@@ -456,6 +455,6 @@ function selectSTL(){
     }
 }
 function drawFileOnScene(fileName){
-    drawFile(scene,fileName);
+    drawFile(scene,fileName,setToolPosition);
 }
 window.drawFileOnScene=drawFileOnScene;
