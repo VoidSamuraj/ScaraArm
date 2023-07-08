@@ -313,7 +313,7 @@ function canMove(){
     return true;
 }
 
-function moveToolToPosition() {
+function moveToolToPosition(checkRotation=true) {
     const Lr = 3.8; // arm 1 length
     const Sr = 5.75; // arm 2 length
     let newRadius = Math.hypot(currentToolX, currentToolY);
@@ -342,12 +342,14 @@ function moveToolToPosition() {
     let arm1AngleNewRound = Math.floor(arm1AngleNewCp);
     let arm2AngleNewRound = Math.floor(arm2AngleNewCp);
     let canRotate = true;
-    
-    if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
-        canRotate = false;
-    if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
-        canRotate = false;
-    
+
+    if(checkRotation){
+        if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
+            canRotate = false;
+        if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
+            canRotate = false;
+    }
+
     let steps = 0; // interpolation steps
     let arm1Add = Math.sign(arm1AngleNewCp); //direction
     let arm2Add = Math.sign(arm2AngleNewCp);
@@ -375,9 +377,9 @@ function moveToolToPosition() {
                     arm2Text.rotation.z += arm2AngleNewCp / totalSteps * Math.PI / 180;
                 else
                     arm2Text.rotation.z -= arm2AngleNewCp / totalSteps * Math.PI / 180;
-                
+                renderer.render(scene, camera);
                 steps++;
-                setTimeout(interpolateStep, 5);
+                setTimeout(interpolateStep, 15);
             }
         }
         
@@ -387,9 +389,10 @@ function moveToolToPosition() {
 function setToolPosition(vector){
     currentToolX=vector.x;
     currentToolY=vector.y;
-    currentHeight=vector.z;
     toolMesh.translateY(vector.z-currentHeight);
-    moveToolToPosition();
+    currentHeight=vector.z;
+    moveToolToPosition(false);
+    positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
 }
 
 function updateToolPos(){
@@ -431,9 +434,7 @@ function selectSTL(){
     
     if (intersects.length > 0 && intersects[0].object.name.trim()!="") {
         //closest object
-        
         const object = intersects[0].object;
-        console.log("ONAME "+object.name);
         editMode=true;
         if(object.name!=stlNames[0]){
             switch(object.name){
@@ -455,6 +456,6 @@ function selectSTL(){
     }
 }
 function drawFileOnScene(fileName){
-    drawFile(scene,fileName,setToolPosition);
+    drawFile(scene,fileName,setToolPosition,panelSize/4);
 }
 window.drawFileOnScene=drawFileOnScene;

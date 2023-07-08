@@ -1,7 +1,7 @@
 import * as THREE from '/static/three/build/three.module.js'
 
 
-const stlGroup = new THREE.Group();
+var stlGroup = new THREE.Group();
 
 export function createCircle(scene,x,y,z,size){
     var circleMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 30), new THREE.MeshBasicMaterial({ color: 0x454545 }));
@@ -249,9 +249,23 @@ else{
 return mesh;
 }
 
-export function drawFile(scene,fileName,onLineRead){
-    stlGroup.clear();
+export function drawFile(scene,fileName,onLineRead,xShift){
+
+    var lastHeight=0;
+    var currentHeight=0;
+    //stlGroup.clear();
+    stlGroup = new THREE.Group();
     stlGroup.rotateX(-Math.PI/2);
+    stlGroup.rotateZ(Math.PI);
+    stlGroup.translateX(-xShift);
+    stlGroup.translateZ(-1);
+    /*
+        stlGroup.rotateX(-Math.PI/2);
+        stlGroup.rotateZ(Math.PI/2);
+        stlGroup.translateY(-xShift);
+    */
+
+    //stlGroup.position.set(xShift,0,0);
     scene.add(stlGroup);
     var totalAngle=0;//Math.PI/4;
     var changedPos=false;
@@ -259,7 +273,7 @@ export function drawFile(scene,fileName,onLineRead){
 
     var xPos=0;
     var yPos=0;
-    var zPos=0;
+    var zPos=-1;
     var changedSomething=false;
     const scale=0.1;
 
@@ -299,7 +313,6 @@ export function drawFile(scene,fileName,onLineRead){
 
                     });
                     if(changedSomething){
-                    console.log("x"+xPos+" y"+yPos);
                 //    if(changedPos)
                         points.push(new THREE.Vector3(xPos, yPos, zPos));
                     }
@@ -309,13 +322,17 @@ export function drawFile(scene,fileName,onLineRead){
 
 
      for(var i = 0; i < points.length - 1; i++) {
-      //(function(index) {
-        //setTimeout(function() {
-         // onLineRead(points[index + 1]);
-          //totalAngle+=draw3DLine(stlGroup,points[index],points[index+1],0.01,totalAngle);
-          totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.05,totalAngle);
-       // }, 1000 * index); // Czas opóźnienia w sekundach, zależny od indeksu
-      //})(i);
+      (function(index) {
+        setTimeout(function() {
+          onLineRead(points[index + 1]);
+             if(currentHeight!=points[index + 1].z){
+                                              lastHeight=currentHeight;
+                                          }
+                                          currentHeight=points[index + 1].z;
+          draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
+          //totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.05,totalAngle);
+        }, 500 * index); // Czas opóźnienia w sekundach, zależny od indeksu
+      })(i);
     }
 
         };
@@ -329,34 +346,12 @@ export function drawFile(scene,fileName,onLineRead){
 }
 
 function draw3DLine(group,startPoint,endPoint,lineWidth){
-/*
-var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
-var height = direction.length();
-
-var geometry = new THREE.CylinderGeometry(lineWidth, lineWidth, height, 6);
-var shadowMaterial = new THREE.MeshStandardMaterial({
-  color: 0x00ff00,
-  roughness: 0.8,
-  lightMapIntensity: 0.8,
-});
-var cylinder = new THREE.Mesh(geometry, shadowMaterial);
-
-var angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
-cylinder.rotation.z = angle;
-cylinder.position.copy(startPoint.clone().add(direction.multiplyScalar(0.5)));
-
-
-group.add(cylinder);
-*/
-
 var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
 var distance = direction.length();
 
-var tubeRadius = 0.5; // Grubość linii
-var tubularSegments = 16; // Liczba segmentów rurki
 
 var path = new THREE.LineCurve3(startPoint, endPoint);
-var geometry = new THREE.TubeBufferGeometry(path, tubularSegments, lineWidth, 8, true);
+var geometry = new THREE.TubeGeometry(path, 16, lineWidth, 6, true);
 
 var shadowMaterial = new THREE.MeshStandardMaterial({
   color: 0x00ff00,
