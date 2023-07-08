@@ -33,9 +33,9 @@ export function addGrid(scene,panelSize,x,y,z){
 
     //panel pod siatką
     const backgroundPlane = new THREE.Mesh(
-      new THREE.PlaneBufferGeometry(panelSize, panelSize),
-      new THREE.MeshBasicMaterial({ color: 0x454545, side: THREE.DoubleSide})
-    );
+            new THREE.PlaneBufferGeometry(panelSize, panelSize),
+    new THREE.MeshBasicMaterial({ color: 0x454545, side: THREE.DoubleSide})
+            );
     backgroundPlane.position.set(x, z-0.01, y);
     backgroundPlane.rotation.x=90 * Math.PI / 180;
     scene.add(backgroundPlane);
@@ -64,12 +64,12 @@ export function drawLines(scene, panelSize){
     const greenGeometry = new THREE.BufferGeometry();
 
     const greenArray = new Float32Array([
-      panelSize/4, -1, 0,
-      -panelSize/2, -1, 0,
+        panelSize/4, -1, 0,
+        -panelSize/2, -1, 0,
     ]);
     const redArray = new Float32Array([
-       panelSize/4, -1, -panelSize/2,
-       panelSize/4, -1, panelSize/2,
+        panelSize/4, -1, -panelSize/2,
+        panelSize/4, -1, panelSize/2,
     ]);
 
     redGeometry.setAttribute('position', new THREE.BufferAttribute(redArray, 3));
@@ -77,10 +77,10 @@ export function drawLines(scene, panelSize){
 
 
     const redMaterial = new THREE.LineBasicMaterial({
-      color: 0xff0000
+        color: 0xff0000
     });
     const greenMaterial = new THREE.LineBasicMaterial({
-      color: 0x00ff00
+        color: 0x00ff00
     });
     const redLine = new THREE.Line(redGeometry, redMaterial);
     const greenLine = new THREE.Line(greenGeometry, greenMaterial);
@@ -90,31 +90,31 @@ export function drawLines(scene, panelSize){
 }
 
 export function updateTextTexture(text, size, mesh,x,y,z) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  var fontSize=size;
-  if(text.length==3)
-    fontSize=parseInt(fontSize*2/3);
-  else if(text.length==1)
-    fontSize=parseInt(fontSize*3/2);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    var fontSize=size;
+    if(text.length==3)
+        fontSize=parseInt(fontSize*2/3);
+    else if(text.length==1)
+        fontSize=parseInt(fontSize*3/2);
 
-  ctx.font = fontSize + 'px Arial';
-  const textWidth = ctx.measureText(text).width;
-  canvas.width = textWidth;
-  canvas.height = fontSize;
+    ctx.font = fontSize + 'px Arial';
+    const textWidth = ctx.measureText(text).width;
+    canvas.width = textWidth;
+    canvas.height = fontSize;
 
-  ctx.font = fontSize + 'px Arial';
-  ctx.fillStyle = "#bfbfbf";
-  ctx.fillText(text, 0, fontSize);
+    ctx.font = fontSize + 'px Arial';
+    ctx.fillStyle = "#bfbfbf";
+    ctx.fillText(text, 0, fontSize);
 
-  const texture = new THREE.Texture(canvas);
-  texture.needsUpdate = true;
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
 
-  mesh.position.set(x,z+0.01,y/*-0.1*/);
-  mesh.material.map = texture;
+    mesh.position.set(x,z+0.01,y/*-0.1*/);
+    mesh.material.map = texture;
 }
 
-  //dystans( najbliższy dystans)
+//dystans( najbliższy dystans)
 export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr){
     let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
     let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
@@ -129,15 +129,15 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     var distance = Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
 
 
-  const scale=50;
+    const scale=50;
 
     // main arc
-  const canvas1 = document.createElement('canvas');
-  const context1 = canvas1.getContext('2d');
-  canvas1.width = panelSize*scale;
-  canvas1.height = panelSize*scale;
-  const texture1 = new THREE.Texture(canvas1);
-  texture1.needsUpdate = true;
+    const canvas1 = document.createElement('canvas');
+    const context1 = canvas1.getContext('2d');
+    canvas1.width = panelSize*scale;
+    canvas1.height = panelSize*scale;
+    const texture1 = new THREE.Texture(canvas1);
+    texture1.needsUpdate = true;
 
 
     context1.beginPath();
@@ -147,51 +147,51 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     context1.stroke();
 
     //part to cut
-  const canvas2 = document.createElement('canvas');
-  const context2 = canvas2.getContext('2d');
-  canvas2.width = panelSize*scale;
-  canvas2.height = panelSize*scale;
-  const texture2 = new THREE.Texture(canvas2);
-  texture2.needsUpdate = true;
+    const canvas2 = document.createElement('canvas');
+    const context2 = canvas2.getContext('2d');
+    canvas2.width = panelSize*scale;
+    canvas2.height = panelSize*scale;
+    const texture2 = new THREE.Texture(canvas2);
+    texture2.needsUpdate = true;
 
-   context2.beginPath();
+    context2.beginPath();
     context2.lineWidth = Sr*scale;
     context2.strokeStyle = '#ff0000';
     context2.arc((panelSize/2+Lr)*scale, panelSize/2*scale, Sr/2*scale,0, 2*Math.PI);
     context2.stroke();
 
-  const canvas3 = document.createElement('canvas');
-  const context3 = canvas3.getContext('2d');
-  canvas3.width = panelSize*scale;
-  canvas3.height = panelSize*scale;
-  const texture3 = new THREE.Texture(canvas3);
-  texture3.needsUpdate = true;
+    const canvas3 = document.createElement('canvas');
+    const context3 = canvas3.getContext('2d');
+    canvas3.width = panelSize*scale;
+    canvas3.height = panelSize*scale;
+    const texture3 = new THREE.Texture(canvas3);
+    texture3.needsUpdate = true;
 
-   //draw round end
-        context3.strokeStyle = '#ff0000';
-        context3.beginPath();
-        context3.lineWidth = Sr*scale;
-        var xp1=Lr;
-        var yp1=0;
-        var angle=MAX_ARM1_ANGLE*Math.PI/90;
-        var x1=(xp1*Math.cos(angle)-yp1*Math.sin(angle)+panelSize/2)*scale;
-        var y1=(xp1*Math.sin(angle)+yp1*Math.cos(angle)+panelSize/2)*scale;
+    //draw round end
+    context3.strokeStyle = '#ff0000';
+    context3.beginPath();
+    context3.lineWidth = Sr*scale;
+    var xp1=Lr;
+    var yp1=0;
+    var angle=MAX_ARM1_ANGLE*Math.PI/90;
+    var x1=(xp1*Math.cos(angle)-yp1*Math.sin(angle)+panelSize/2)*scale;
+    var y1=(xp1*Math.sin(angle)+yp1*Math.cos(angle)+panelSize/2)*scale;
 
-        context3.arc(x1, y1, Sr/2*scale,0, 2*Math.PI );
-        context3.stroke();
+    context3.arc(x1, y1, Sr/2*scale,0, 2*Math.PI );
+    context3.stroke();
 
-//canvas to reverse and cut from canvas 3
-  const canvas4 = document.createElement('canvas');
-  const context4 = canvas4.getContext('2d');
-  canvas4.width = panelSize*scale;
-  canvas4.height = panelSize*scale;
-  const texture4 = new THREE.Texture(canvas4);
-  texture4.needsUpdate = true;
-        context4.beginPath();
-        context4.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, 2 * Math.PI);
-        context4.lineWidth = (Lr+Sr-distance)*scale;
-        context4.strokeStyle = '#ff0000';
-        context4.stroke();
+    //canvas to reverse and cut from canvas 3
+    const canvas4 = document.createElement('canvas');
+    const context4 = canvas4.getContext('2d');
+    canvas4.width = panelSize*scale;
+    canvas4.height = panelSize*scale;
+    const texture4 = new THREE.Texture(canvas4);
+    texture4.needsUpdate = true;
+    context4.beginPath();
+    context4.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, 2 * Math.PI);
+    context4.lineWidth = (Lr+Sr-distance)*scale;
+    context4.strokeStyle = '#ff0000';
+    context4.stroke();
 
     context3.globalCompositeOperation = 'destination-in';
     context3.drawImage(canvas4, 0, 0);
@@ -211,7 +211,7 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     context1.globalCompositeOperation = 'source-over';
     context1.drawImage(canvas3, 0, 0);
 
-        //fill gap after canvas 3 remove
+    //fill gap after canvas 3 remove
     context1.beginPath();
     context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, (MAX_ARM1_ANGLE - 40)*2 * Math.PI / 180,MAX_ARM1_ANGLE*2 * Math.PI / 180 );
     context1.lineWidth = (Lr+Sr-distance)*scale;
@@ -227,7 +227,7 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
 
     for (var i = 0; i < data.length; i += 4) {
         //{R,G,B,A}
-      data[i + 3] = alpha * data[i + 3]; //alpha
+        data[i + 3] = alpha * data[i + 3]; //alpha
     }
 
     context1.putImageData(imageData, 0, 0);
@@ -238,37 +238,38 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
     mesh.material.map = texture1;
     mesh.rotateX(-Math.PI/2);
 
-if(rightSide)
-  mesh.rotateZ(MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
-else{
-    mesh.rotateZ(-MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
-    mesh.scale.y = -1;
-}
-  mesh.position.set(panelSize/4, -0.97,0);
+    if(rightSide)
+        mesh.rotateZ(MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
+    else{
+        mesh.rotateZ(-MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
+        mesh.scale.y = -1;
+    }
+    mesh.position.set(panelSize/4, -0.97,0);
 
-return mesh;
+    return mesh;
 }
 
-export function drawFile(scene,fileName,onLineRead,xShift){
+export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
     var lastHeight=0;
     var currentHeight=0;
-    //stlGroup.clear();
+    stlGroup.clear();
+    scene.remove(stlGroup);
     stlGroup = new THREE.Group();
-    stlGroup.rotateX(-Math.PI/2);
-    stlGroup.rotateZ(Math.PI);
-    stlGroup.translateX(-xShift);
-    stlGroup.translateZ(-1);
-    /*
+
+    if(isRightSide){
         stlGroup.rotateX(-Math.PI/2);
         stlGroup.rotateZ(Math.PI/2);
         stlGroup.translateY(-xShift);
-    */
+    }else{
+        stlGroup.rotateX(-Math.PI/2);
+        stlGroup.rotateZ(Math.PI);
+        stlGroup.translateX(-xShift);
+    }
+    stlGroup.translateZ(-1);
 
-    //stlGroup.position.set(xShift,0,0);
     scene.add(stlGroup);
-    var totalAngle=0;//Math.PI/4;
-    var changedPos=false;
+    var totalAngle=0;
     var points = [];
 
     var xPos=0;
@@ -278,87 +279,82 @@ export function drawFile(scene,fileName,onLineRead,xShift){
     const scale=0.1;
 
     if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
-    fetch('/files/'+fileName, { method: 'GET' })
-      .then(response => response.blob())
-      .then(blob => {
+        fetch('/files/'+fileName, { method: 'GET' })
+                .then(response => response.blob())
+                .then(blob => {
 
-        var reader = new FileReader();
-        reader.onload = function() {
-            var fileData = reader.result;
-            var lines = fileData.split('\n');
-            lines.forEach(line => {
-                if((!line.includes(';')) && line.includes("G1")){
-                    let commands=line.split(' ');
-                    changedSomething=false;
-                    commands.forEach(command=>{
-                        var firstCharacter = command.charAt(0);
-                        switch (firstCharacter) {
-                          case "X":
-                                xPos=parseFloat(command.slice(1))*scale;
-                                changedSomething=true;
-                                changedPos=true;
-                            break;
-                          case "Y":
-                                yPos=parseFloat(command.slice(1))*scale;
-                                changedSomething=true;
-                                changedPos=true;
-                            break;
-                          case "Z":
-                                zPos=parseFloat(command.slice(1))*scale;
-                                changedSomething=true;
-                            break;
-                          default:
-                            break;
+                    var reader = new FileReader();
+            reader.onload = function() {
+                var fileData = reader.result;
+                var lines = fileData.split('\n');
+                lines.forEach(line => {
+                    if((!line.includes(';')) && line.includes("G1")){
+                        let commands=line.split(' ');
+                        changedSomething=false;
+                        commands.forEach(command=>{
+                            var firstCharacter = command.charAt(0);
+                            switch (firstCharacter) {
+                                case "X":
+                                    xPos=parseFloat(command.slice(1))*scale;
+                                    changedSomething=true;
+                                    break;
+                                case "Y":
+                                    yPos=parseFloat(command.slice(1))*scale;
+                                    changedSomething=true;
+                                    break;
+                                case "Z":
+                                    zPos=parseFloat(command.slice(1))*scale;
+                                    changedSomething=true;
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                        });
+                        if(changedSomething){
+                            points.push(new THREE.Vector3(xPos, yPos, zPos));
                         }
-
-                    });
-                    if(changedSomething){
-                //    if(changedPos)
-                        points.push(new THREE.Vector3(xPos, yPos, zPos));
                     }
+
+                });
+
+                for(var i = 0; i < points.length - 1; i++) {
+                    (function(index) {
+                        setTimeout(function() {
+                            onLineRead(points[index + 1],isRightSide);
+                            if(currentHeight!=points[index + 1].z){
+                                lastHeight=currentHeight;
+                            }
+                            currentHeight=points[index + 1].z;
+                            draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
+                        }, 500 * index);
+                    })(i);
                 }
 
-            });
+            };
+            reader.readAsText(blob);
 
-
-     for(var i = 0; i < points.length - 1; i++) {
-      (function(index) {
-        setTimeout(function() {
-          onLineRead(points[index + 1]);
-             if(currentHeight!=points[index + 1].z){
-                                              lastHeight=currentHeight;
-                                          }
-                                          currentHeight=points[index + 1].z;
-          draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
-          //totalAngle+=draw3DLine(stlGroup,points[i],points[i+1],0.05,totalAngle);
-        }, 500 * index); // Czas opóźnienia w sekundach, zależny od indeksu
-      })(i);
-    }
-
-        };
-        reader.readAsText(blob); // Ustawienie formatu odczytu bloba (tekst)
-
-      })
-      .catch(error => {
-        console.error('Wystąpił błąd:', error);
-      });
+        })
+                .catch(error => {
+                    console.error('Wystąpił błąd:', error);
+        });
     }
 }
 
 function draw3DLine(group,startPoint,endPoint,lineWidth){
-var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
-var distance = direction.length();
+    var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
+    var distance = direction.length();
 
 
-var path = new THREE.LineCurve3(startPoint, endPoint);
-var geometry = new THREE.TubeGeometry(path, 16, lineWidth, 6, true);
+    var path = new THREE.LineCurve3(startPoint, endPoint);
+    var geometry = new THREE.TubeGeometry(path, 16, lineWidth, 6, true);
 
-var shadowMaterial = new THREE.MeshStandardMaterial({
-  color: 0x00ff00,
-  roughness: 0.8,
-  lightMapIntensity: 0.8,
-});
-var tubeMesh = new THREE.Mesh(geometry, shadowMaterial);
+    var shadowMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00ff00,
+        roughness: 0.8,
+        lightMapIntensity: 0.8,
+    });
+    var tubeMesh = new THREE.Mesh(geometry, shadowMaterial);
 
-group.add(tubeMesh);
+    group.add(tubeMesh);
 }

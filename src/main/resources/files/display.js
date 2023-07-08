@@ -118,7 +118,7 @@ renderer.setClearColor(0x1b1b1b);
 
 const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper });
 rendererHelper.setSize( canvasHelper.width, canvasHelper.height );
-rendererHelper.setClearColor(0x1b1b1b);
+rendererHelper.setClearColor(0x1b1b1b,0);
 let zoomLevel = 80;
 camera.zoom = zoomLevel;
 camera.updateProjectionMatrix();
@@ -128,15 +128,38 @@ rendererHelper.render(sceneHelper, cameraCanvasHelper);
 var controls = new OrbitControls(camera, renderer.domElement);
 var controlsHelper = new OrbitControls(cameraCanvasHelper, rendererHelper.domElement);
 
+var previousRotation = null;
+var previousPosition = null;
+var toUndo = new THREE.Vector3();
+var temp = new THREE.Vector3();
+var nowRounded;
 controls.addEventListener('change', updateHelper);
-updateHelper();
 
 function updateHelper(){
-    controlsHelper.target.copy(controls.target);
-    controlsHelper.object.position.copy(controls.object.position);
-    controlsHelper.object.rotation.copy(controls.object.rotation);
+    if(previousPosition===null){
+        previousPosition= new THREE.Vector3();
+        previousPosition.copy(controls.object.position);
+    }
+    if(previousRotation==null){
+        //compare don't work always with high precision
+        previousRotation= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    }
+    
+    nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    if (!previousRotation.equals(nowRounded)) {
+        controlsHelper.target = sceneHelper.position;
+        controlsHelper.object.rotation.copy(controls.object.rotation);
+        previousRotation=new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    }else{
+        
+        previousPosition.sub(controls.object.position);
+        toUndo.add(previousPosition);
+    }
+    temp.addVectors(controls.object.position,toUndo);
+    controlsHelper.object.position.copy(temp);
     
     rendererHelper.render(sceneHelper, cameraCanvasHelper);
+    previousPosition.copy(controls.object.position);
 }
 
 renderer.domElement.addEventListener('click', selectSTL);
@@ -342,14 +365,14 @@ function moveToolToPosition(checkRotation=true) {
     let arm1AngleNewRound = Math.floor(arm1AngleNewCp);
     let arm2AngleNewRound = Math.floor(arm2AngleNewCp);
     let canRotate = true;
-
+    
     if(checkRotation){
         if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
             canRotate = false;
         if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
             canRotate = false;
     }
-
+    
     let steps = 0; // interpolation steps
     let arm1Add = Math.sign(arm1AngleNewCp); //direction
     let arm2Add = Math.sign(arm2AngleNewCp);
@@ -386,9 +409,14 @@ function moveToolToPosition(checkRotation=true) {
         interpolateStep();
     }
 }
-function setToolPosition(vector){
+function setToolPosition(vector,isRightSide){
     currentToolX=vector.x;
-    currentToolY=vector.y;
+    currentToolY=-vector.y;
+    if(isRightSide){
+        currentToolX=vector.y;
+        currentToolY=-vector.x;
+    }
+    
     toolMesh.translateY(vector.z-currentHeight);
     currentHeight=vector.z;
     moveToolToPosition(false);
@@ -456,6 +484,6 @@ function selectSTL(){
     }
 }
 function drawFileOnScene(fileName){
-    drawFile(scene,fileName,setToolPosition,panelSize/4);
+    drawFile(scene,fileName,setToolPosition,panelSize/4,rightSide);
 }
 window.drawFileOnScene=drawFileOnScene;
