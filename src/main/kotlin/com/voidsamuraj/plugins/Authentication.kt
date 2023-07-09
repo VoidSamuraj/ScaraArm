@@ -40,17 +40,30 @@ fun Application.configureAuthentication() {
 }
 suspend fun checkPermission(token:MyToken?, onSuccess: suspend ()->Unit,onFailure:suspend ()->Unit){
     val expireTime=getTokenExpirationDate(token)
-    if(expireTime!=null&&expireTime.after(Date())){
+    val id = getUserId(token)
+    if(expireTime!=null&&expireTime.after(Date())&&id!=null&& dao.getUser(id)!=null){
         onSuccess()
     }else{
         onFailure()
     }
-
 }
 fun decodeToken(jwtToken:String?):DecodedJWT{
     return JWT.require(Algorithm.HMAC256(Keys.JWTSecret))
         .build()
         .verify(jwtToken)
+}
+fun getUserId(token: MyToken?):Int?{
+    val jwtToken = token?.token
+    if(jwtToken!=null){
+        return try {
+            val decodedToken =decodeToken(jwtToken)
+            decodedToken.getClaim("id").asInt()
+
+        } catch (e: JWTVerificationException) {
+            null
+        }
+    }
+    return null
 }
 fun getTokenExpirationDate(token: MyToken?):Date?{
     val jwtToken = token?.token

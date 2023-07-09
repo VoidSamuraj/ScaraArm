@@ -62,12 +62,12 @@ loadFileButton.addEventListener('click', function() {
     var time=(optionsMenuStyle.left === '-226px')?0:200;
     optionsMenu.style.left = '-226px';
     setTimeout(function(){
-        if(loadMenuStyle.left === '-500px')  {
+        if(loadMenuStyle.left === '-600px')  {
             expanded=true;
             loadMenu.style.left = '74px';
         }else{
             expanded=false;
-            loadMenu.style.left = '-500px';
+            loadMenu.style.left = '-600px';
         }
     },time);
 
@@ -75,7 +75,7 @@ loadFileButton.addEventListener('click', function() {
 optionsButton.addEventListener('click', function(){
     firstMenu.style.width = '74px';
     var time=(loadMenuStyle.left === '-226px')?0:200;
-    loadMenu.style.left = '-500px';
+    loadMenu.style.left = '-600px';
     setTimeout(function(){
 
         if(optionsMenuStyle.left === '-226px')  {
@@ -91,7 +91,7 @@ optionsButton.addEventListener('click', function(){
 });
 document.getElementById('menuIcon').addEventListener('click', function() {
     if(menuDisplayed){
-        loadMenu.style.left = '-500px';
+        loadMenu.style.left = '-600px';
         optionsMenu.style.left = '-300px';
         setTimeout(function(){
             firstMenuUl[1].style.transform = 'translateY(-226px)';
@@ -110,7 +110,7 @@ document.getElementById('menuIcon').addEventListener('click', function() {
             firstMenuUl[1].style.transform = 'translateY(0px)';
             firstMenu.style.height = '308px';
             setTimeout(function(){
-                loadMenu.style.left = '-500px';
+                loadMenu.style.left = '-600px';
                 optionsMenu.style.left = '-226px';
             },200);
         },100);
@@ -119,7 +119,7 @@ document.getElementById('menuIcon').addEventListener('click', function() {
     }
 });
 document.getElementById('closeLoadIcon').addEventListener('click', function() {
-    loadMenu.style.left = '-500px';
+    loadMenu.style.left = '-600px';
     expanded=false;
 });
 document.getElementById('closeOptionsIcon').addEventListener('click', function() {
@@ -141,17 +141,21 @@ logout.addEventListener('click', function() {
                 alert("Logged out successfully");
                 location.reload(true);
             }
-        };formatFileSize(file.size)
+        }
         xhr.send();
     }
 });
 
-
 document.getElementById('myfile').addEventListener('change', function() {
     let fileName = this.files[0].name;
-    document.getElementById('fileBtn').textContent = fileName;
      const formData = new FormData();
           formData.append('file', this.files[0]);
+
+          fetch('/files/'+fileName)
+            .then(response => {
+              if (response.ok) {
+                alert("A file with this name already exists, please rename the uploaded file.")
+              } else {
 
           fetch('/files/upload', {
             method: 'POST',
@@ -164,6 +168,13 @@ document.getElementById('myfile').addEventListener('change', function() {
             console.error("File upload error: "+error);
           });
 
+              }
+            })
+            .catch(error => {
+              console.log('Checking file error: ', error);
+            });
+
+
 
 });
 //File table
@@ -174,7 +185,8 @@ function fillTable(){
             .then(files => {
                     files.replace('[','').replace(']','').replace(/"/g, "").split(",").forEach(file => {
                         let fileData = file.split(';');
-                        html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td><button onClick=\"loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
+                        if(fileData.length > 0&& fileData[0]!="")
+                            html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td>"+fileData[2]+"</td><td><button onClick=\"loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
                     });
 
                 document.querySelector("table tbody").innerHTML = html;

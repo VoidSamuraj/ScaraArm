@@ -51,7 +51,6 @@ fun Route.authRoute(){
         if(errorMessage!=""){
             call.respondTemplate(template="login.ftl", model = mapOf("message" to errorMessage))
             errorMessage=""
-
         }else{
             val token=call.sessions.get("TOKEN")as MyToken?
             checkPermission(token = token,

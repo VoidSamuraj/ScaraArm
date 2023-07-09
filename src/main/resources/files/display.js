@@ -147,6 +147,8 @@ function updateHelper(){
     
     nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
     if (!previousRotation.equals(nowRounded)) {
+        arm1Text.rotation.z +=nowRounded.z-previousRotation.z;
+        arm2Text.rotation.z +=nowRounded.z-previousRotation.z;
         controlsHelper.target = sceneHelper.position;
         controlsHelper.object.rotation.copy(controls.object.rotation);
         previousRotation=new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));

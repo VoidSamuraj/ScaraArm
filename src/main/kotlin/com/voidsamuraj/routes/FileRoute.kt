@@ -1,119 +1,164 @@
 package com.voidsamuraj.routes
 
+import com.voidsamuraj.dao.dao
+import com.voidsamuraj.models.MyToken
+import com.voidsamuraj.plugins.checkPermission
+import com.voidsamuraj.plugins.getUserId
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.freemarker.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
+import io.ktor.util.pipeline.*
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.attribute.BasicFileAttributes
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 val filesFolder="FILES"
-
+suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess:suspend ()->Unit){
+    val token=call.sessions.get("TOKEN")as MyToken?
+    checkPermission(token = token,
+        onSuccess = {
+            onSuccess()
+        },
+        onFailure = {
+            call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
+        })
+}
 fun Route.fileRoute(){
     route("/files"){
         get {
+            checkUserPermission(){
+                val dir= File(filesFolder)
+                if(!dir.exists())
+                    dir.mkdirs()
 
-            val dir= File(filesFolder)
-            if(!dir.exists())
-                dir.mkdirs()
+                val pattern = "yyyy/MM/dd HH:mm"
+                val sdf = SimpleDateFormat(pattern)
 
-            val files = dir.listFiles()?.map {it.name +";"+formatFileSize(it.length()) } ?: emptyList()
-            call.respond(files)
-        }
-        get("/{fileName}"){
-            val fileName = call.parameters["fileName"]
-            val file=File(filesFolder+"/"+fileName)
-            if(file.exists())
-                call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
-            else
-                call.respond(HttpStatusCode.NotFound,"File Not Found")
-        }
-        post ("/upload"){
-            try {
-                val multipartData = call.receiveMultipart()
-                multipartData.forEachPart { part ->
-                    if (part is PartData.FileItem) {
-                        val fileName = part.originalFileName ?: "unknown"
-                        val file = File(filesFolder+"/"+fileName)
-                        part.streamProvider().use { input ->
-                            file.outputStream().buffered().use { output ->
-                                input.copyTo(output)
-                            }
+                val token = call.sessions.get("TOKEN") as MyToken?
+                val id = getUserId(token)
+                var list:List<String> = emptyList()
+                if (id!=null) {
+                    list = dao.getUser(id)?.filesId?.split(";")?.map {fileId->
+                        if(fileId.isNotEmpty())
+                            dao.getFileName(fileId.toInt()) ?: ""
+                        else
+                            ""
+                    }?: emptyList()
+                }
+                val files = dir.listFiles()?.filter {file->
+                    var doUserHaveThisFile=false
+                    list.forEach {name->
+                        if(name.equals(file.name)) {
+                            doUserHaveThisFile = true
                         }
                     }
-                    part.dispose()
+                    doUserHaveThisFile
+
+                }?.map {
+                    val fileAttributes = Files.readAttributes(Paths.get(it.canonicalPath), BasicFileAttributes::class.java)
+                    val creationTime = fileAttributes.creationTime().toMillis()
+
+                    val formattedDate = sdf.format(creationTime)
+                    it.name +";"+formatFileSize(it.length())+";"+formattedDate
+
+                } ?: emptyList()
+                println("ALLFILESS"+files)
+                call.respond(files)
+            }
+        }
+        get("/{fileName}"){
+            checkUserPermission(){
+                val fileName = call.parameters["fileName"]
+                val file=File(filesFolder+"/"+fileName)
+                if(file.exists())
+                    call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+                else
+                    call.respond(HttpStatusCode.NotFound,"File Not Found")
+            }
+        }
+        post ("/upload"){
+            checkUserPermission(){
+                try {
+                    val multipartData = call.receiveMultipart()
+                    multipartData.forEachPart { part ->
+                        if (part is PartData.FileItem) {
+                            val fileName = part.originalFileName ?: "unknown"
+                            val file = File(filesFolder + "/" + fileName)
+                            if (!file.exists()) {
+                                part.streamProvider().use { input ->
+                                    file.outputStream().buffered().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+
+                                val token = call.sessions.get("TOKEN") as MyToken?
+                                val id = getUserId(token)
+                                if (id != null) {
+                                    val files = dao.getUser(id)?.filesId
+                                    val fileId = dao.addNewFile(fileName)?.id
+                                    if (fileId != null)
+                                        dao.editUser(
+                                            id = id,
+                                            filesId = files + (if (!files.isNullOrEmpty()) ";" else "") + fileId
+                                        )
+                                }
+
+                            }
+                        }
+                        part.dispose()
+                    }
+                    call.respond(HttpStatusCode.OK,"File uploaded successfully.")
+                } catch (ex: ContentTransformationException) {
+                    call.respond("Error uploading file.")
                 }
-                call.respond(HttpStatusCode.OK,"File uploaded successfully.")
-            } catch (ex: ContentTransformationException) {
-                call.respond("Error uploading file.")
             }
         }
         delete("/delete/{fileName}"){
-            val fileName = call.parameters["fileName"]
-            val file=File(filesFolder+"/"+fileName)
-            if(file.exists())
-                if(file.delete())
-                    call.respond(HttpStatusCode.OK, "File was deleted")
+            checkUserPermission(){
+                val fileName = call.parameters["fileName"]
+                val file=File(filesFolder+"/"+fileName)
 
-
-            call.respond(HttpStatusCode.NoContent, "FILE not deleted")
-        }
-
-        /*
-                post("/delete"){
-            val fileName = (call.request.queryParameters.getAll("fileName") ?: emptyList())[0]
-            val file=File("$filesFolder/$fileName")
-            if(file.exists())
-                if(file.delete())
-                    call.respond(HttpStatusCode.OK, "File was deleted")
-
-
-            call.respond(HttpStatusCode.NoContent, "FILE not deleted")
-        }
-
-        * */
-    }
-
-
-
-    /*
-        route("/file"){
-            get {
-                if (files.isNotEmpty()) {
-                    call.respond(files.map { it.id })
-                } else {
-                    call.respondText("No customers found", status = HttpStatusCode.OK)
+                val token = call.sessions.get("TOKEN") as MyToken?
+                val id = getUserId(token)
+                var list:List<String> = emptyList()
+                if (id!=null) {
+                    list = dao.getUser(id)?.filesId?.split(";")?.map {fileId->
+                        if(fileId.isNotEmpty())
+                            dao.getFileName(fileId.toInt()) ?: ""
+                        else
+                            ""
+                    }?: emptyList()
                 }
-            }
 
-
-            get("{userId?}") {                                  // /file/123
-                val userId = call.parameters["userId"] ?: return@get call.respondText(
-                    "Missing userId",
-                    status = HttpStatusCode.BadRequest
-                )
-                val file =
-                    files.find { it.userId == userId } ?: return@get call.respondText(
-                        "No file with userId $userId",
-                        status = HttpStatusCode.NotFound
-                    )
-                val prefix="temp"
-                val subfix=".png"
-                val tfile=File.createTempFile(prefix,subfix)
-                file.file.binaryStream.use { input ->
-                    tfile.outputStream().use { output ->
-                        input.copyTo(output)
+                if(file.exists()&&list.contains(fileName))
+                    if(file.delete()) {
+                        val ml:MutableList<String> = dao.getUser(id!!)?.filesId?.split(";")?.toMutableList()?: mutableListOf()
+                        val fileMap = ml.associate { key -> key to dao.getFileName(key.toInt()) }.toMutableMap()
+                        fileMap.keys.filter { key -> fileMap[key] == fileName }
+                            .forEach { key ->
+                                key+dao.deleteFile(key.toInt())
+                                fileMap.remove(key)
+                            }
+                        dao.editUser(
+                            id = id,
+                            filesId = fileMap.keys.joinToString(";")
+                        )
+                        call.respond(HttpStatusCode.OK, "File was deleted")
                     }
-                }
-
-                call.respondFile(tfile)
+                call.respond(HttpStatusCode.NoContent, "FILE not deleted")
             }
         }
-    */
+    }
 }
 
 fun formatFileSize(fileSize:Long):String {

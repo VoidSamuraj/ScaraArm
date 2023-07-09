@@ -43,6 +43,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Size</th>
+                                <th>Uploaded</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>

@@ -53,7 +53,7 @@ canvas {
     width: 270px;
 }
 #loadMenu .menu-button{
-    width: 470px;
+    width: 570px;
 }
 .first{
     background-color: rgba(0,0,0,0);
@@ -207,8 +207,8 @@ nav .slot, nav a {
 #loadMenu{
     z-index: 3;
     background-color: #2C2F3E;
-    left: -500px;
-    width: 500px;
+    left: -600px;
+    width: 600px;
 }
 .upload-btn-wrapper {
     width: 100%;
@@ -262,7 +262,7 @@ td>button:first-child:hover{
     left: -300px;
 }
 #loadMenu .menu-button input[type=file] {
-    width: 470px;
+    width: 570px;
 }
 
 #logoutBlock{

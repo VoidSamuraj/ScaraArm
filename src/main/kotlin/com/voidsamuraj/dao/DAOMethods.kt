@@ -1,6 +1,8 @@
 package com.voidsamuraj.dao
 
 import com.voidsamuraj.dao.DatabaseFactory.dbQuery
+import com.voidsamuraj.models.FileRow
+import com.voidsamuraj.models.FilesTable
 import com.voidsamuraj.models.User
 import com.voidsamuraj.models.Users
 import org.jetbrains.exposed.sql.*
@@ -12,6 +14,10 @@ class DAOMethods:DAOMethodsInterface {
         login = row[Users.login],
         password = row[Users.password],
         filesId = row[Users.filesId]
+    )
+    private fun resultRowToFileRow(row: ResultRow) = FileRow(
+        id = row[FilesTable.id],
+        fileName = row[FilesTable.fileName]
     )
     override suspend fun getUser(id: Int): User? = dbQuery {
         Users.select { Users.id eq id }
@@ -51,8 +57,28 @@ class DAOMethods:DAOMethodsInterface {
         Users.deleteWhere { Users.id eq id } > 0
     }
 
-    suspend fun allUsers(): List<User> = dbQuery {
-        Users.selectAll().map(::resultRowToUser)
+    override suspend fun getFileName(id: Int): String? = dbQuery {
+        FilesTable.select { (FilesTable.id eq id)}
+            .map(::resultRowToFileRow).singleOrNull()?.fileName
+    }
+
+    override suspend fun getUserFilesNames(userId: Int): List<String> {
+        val ml= mutableListOf<String>()
+        dao.getUser(userId)
+
+
+        return ml
+    }
+
+    override suspend fun addNewFile(fileName: String): FileRow? = dbQuery{
+        val insertStatement = FilesTable.insert {
+            it[FilesTable.fileName] = fileName
+        }
+        insertStatement.resultedValues?.singleOrNull()?.let(::resultRowToFileRow)
+    }
+
+    override suspend fun deleteFile(id: Int): Boolean = dbQuery{
+        FilesTable.deleteWhere { FilesTable.id eq id } >0
     }
 }
 val dao: DAOMethods = DAOMethods()
