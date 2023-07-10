@@ -12,6 +12,9 @@ import io.ktor.server.sessions.*
 
 
 fun Route.mainRoutes(){
+    get(){
+        call.respondRedirect("/login")
+    }
     route("/index"){
         get {
 
