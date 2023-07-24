@@ -78,7 +78,9 @@ firstMenu.addEventListener('mouseout', function() {
     });
 
     manual.addEventListener('click',function(){
-        canMoveArm=true;
+       optionsMenu.style.left = '-226px';
+       loadMenu.style.left = '-600px';
+       canMoveArm=true;
     });
 
 optionsButton.addEventListener('click', function(){
