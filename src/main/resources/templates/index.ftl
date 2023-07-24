@@ -64,11 +64,18 @@
                         <span class="slot__label">Right</span>
                     </label>
                 </li>
-                <li class="button menu-button" id="logoutBlock">
+                <div id="actions">
+                <li class="button menu-button">
                     <div class="upload-btn-wrapper">
                         <button id="logout">Logout</button>
                     </div>
                 </li>
+                <li class="button menu-button">
+                    <div class="upload-btn-wrapper">
+                        <button id="deleteAccount">Delete Account</button>
+                    </div>
+                </li>
+                </div>
             </ul>
         </nav>
         <div id="positionBox">

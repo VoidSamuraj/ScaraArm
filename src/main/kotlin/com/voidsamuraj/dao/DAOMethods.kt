@@ -66,7 +66,6 @@ class DAOMethods:DAOMethodsInterface {
         val ml= mutableListOf<String>()
         dao.getUser(userId)
 
-
         return ml
     }
 
@@ -80,5 +79,6 @@ class DAOMethods:DAOMethodsInterface {
     override suspend fun deleteFile(id: Int): Boolean = dbQuery{
         FilesTable.deleteWhere { FilesTable.id eq id } >0
     }
+
 }
 val dao: DAOMethods = DAOMethods()

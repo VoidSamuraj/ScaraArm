@@ -53,6 +53,7 @@ input{
     padding: 20px;
     border-radius: 1.5em;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    width:15%;
 }
 #auth *{
     font-size: 1.1em;
@@ -65,26 +66,24 @@ input{
     margin-top: 5px;
     margin-bottom:20px;
     background-color: #ffa31a;
-    height:2em;
+    height:1.5em;
     width:auto;
     text-align: center;
+    padding: 12px;
 }
 #auth label{
     color: #ffa31a;
 }
 
 #auth button{
-    padding: 18px;
-    display: flex;
-    align-items: center;
+    padding: 12px;
     text-align: center;
     position: relative;
-
     font-weight: bold;
     letter-spacing: 0.1em;
     line-height: 1;
     overflow: hidden;
-    height: 1em;
+    height: 2.5em;
 
     background-color: #ffa31a;
     color: #f0f0f0;

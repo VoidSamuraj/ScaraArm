@@ -11,6 +11,7 @@ import com.voidsamuraj.models.User
 import com.voidsamuraj.plugins.checkPermission
 import com.voidsamuraj.plugins.decodeToken
 import com.voidsamuraj.plugins.getTokenExpirationDate
+import com.voidsamuraj.plugins.getUserId
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.freemarker.*
@@ -21,6 +22,7 @@ import io.ktor.server.sessions.*
 import io.ktor.server.util.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
+import java.io.File
 import java.util.Date
 
 var errorMessage:String=""
@@ -97,8 +99,6 @@ fun Route.authRoute(){
         call.respondText("Logged out successfully")
     }
 
-
-
     post("/register") {
         val formParameters = call.receiveParameters()
         val login = formParameters.getOrFail("login")
@@ -111,5 +111,18 @@ fun Route.authRoute(){
             onAuthError()
         }
     }
+    post("/delete") {
+        val token=call.sessions.get("TOKEN")as MyToken?
+        call.sessions.clear("TOKEN")
+        getUserId(token)?.let{userId->
+            dao.getUser(userId)?.filesId?.split(";")?.forEach { fileId->
+                File(filesFolder+"/"+dao.getFileName(fileId.toInt())).delete()
+                dao.deleteFile(fileId.toInt())
+            }
+            dao.deleteUser(userId)
+            call.respondText("Account deleted successfully")
+        }
 
+
+    }
 }

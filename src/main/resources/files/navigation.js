@@ -6,6 +6,7 @@ const optionsMenu=document.getElementById('optionsMenu');
 const direction=document.getElementById('switch');
 const checkbox=document.getElementById('toggle');
 const logout=document.getElementById('logout');
+const deleteAccount=document.getElementById('deleteAccount');
 
 
 const manual=document.getElementById('manual');
@@ -153,6 +154,22 @@ logout.addEventListener('click', function() {
         }
         xhr.send();
     }
+});
+deleteAccount.addEventListener('click', function() {
+                 if (confirm("Are you sure you want to delete account?")) {
+                    if(confirm("Flies associated with account will be removed. Do you want to continue?")){
+                         let xhr = new XMLHttpRequest();
+                         xhr.open('POST', '/delete');
+
+                         xhr.onload = function() {
+                             if (xhr.status === 200) {
+                                 alert("Account deleted successfully");
+                                 location.reload(true);
+                             }
+                         }
+                         xhr.send();
+                     }
+                 }
 });
 
 document.getElementById('myfile').addEventListener('change', function() {

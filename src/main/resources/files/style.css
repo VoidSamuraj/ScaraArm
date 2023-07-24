@@ -237,8 +237,14 @@ table button{
 #logout,td>button:nth-child(2){
     background-color: #990000;
 }
+#deleteAccount{
+    background-color: #870000;
+}
 #logout:hover,td>button:nth-child(2):hover{
     background-color: #ff0000;
+}
+#deleteAccount:hover{
+    background-color: #190A05;
 }
 
 td>button:first-child{
@@ -265,7 +271,7 @@ td>button:first-child:hover{
     width: 570px;
 }
 
-#logoutBlock{
+#actions{
     position: absolute;
     bottom: 0px;
 }

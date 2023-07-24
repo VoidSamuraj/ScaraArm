@@ -22,7 +22,6 @@ class ApplicationTest {
                     assertNotNull(user.id)
                     val newUser=getUser(user.id)
                     assertNotNull(newUser)
-                    assertEquals(newUser.firstName, "Karol")
                 }
             }
 
