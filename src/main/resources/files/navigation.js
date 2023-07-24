@@ -8,6 +8,7 @@ const checkbox=document.getElementById('toggle');
 const logout=document.getElementById('logout');
 
 
+const manual=document.getElementById('manual');
 const loadFileButton=document.getElementById('loadFile');
 const optionsButton=document.getElementById('options');
 
@@ -19,7 +20,8 @@ var icons = document.querySelectorAll('.icons');
 var buttons = document.querySelectorAll('.first');
 var expanded= false;
 var menuDisplayed=false;
-
+var canMoveArm=true;
+export function getCanMoveArm(){return canMoveArm;}
 
 loadMenu.style.minHeight=firstMenuStyle.height;
 optionsMenu.style.minHeight=firstMenuStyle.height;
@@ -57,21 +59,27 @@ firstMenu.addEventListener('mouseout', function() {
     }
 });
 
-loadFileButton.addEventListener('click', function() {
-    firstMenu.style.width = '74px';
-    var time=(optionsMenuStyle.left === '-226px')?0:200;
-    optionsMenu.style.left = '-226px';
-    setTimeout(function(){
-        if(loadMenuStyle.left === '-600px')  {
-            expanded=true;
-            loadMenu.style.left = '74px';
-        }else{
-            expanded=false;
-            loadMenu.style.left = '-600px';
-        }
-    },time);
+    loadFileButton.addEventListener('click', function() {
+        firstMenu.style.width = '74px';
+        var time=(optionsMenuStyle.left === '-226px')?0:200;
+        optionsMenu.style.left = '-226px';
+        setTimeout(function(){
+            if(loadMenuStyle.left === '-600px')  {
+                expanded=true;
+                loadMenu.style.left = '74px';
+                canMoveArm=false;
+            }else{
+                expanded=false;
+                loadMenu.style.left = '-600px';
+                canMoveArm=true;
+            }
+        },time);
+    });
 
-});
+    manual.addEventListener('click',function(){
+        canMoveArm=true;
+    });
+
 optionsButton.addEventListener('click', function(){
     firstMenu.style.width = '74px';
     var time=(loadMenuStyle.left === '-226px')?0:200;
@@ -127,8 +135,9 @@ document.getElementById('closeOptionsIcon').addEventListener('click', function()
     expanded=false;
 });
 
-direction.addEventListener('click',toggle.click());
-checkbox.addEventListener('click',toggle.click());
+
+direction.addEventListener('click',function(){toggle.click();});
+checkbox.addEventListener('click',function(){toggle.click();});
 
 logout.addEventListener('click', function() {
 
@@ -186,7 +195,7 @@ function fillTable(){
                     files.replace('[','').replace(']','').replace(/"/g, "").split(",").forEach(file => {
                         let fileData = file.split(';');
                         if(fileData.length > 0&& fileData[0]!="")
-                            html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td>"+fileData[2]+"</td><td><button onClick=\"loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
+                            html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td>"+fileData[2]+"</td><td><button onClick=\"window.loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"window.deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
                     });
 
                 document.querySelector("table tbody").innerHTML = html;
@@ -197,7 +206,7 @@ function fillTable(){
 
 
 }
-function deleteFile(fileName){
+window.deleteFile=function(fileName){
     if (confirm("Confirm deletion of "+fileName) == true) {
         fetch("/files/delete/"+fileName, {
           method: "DELETE"
@@ -215,11 +224,9 @@ function deleteFile(fileName){
 
     }
 }
-function loadFile(fileName){
+window.loadFile=function(fileName){
     drawFileOnScene(fileName);
 }
-
-
 
 document.addEventListener("DOMContentLoaded",fillTable);
 

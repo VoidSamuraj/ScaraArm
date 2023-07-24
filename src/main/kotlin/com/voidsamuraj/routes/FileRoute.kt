@@ -1,6 +1,7 @@
 package com.voidsamuraj.routes
 
 import com.voidsamuraj.dao.dao
+import com.voidsamuraj.gcode.GCODE_Sender
 import com.voidsamuraj.models.MyToken
 import com.voidsamuraj.plugins.checkPermission
 import com.voidsamuraj.plugins.getUserId
@@ -84,6 +85,17 @@ fun Route.fileRoute(){
                     call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
                 else
                     call.respond(HttpStatusCode.NotFound,"File Not Found")
+            }
+        }
+        post("/draw/{filename}"){
+            checkUserPermission(){
+                val fileName = call.parameters["fileName"]
+                if(fileName!=null){
+                    GCODE_Sender.sendGcode(filesFolder+"/"+fileName)
+                    call.respond(HttpStatusCode.OK, "File is processing")
+                }else
+                    call.respond(HttpStatusCode.NotFound,"File not found")
+
             }
         }
         post ("/upload"){

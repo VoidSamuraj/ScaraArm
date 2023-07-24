@@ -4,7 +4,6 @@ import com.voidsamuraj.dao.DatabaseFactory
 import io.ktor.server.application.*
 import com.voidsamuraj.plugins.*
 
-
 val jwtExpirationSeconds=3600L
 
 

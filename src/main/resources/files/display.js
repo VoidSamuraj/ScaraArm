@@ -4,6 +4,7 @@ import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateText
 import {setupHelpers}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
+import {getCanMoveArm} from '/static/navigation.js'
 
 var przesuwanie=false;
 var isDragging=false;
@@ -47,7 +48,6 @@ var toolEditMode=false;
 
 var arm1Angle=0;
 var arm2Angle=0;
-var arm2AngleOnly=0;
 
 const rotation1 = new THREE.Group();
 const rotation2 = new THREE.Group();
@@ -168,11 +168,11 @@ renderer.domElement.addEventListener('click', selectSTL);
 
 
 renderer.domElement.addEventListener('wheel', function(event) {
-    if (editMode) {
+    if (editMode && getCanMoveArm()) {
         controls.enableZoom=false;
         const zoomChange = event.deltaY > 0 ? 1 : -1;
         switch(lastSelectedMesh.children[0].name){
-            
+
             case stlNames[1]:
                 if((arm1Angle+zoomChange)>=-MAX_ARM1_ANGLE&&(arm1Angle+zoomChange)<=MAX_ARM1_ANGLE){
                     arm1Angle+=zoomChange;
@@ -183,7 +183,7 @@ renderer.domElement.addEventListener('wheel', function(event) {
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
                     else
                         arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                    
+
                     updateToolPos();
                 }
                 break;
@@ -197,7 +197,7 @@ renderer.domElement.addEventListener('wheel', function(event) {
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
                     else
                         arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                    
+
                     updateToolPos();
                 }
                 break;
@@ -211,6 +211,8 @@ renderer.domElement.addEventListener('wheel', function(event) {
         }
     } else {
         controls.enableZoom=true;
+        lastSelectedMesh.children[0].material.color.set(armColor);
+
     }
 }, {passive: false});
 
@@ -322,7 +324,7 @@ function canMove(){
     
     let angle = gamma + alpha;
     var arm1AngleNew = -(angle  * (180 / Math.PI));
-    var arm2AngleNew = 180- (beta * (180 / Math.PI))-arm2AngleOnly;
+    var arm2AngleNew = 180- (beta * (180 / Math.PI));
     
     if (isNaN(arm1AngleNew))
         arm1AngleNew = 0;
@@ -352,7 +354,7 @@ function moveToolToPosition(checkRotation=true) {
     
     let angle = gamma + alpha;
     let arm1AngleNew = -(angle * (180 / Math.PI));
-    let arm2AngleNew = 180 - (beta * (180 / Math.PI)) - arm2AngleOnly;
+    let arm2AngleNew = 180 - (beta * (180 / Math.PI));
     
     if (isNaN(arm1AngleNew)) {
         arm1AngleNew = 0;
@@ -374,13 +376,8 @@ function moveToolToPosition(checkRotation=true) {
         if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
             canRotate = false;
     }
-    
     let steps = 0; // interpolation steps
-    let arm1Add = Math.sign(arm1AngleNewCp); //direction
-    let arm2Add = Math.sign(arm2AngleNewCp);
-    let arm1rot = 0; // current rotation
-    let arm2rot = 0;
-    
+
     if (canRotate && (arm1AngleNewCp != 0 || arm2AngleNewCp != 0)) {
         const totalSteps = 20; // all interpolation steps
         
@@ -442,46 +439,48 @@ function updateToolPos(){
 }
 
 function selectSTL(){
-    const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
-    
-    lastSelectedMesh.children[0].material.color.set(armColor);
-    
-    axesHelper1.visible=false;
-    axesHelper2.visible=false;
-    
-    editMode=false;
-    toolEditMode=false;
-    
-    var mouse = new THREE.Vector2(
-            (event.clientX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
-            );
-    
-    var raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-    
-    var intersects = raycaster.intersectObjects(scene.children, true);
-    
-    if (intersects.length > 0 && intersects[0].object.name.trim()!="") {
-        //closest object
-        const object = intersects[0].object;
-        editMode=true;
-        if(object.name!=stlNames[0]){
-            switch(object.name){
-                case stlNames[1]:
-                    lastSelectedMesh=meshes[1];
-                    axesHelper1.visible=true;
-                    break;
-                case stlNames[2]:
-                    lastSelectedMesh=meshes[2];
-                    axesHelper2.visible=true;
-                    break;
-                case stlNames[3]:
-                    lastSelectedMesh=meshes[3];
-                    toolEditMode=true;
-                    break;
+    if(getCanMoveArm()){
+        const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
+
+        lastSelectedMesh.children[0].material.color.set(armColor);
+
+        axesHelper1.visible=false;
+        axesHelper2.visible=false;
+
+        editMode=false;
+        toolEditMode=false;
+
+        var mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+                );
+
+        var raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        var intersects = raycaster.intersectObjects(scene.children, true);
+
+        if (intersects.length > 0 && intersects[0].object.name.trim()!="") {
+            //closest object
+            const object = intersects[0].object;
+            editMode=true;
+            if(object.name!=stlNames[0]){
+                switch(object.name){
+                    case stlNames[1]:
+                        lastSelectedMesh=meshes[1];
+                        axesHelper1.visible=true;
+                        break;
+                    case stlNames[2]:
+                        lastSelectedMesh=meshes[2];
+                        axesHelper2.visible=true;
+                        break;
+                    case stlNames[3]:
+                        lastSelectedMesh=meshes[3];
+                        toolEditMode=true;
+                        break;
+                }
+                lastSelectedMesh.children[0].material.color.set(selectColor);
             }
-            lastSelectedMesh.children[0].material.color.set(selectColor);
         }
     }
 }

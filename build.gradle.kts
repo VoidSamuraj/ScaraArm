@@ -62,4 +62,8 @@ dependencies {
     implementation("io.ktor:ktor-server-cors:$ktor_version")
     implementation("org.mindrot:jbcrypt:0.4")
 
+
+    // https://mvnrepository.com/artifact/com.fazecast/jSerialComm
+    implementation("com.fazecast:jSerialComm:2.10.2")
+
 }

@@ -251,8 +251,21 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
 
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
+         fetch("/files/draw/"+fileName, {method: "POST"}).then(response => {
+                  if (response.ok) {
+                    console.log("File is processing.");
+                  } else {
+                    console.error("ERROR during file process. "+response);
+                  }
+                })
+                .catch(error => {
+                  console.error("ERROR occurred:", error);
+                });
+
     var lastHeight=0;
     var currentHeight=0;
+    var firstHeightSet=false;
+    var secondHeightSet=false;
     stlGroup.clear();
     scene.remove(stlGroup);
     stlGroup = new THREE.Group();
@@ -274,7 +287,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
     var xPos=0;
     var yPos=0;
-    var zPos=-1;
+    var zPos=0;
     var changedSomething=false;
     const scale=0.1;
 
@@ -305,6 +318,14 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
                                 case "Z":
                                     zPos=parseFloat(command.slice(1))*scale;
                                     changedSomething=true;
+                                    if(!firstHeightSet){
+                                        currentHeight=zPos;
+                                        firstHeightSet=true;
+                                    }
+                                    if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                                        currentHeight=currentHeight-(zPos*0.5);
+                                        secondHeightSet=true;
+                                    }
                                     break;
                                 default:
                                     break;
@@ -318,14 +339,18 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
                 });
 
+                if(!(firstHeightSet&&firstHeightSet))
+                    currentHeight=points[0].z- 0.1;
                 for(var i = 0; i < points.length - 1; i++) {
                     (function(index) {
                         setTimeout(function() {
                             onLineRead(points[index + 1],isRightSide);
                             if(currentHeight!=points[index + 1].z){
                                 lastHeight=currentHeight;
+
                             }
                             currentHeight=points[index + 1].z;
+                            console.log("POS "+points[index + 1].x+" "+points[index + 1].y+" "+points[index + 1].z);
                             draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
                         }, 500 * index);
                     })(i);

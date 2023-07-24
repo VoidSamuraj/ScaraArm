@@ -86,7 +86,7 @@
         <script type="module" src="static/display.js"></script>
         <script type="module" src="/static/three/build/three.module.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="static/navigation.js"></script>
+        <script type="module" src="static/navigation.js"></script>
 
         <script>
             const expirationText = "${expiration}";
