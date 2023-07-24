@@ -8,6 +8,9 @@ const checkbox=document.getElementById('toggle');
 const logout=document.getElementById('logout');
 const deleteAccount=document.getElementById('deleteAccount');
 
+const optionMenuHide='-226px';
+const loadMenuHide='-600px';
+const barWidth='74px';
 
 const manual=document.getElementById('manual');
 const loadFileButton=document.getElementById('loadFile');
@@ -29,7 +32,7 @@ optionsMenu.style.minHeight=firstMenuStyle.height;
 
 firstMenuUl[1].style.display='none';
 firstMenu.style.height= '74px';
-firstMenuUl[1].style.transform = 'translateY(-226px)';
+firstMenuUl[1].style.transform = 'translateY('+optionMenuHide+')';
 
 
 
@@ -47,7 +50,7 @@ firstMenu.addEventListener('mouseover', function() {
 });
 firstMenu.addEventListener('mouseout', function() {
 
-    firstMenu.style.width = '74px';
+    firstMenu.style.width = barWidth;
     for (var i = 0; i < buttons.length; i++) {
         var element = buttons[i];
         element.firstChild.textContent = '';
@@ -60,41 +63,44 @@ firstMenu.addEventListener('mouseout', function() {
     }
 });
 
-    loadFileButton.addEventListener('click', function() {
-        firstMenu.style.width = '74px';
-        var time=(optionsMenuStyle.left === '-226px')?0:200;
-        optionsMenu.style.left = '-226px';
-        setTimeout(function(){
-            if(loadMenuStyle.left === '-600px')  {
-                expanded=true;
-                loadMenu.style.left = '74px';
-                canMoveArm=false;
-            }else{
-                expanded=false;
-                loadMenu.style.left = '-600px';
-                canMoveArm=true;
-            }
-        },time);
-    });
-
-    manual.addEventListener('click',function(){
-       optionsMenu.style.left = '-226px';
-       loadMenu.style.left = '-600px';
-       canMoveArm=true;
-    });
-
-optionsButton.addEventListener('click', function(){
-    firstMenu.style.width = '74px';
-    var time=(loadMenuStyle.left === '-226px')?0:200;
-    loadMenu.style.left = '-600px';
+loadFileButton.addEventListener('click', function() {
+    turnOnOverlay();
+    firstMenu.style.width = barWidth;
+    var time=(optionsMenuStyle.left === optionMenuHide)?0:200;
+    optionsMenu.style.left = optionMenuHide;
     setTimeout(function(){
-
-        if(optionsMenuStyle.left === '-226px')  {
+        if(loadMenuStyle.left === loadMenuHide)  {
             expanded=true;
-            optionsMenu.style.left = '74px';
+            loadMenu.style.left = barWidth;
+            canMoveArm=false;
         }else{
             expanded=false;
-            optionsMenu.style.left = '-226px';
+            loadMenu.style.left = loadMenuHide;
+            canMoveArm=true;
+        }
+    },time);
+});
+
+manual.addEventListener('click',function(){
+    turnOffOverlay();
+    optionsMenu.style.left = optionMenuHide;
+    loadMenu.style.left = loadMenuHide;
+    canMoveArm=true;
+});
+
+optionsButton.addEventListener('click', function(){
+    turnOnOverlay();
+    firstMenu.style.width = barWidth;
+    var time=(loadMenuStyle.left === optionMenuHide)?0:200;
+    loadMenu.style.left = loadMenuHide;
+    setTimeout(function(){
+
+        if(optionsMenuStyle.left === optionMenuHide)  {
+            expanded=true;
+            optionsMenu.style.left = barWidth;
+        }else{
+            expanded=false;
+            optionsMenu.style.left = optionMenuHide;
         }
     },time);
 
@@ -102,11 +108,11 @@ optionsButton.addEventListener('click', function(){
 });
 document.getElementById('menuIcon').addEventListener('click', function() {
     if(menuDisplayed){
-        loadMenu.style.left = '-600px';
+        loadMenu.style.left = loadMenuHide;
         optionsMenu.style.left = '-300px';
         setTimeout(function(){
-            firstMenuUl[1].style.transform = 'translateY(-226px)';
-            firstMenu.style.height= '74px';
+            firstMenuUl[1].style.transform = 'translateY('+optionMenuHide+')';
+            firstMenu.style.height= barWidth;
             setTimeout(function(){
                 firstMenuUl[1].style.display='none';
                 menuDisplayed=false;
@@ -121,8 +127,8 @@ document.getElementById('menuIcon').addEventListener('click', function() {
             firstMenuUl[1].style.transform = 'translateY(0px)';
             firstMenu.style.height = '308px';
             setTimeout(function(){
-                loadMenu.style.left = '-600px';
-                optionsMenu.style.left = '-226px';
+                loadMenu.style.left = loadMenuHide;
+                optionsMenu.style.left = optionMenuHide;
             },200);
         },100);
 
@@ -130,11 +136,11 @@ document.getElementById('menuIcon').addEventListener('click', function() {
     }
 });
 document.getElementById('closeLoadIcon').addEventListener('click', function() {
-    loadMenu.style.left = '-600px';
+    loadMenu.style.left = loadMenuHide;
     expanded=false;
 });
 document.getElementById('closeOptionsIcon').addEventListener('click', function() {
-    optionsMenu.style.left = '-226px';
+    optionsMenu.style.left = optionMenuHide;
     expanded=false;
 });
 
@@ -158,49 +164,49 @@ logout.addEventListener('click', function() {
     }
 });
 deleteAccount.addEventListener('click', function() {
-                 if (confirm("Are you sure you want to delete account?")) {
-                    if(confirm("Flies associated with account will be removed. Do you want to continue?")){
-                         let xhr = new XMLHttpRequest();
-                         xhr.open('POST', '/delete');
+    if (confirm("Are you sure you want to delete account?")) {
+        if(confirm("Flies associated with account will be removed. Do you want to continue?")){
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', '/delete');
 
-                         xhr.onload = function() {
-                             if (xhr.status === 200) {
-                                 alert("Account deleted successfully");
-                                 location.reload(true);
-                             }
-                         }
-                         xhr.send();
-                     }
-                 }
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    alert("Account deleted successfully");
+                    location.reload(true);
+                }
+            }
+            xhr.send();
+        }
+    }
 });
 
 document.getElementById('myfile').addEventListener('change', function() {
     let fileName = this.files[0].name;
-     const formData = new FormData();
-          formData.append('file', this.files[0]);
+    const formData = new FormData();
+    formData.append('file', this.files[0]);
 
-          fetch('/files/'+fileName)
+    fetch('/files/'+fileName)
             .then(response => {
-              if (response.ok) {
-                alert("A file with this name already exists, please rename the uploaded file.")
-              } else {
+                if (response.ok) {
+                    alert("A file with this name already exists, please rename the uploaded file.")
+        } else {
 
-          fetch('/files/upload', {
-            method: 'POST',
-            body: formData
-          })
-          .then(response => {
-            fillTable();
-          })
-          .catch(error => {
-            console.error("File upload error: "+error);
-          });
-
-              }
+            fetch('/files/upload', {
+                method: 'POST',
+                body: formData
             })
-            .catch(error => {
-              console.log('Checking file error: ', error);
+                    .then(response => {
+                        fillTable();
+            })
+                    .catch(error => {
+                        console.error("File upload error: "+error);
             });
+
+        }
+    })
+            .catch(error => {
+                console.log('Checking file error: ', error);
+    });
 
 
 
@@ -209,37 +215,37 @@ document.getElementById('myfile').addEventListener('change', function() {
 function fillTable(){
 
     let html="";
-        fetch("/files") .then(response => response.text())
+    fetch("/files") .then(response => response.text())
             .then(files => {
-                    files.replace('[','').replace(']','').replace(/"/g, "").split(",").forEach(file => {
-                        let fileData = file.split(';');
-                        if(fileData.length > 0&& fileData[0]!="")
-                            html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td>"+fileData[2]+"</td><td><button onClick=\"window.loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"window.deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
-                    });
+                files.replace('[','').replace(']','').replace(/"/g, "").split(",").forEach(file => {
+                    let fileData = file.split(';');
+            if(fileData.length > 0&& fileData[0]!="")
+                html+="<tr><td>"+fileData[0]+"</td><td>"+fileData[1]+"</td><td>"+fileData[2]+"</td><td><button onClick=\"window.loadFile('"+fileData[0]+"')\">Load</button><button onClick=\"window.deleteFile('"+fileData[0]+"')\">Delete</button></td></tr>";
+        });
 
-                document.querySelector("table tbody").innerHTML = html;
-            })
+        document.querySelector("table tbody").innerHTML = html;
+    })
             .catch(error => {
                 console.error("ERROR during reading file list:", error);
-            });
+    });
 
 
 }
 window.deleteFile=function(fileName){
     if (confirm("Confirm deletion of "+fileName) == true) {
         fetch("/files/delete/"+fileName, {
-          method: "DELETE"
+            method: "DELETE"
         }).then(response => {
-              if (response.ok) {
+            if (response.ok) {
                 console.log("File was deleted.");
                 fillTable();
-              } else {
+            } else {
                 console.error("ERROR during file deletion.");
-              }
-            })
-            .catch(error => {
-              console.error("ERROR occurred:", error);
-            });
+            }
+        })
+                .catch(error => {
+                    console.error("ERROR occurred:", error);
+        });
 
     }
 }
@@ -247,6 +253,21 @@ window.loadFile=function(fileName){
     drawFileOnScene(fileName);
 }
 
+function turnOnOverlay(){
+    var overlay=document.getElementById("overlay");
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+    overlay.style.zIndex = '2';
+    overlay.style.display='block';
+    overlay.addEventListener('click',turnOffOverlay);
+}
+function turnOffOverlay(){
+    var overlay=document.getElementById("overlay");
+    overlay.style.backgroundColor = "rgba(255, 163, 26, 0.2)";
+    overlay.style.zIndex = '6';
+    optionsMenu.style.left = optionMenuHide;
+    loadMenu.style.left = loadMenuHide;
+    overlay.style.display='none';
+}
 document.addEventListener("DOMContentLoaded",fillTable);
 
 
