@@ -24,13 +24,13 @@ import java.util.logging.Logger;
 
 public class GCODE_Sender {
 
-
+    private static SerialPort port=null;
     public static void main(String[] args) throws InterruptedException, IOException  {
         final String src="/home/karol/Pobrane/t3.txt"; //12//C:\\Users\\Karol\\Desktop\\test3.txt
         final String out="/home/karol/Pobrane/output.txt";
         // if false generated code is in degrees, else in steps
         Boolean sendGcode=true;
-        makeGCodeFile(src, out,sendGcode,false);
+        makeGCodeFile(src, out,sendGcode,isRightSide);
         if(sendGcode) {
             sendGcode(out);
         }
@@ -43,6 +43,7 @@ public class GCODE_Sender {
     private static final char L='L';//long axis name
     private static final char S='S';//short axis name
 
+    public static boolean isRightSide=false;
     private static final long Lr=100; //long arm length
     private static final long Sr=60;//short arm length
     //just to make sure everything in area
@@ -71,46 +72,17 @@ public class GCODE_Sender {
     public static void sendGcode(String out){
 
         try {
-            SerialPort port = SerialPort.getCommPort(SERIAL_PORT);
-            port.setComPortParameters(9600, 8, 1, 0);
-            //windows
-            port.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
-            //linux
-            port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0);
-
-            System.out.println("Opened: " + port.openPort());
-            Thread.sleep(100);
-
-            while (!port.openPort()) {
-                Thread.sleep(500);
-            }
-            Thread.sleep(4000);
+            if (!isPortOpen())
+                openPort();
             InputStream is = port.getInputStream();
-
             System.out.println("OPEN");
-
             BufferedInputStream bins = new BufferedInputStream(is);
 
             PrintWriter pw = new PrintWriter(port.getOutputStream());
             File fin = new File(out);
 
             Thread.sleep(500);
-            String st;
-            byte[] bf = new byte[1024];
-            do{
-                try{
-                    pw.write("START");
-                    pw.flush();
-                    Thread.sleep(1000);
-                    bins.read(bf);
-                    st = new String(bf);
-                    if(st.trim().compareToIgnoreCase("OK") == 0){
-                        break;
-                    }
-                }catch(SerialPortTimeoutException e){
-                    System.out.println("Timeout exception occurred: " + e.getMessage());
-                }
-            } while (true);
+            startCommunication(pw,bins);
             System.out.println("KOMUNIKACJA ");
 
             try (FileReader fr = new FileReader(fin); BufferedReader br = new BufferedReader(fr)) {
@@ -136,8 +108,7 @@ public class GCODE_Sender {
                             } while (true);
 
                         }
-                        pw.write("END");
-                        pw.flush();
+                        endCommunication(pw);
 
                     } catch (IOException | InterruptedException ex) {
                         Logger.getLogger(GCODE_Sender.class.getName()).log(Level.SEVERE, null, ex);
@@ -159,6 +130,24 @@ public class GCODE_Sender {
         }catch ( IOException e) {
             System.err.println("IO sendGcodeError: "+e.getLocalizedMessage());
         }
+    }
+    private static void startCommunication(PrintWriter pw,BufferedInputStream bins) throws IOException, InterruptedException {
+        String st;
+        byte[] bf = new byte[1024];
+        do{
+            try{
+                pw.write("START");
+                pw.flush();
+                Thread.sleep(100);
+                bins.read(bf);
+                st = new String(bf);
+                if(st.trim().compareToIgnoreCase("OK") == 0){
+                    break;
+                }
+            }catch(SerialPortTimeoutException e){
+                System.out.println("Timeout exception occurred: " + e.getMessage());
+            }
+        } while (true);
     }
 
     /**
@@ -270,84 +259,178 @@ public class GCODE_Sender {
     }
     /**
      * All magic happens here
-     * calculates global transition
+     * calculates global transition and updates current location
      * @param inSteps - if change degrees to steps
      * @param isRightSide - direction of arm
      */
-    private static String Transition(Double xMove,Double yMove,Double zMove,Double speed,Boolean inSteps,Boolean isRightSide){
-        StringBuilder comand= new StringBuilder();
-        double xm=(xMove!=null)?(isRelative?xMove+position[0]:xMove):position[0];
-        double ym=(yMove!=null)?(isRelative?yMove+position[1]:yMove):position[1];
-        double zm=(zMove!=null)?(isRelative?zMove+position[2]:zMove):position[2];
+    private static String Transition(Double xMove,Double yMove,Double zMove,Double speed,Boolean inSteps,Boolean isRightSide) {
+        StringBuilder comand = new StringBuilder();
+        System.out.println("x " + position[0] + "  y " + position[1]);
 
-        System.out.println("POZYCJE dozrobienia "+xm+" czystazmiana "+xMove+" pos "+position[0]+"       dozrobienia"+ym+" czystazmiana "+yMove+" pos "+position[1]);
+        double xm=(yMove!=null)?(isRelative?yMove+position[0]:yMove):position[0];
+        double ym=(xMove!=null)?(isRelative?xMove+position[1]:xMove):position[1];
 
-        double newRaius=Math.hypot(xm, ym);
+        //double xm = (xMove != null) ? (isRelative ? xMove + position[0] : xMove) : position[0];
+        //double ym = (yMove != null) ? (isRelative ? yMove + position[1] : yMove) : position[1];
+        System.out.println("ZMOVE "+zMove);
+        double zm = (zMove != null) ? (isRelative ? zMove + position[2] : zMove) : position[2];
+        System.out.println("ZMOVE "+zm);
 
-        if(newRaius>R)
-            System.err.println("Object is outside workspace R<"+ newRaius);
 
-        double gamma=Math.atan2(ym, xm);//absolute degree angle to R
-        double toBeta=((Lr*Lr)+(Sr*Sr)-(xm*xm)-(ym*ym))/(2*Lr*Sr);
-        double beta=Math.acos(toBeta);//between  arms
+        if(xm!=position[0]||ym!=position[1]){
 
-        double toAlpha=(xm*xm+ym*ym+Lr*Lr-Sr*Sr)/(2*Lr*newRaius);
-        double alpha=Math.acos(toAlpha);   //between first arm and R
+            double newRaius = Math.hypot(xm, ym);
 
-        double angle= gamma+alpha;
-        double alphaAdd=Math.toDegrees(angle);
-        double betaAdd=Math.toDegrees(beta);
+            if (newRaius > R) {
+                System.err.println("Object is outside workspace R<" + newRaius);
+                return "";
+            }else{
+                double gamma = Math.atan2(ym, xm);//absolute degree angle to R
+                double toBeta = ((Lr * Lr) + (Sr * Sr) - (xm * xm) - (ym * ym)) / (2 * Lr * Sr);
+                double beta = Math.acos(toBeta);//between  arms
 
-        if(Double.isNaN(alphaAdd))
-            alphaAdd=0;
-        if(Double.isNaN(betaAdd))
-            betaAdd=0;
+                double toAlpha = (xm * xm + ym * ym + Lr * Lr - Sr * Sr) / (2 * Lr * newRaius);
+                double alpha = Math.acos(toAlpha);   //between first arm and R
 
-        System.out.println("KĄTY przed odejmowaniami "+alphaAdd+" "+betaAdd);
+                double angle = gamma + alpha;
+                double alphaAdd = Math.toDegrees(angle);
+                double betaAdd = Math.toDegrees(beta);
 
-        int steps = 0; // interpolation steps
+                if (Double.isNaN(alphaAdd))
+                    alphaAdd = 0;
+                if (Double.isNaN(betaAdd))
+                    betaAdd = 0;
 
-        double alphaChange=alphaAdd==0?0:(angles[0]-alphaAdd)/totalSteps;
-        double betaChange=betaAdd==0?0:(angles[1]-betaAdd)/totalSteps;
+                double alphaChange = alphaAdd == 0 ? 0 : (angles[0] - alphaAdd) / totalSteps;
+                double betaChange = betaAdd == 0 ? 0 : (angles[1] - betaAdd) / totalSteps;
+                double zInSteps=zm/totalSteps;
+                //attempt to interpolate
 
-        System.out.println("KĄTY "+alphaChange+" "+betaChange+" stare "+angles[0]+" "+angles[1]);
-        //attempt to interpolate
+                for (int steps=0;steps<totalSteps;steps++) {
+                        if (inSteps) {
+                            comand.append(L).append((long) ((alphaChange * ARM_LONG_STEPS_PER_ROTATION) / 360 * (isRightSide ? 1 : -1))).append(" ").append(S).append(((long) (-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION )/ 360) * (isRightSide ? 1 : -1));
+                            // -1 for direction
+                            if (zm != position[2]&&isRelative) {
+                                //need to check if works with relative and absolute mode
+                                comand.append(" Z").append((long) zInSteps * MOTOR_STEPS_PRER_ROTATION*-1);
+                            }
+                        } else {
+                            comand.append("" + L).append(alphaChange).append(" ").append(S).append(betaChange);
+                        }
 
-        while (true){
-            if (steps < totalSteps) {
-                if(inSteps) {
-                    comand.append(L).append((long) ((alphaChange * ARM_LONG_STEPS_PER_ROTATION) / 360* (isRightSide?1:-1))).append(" ").append(S).append(((long) ((betaChange * ARM_SHORT_DEGREES_BY_ROTATION) / 360) - ((alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360))*(isRightSide?1:-1));
-                    // -1 for direction
-                    if(zm!=0){
-                        //need to check if works with relative and absolute mode
-                        comand.append(" Z").append((zm * MOTOR_STEPS_PRER_ROTATION) * -1);
-                    }
-                }else{
-                    comand.append("" + L).append(alphaChange).append(" ").append(S).append(betaChange);
+                        if (speed != null && speed != -1)
+                            comand.append(" F").append((long) (speed * speedrate));
+
+                        comand.append("\n");
+
                 }
 
-                if(speed!=null&&speed!=-1)
-                    comand.append(" F").append(speed * speedrate);
+                if (!Double.isNaN(alphaAdd))
+                    angles[0] = alphaAdd;
+                if (!Double.isNaN(betaAdd))
+                    angles[1] = betaAdd;
+                if (xm != position[0])
+                    position[0] = xm;
+                if (ym != position[1])
+                    position[1] = ym;
+                if (zm != position[2])
+                    position[2] = zm;
 
-                comand.append("\n");
+                return comand.toString();
+            }
+        }else if (zm != position[2]&&isRelative) {
+            comand.append(" Z").append((long) zm * MOTOR_STEPS_PRER_ROTATION*-1);
+            comand.append("\n");
+            return comand.toString();
 
-                steps++;
-            }else
-                break;
+        }
+        return "";
+    }
+    public static void moveBy(Double xMove,Double yMove,Double zMove,Boolean rightSide){
+        if(rightSide!=null)
+            isRightSide=rightSide;
+
+        double []anglesCp=angles.clone();
+        double []positionCp=position.clone();
+        boolean isRelativeCp=isRelative;
+        isRelative=true;
+        String[] lines=Transition(xMove, yMove, zMove, null, true, isRightSide).split("\n");
+        isRelative=isRelativeCp;
+        try {
+            if (!isPortOpen())
+                openPort();
+            InputStream is = port.getInputStream();
+            BufferedInputStream bins = new BufferedInputStream(is);
+            PrintWriter pw = new PrintWriter(port.getOutputStream());
+
+            Thread.sleep(100);
+            startCommunication(pw,bins);
+            System.out.println("KOMUNIKACJA ");
+
+            for(String line : lines){
+                System.out.println(line+" xddd");
+                pw.write(line);
+                pw.flush();
+                byte[] buffer = new byte[1024];
+                do {
+                    try {
+                        Thread.sleep(100);
+                        bins.read(buffer);
+                        break;
+                    } catch (SerialPortTimeoutException e) {
+                        System.out.println("Timeout exception occurred: " + e.getMessage());
+                    }
+                } while (true);
+            }
+
+        } catch (IOException | InterruptedException ex) {
+            angles[0]=anglesCp[0];
+            angles[1]=anglesCp[1];
+            position[0]=positionCp[0];
+            position[1]=positionCp[1];
+            position[2]=positionCp[2];
+            Logger.getLogger(GCODE_Sender.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        if(!Double.isNaN(alphaAdd))
-            angles[0]=alphaAdd;
-        if(!Double.isNaN(betaAdd))
-            angles[1]=betaAdd;
-        if(xm!=position[0])
-            position[0]=xm;
-        if(ym!=position[1])
-            position[1]=ym;
-        if(zm!=position[2])
-            position[2]=zm;
 
-        return comand.toString();
+
+
+    }
+    public static void openPort() throws InterruptedException {
+        port = SerialPort.getCommPort(SERIAL_PORT);
+        port.setComPortParameters(9600, 8, 1, 0);
+        //windows
+        port.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
+        //linux
+        port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0);
+
+        System.out.println("Opened: " + port.openPort());
+        Thread.sleep(100);
+
+        while (!port.openPort()) {
+            Thread.sleep(500);
+        }
+        Thread.sleep(4000);
+    }
+
+    public static void endCommunication(PrintWriter pw){
+        pw.write("END");
+        pw.flush();
+    }
+    public static void endCommunication(){
+        if(isPortOpen()) {
+            PrintWriter pw = new PrintWriter(port.getOutputStream());
+            pw.write("END");
+            pw.flush();
+            pw.close();
+        }
+    }
+    public static void closePort(){
+        if(port!=null)
+            port.closePort();
+    }
+    public static boolean isPortOpen(){
+        return port!=null&&port.isOpen();
     }
 
 }

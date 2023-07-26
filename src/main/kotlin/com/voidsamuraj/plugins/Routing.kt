@@ -1,9 +1,6 @@
 package com.voidsamuraj.plugins
 
-import com.voidsamuraj.routes.fileRoute
-import com.voidsamuraj.routes.mainRoutes
-import com.voidsamuraj.routes.staticRoute
-import com.voidsamuraj.routes.authRoute
+import com.voidsamuraj.routes.*
 import io.ktor.server.routing.*
 import io.ktor.server.application.*
 
@@ -14,6 +11,7 @@ fun Application.configureRouting() {
         authRoute()
         fileRoute()
         mainRoutes()
+        armRoute()
     }
 }
 

@@ -250,8 +250,10 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
 }
 
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
+    const data = {isRightSide: ''+isRightSide};
+    const params = new URLSearchParams();
 
-         fetch("/files/draw/"+fileName, {method: "POST"}).then(response => {
+         fetch("/files/draw/"+fileName, {method: "POST",body: params}).then(response => {
                   if (response.ok) {
                     console.log("File is processing.");
                   } else {
@@ -339,7 +341,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
                 });
 
-                if(!(firstHeightSet&&firstHeightSet))
+                if((points[0] !== undefined)&&!(firstHeightSet&&firstHeightSet))
                     currentHeight=points[0].z- 0.1;
                 for(var i = 0; i < points.length - 1; i++) {
                     (function(index) {
@@ -361,7 +363,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
         })
                 .catch(error => {
-                    console.error('Wystąpił błąd:', error);
+                    console.error('Error:', error);
         });
     }
 }

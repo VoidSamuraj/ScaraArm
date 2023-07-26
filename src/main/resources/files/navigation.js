@@ -79,6 +79,11 @@ loadFileButton.addEventListener('click', function() {
             canMoveArm=true;
         }
     },time);
+            fetch('/endMove', {
+              method: 'POST'})
+            .catch(error => {
+              console.error('Error:', error);
+            });
 });
 
 manual.addEventListener('click',function(){
@@ -86,6 +91,11 @@ manual.addEventListener('click',function(){
     optionsMenu.style.left = optionMenuHide;
     loadMenu.style.left = loadMenuHide;
     canMoveArm=true;
+        fetch('/startMove', {
+          method: 'POST'})
+        .catch(error => {
+          console.error('Error:', error);
+        });
 });
 
 optionsButton.addEventListener('click', function(){

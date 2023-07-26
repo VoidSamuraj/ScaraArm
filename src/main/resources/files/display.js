@@ -13,7 +13,7 @@ const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','ramie1','ramie2','tool'];
 const arm2Movement=1.2;
 const maxHeight=3.4;
-const minHeight=0;
+const minHeight=-1;
 const MAX_ARM1_ANGLE=130;
 const MAX_ARM2_ANGLE=160;
 const armStep=1;
@@ -205,6 +205,7 @@ renderer.domElement.addEventListener('wheel', function(event) {
                 const scale=0.1;
                 if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
                     currentHeight+=zoomChange*scale;
+                    moveArmBy(null,null,zoomChange*scale,rightSide);
                     toolMesh.translateY(zoomChange*scale);
                 }
                 break;
@@ -273,6 +274,7 @@ async function move(){
                     currentToolX-=armStep;
                 else{
                     moveToolToPosition();
+                    moveArmBy(armStep,null,null,rightSide);
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
                 
@@ -282,6 +284,7 @@ async function move(){
                     currentToolX+=armStep;
                 else{
                     moveToolToPosition();
+                    moveArmBy(-armStep,null,null,rightSide);
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
@@ -290,6 +293,7 @@ async function move(){
                     currentToolY-=armStep;
                 else{
                     moveToolToPosition();
+                    moveArmBy(null,armStep,null,rightSide);
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
@@ -298,6 +302,7 @@ async function move(){
                     currentToolY+=armStep;
                 else{
                     moveToolToPosition();
+                    moveArmBy(null,-armStep,null,rightSide);
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
             }
@@ -339,7 +344,27 @@ function canMove(){
     
     return true;
 }
+function moveArmBy(x,y,z,isRightSide){
+    const data = {
+      x: ''+x,
+      y: ''+y,
+      z: ''+z,
+      isRightSide: ''+(!isRightSide)
+    };
+    const params = new URLSearchParams();
 
+    for (const key in data) {
+      params.append(key, data[key]);
+    }
+    fetch('/move', {
+      method: 'POST',
+      body: params
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+
+}
 function moveToolToPosition(checkRotation=true) {
     const Lr = 3.8; // arm 1 length
     const Sr = 5.75; // arm 2 length
