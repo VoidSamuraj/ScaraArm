@@ -183,7 +183,7 @@ renderer.domElement.addEventListener('wheel', function(event) {
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
                     else
                         arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-
+                    moveArmByAngle((rightSide?zoomChange:-zoomChange),null);
                     updateToolPos();
                 }
                 break;
@@ -197,7 +197,7 @@ renderer.domElement.addEventListener('wheel', function(event) {
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
                     else
                         arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-
+                    moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
                     updateToolPos();
                 }
                 break;
@@ -364,6 +364,24 @@ function moveArmBy(x,y,z,isRightSide){
       console.error('Error:', error);
     });
 
+}
+function moveArmByAngle(L,S){
+    const data = {
+      L: ''+L,
+      S: ''+S
+    };
+    const params = new URLSearchParams();
+
+    for (const key in data) {
+      params.append(key, data[key]);
+    }
+    fetch('/moveByAngle', {
+      method: 'POST',
+      body: params
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
 }
 function moveToolToPosition(checkRotation=true) {
     const Lr = 3.8; // arm 1 length

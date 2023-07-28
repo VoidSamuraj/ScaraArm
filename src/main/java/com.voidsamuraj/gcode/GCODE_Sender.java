@@ -252,7 +252,7 @@ public class GCODE_Sender {
 
         }
         if(have){
-            ret+=Transition(x, y, z, speedNow,inSteps, isRightSide);
+            ret+=Transition(x, y, z, speedNow,inSteps, isRightSide,false);
             return ret;
         }
         return "";
@@ -263,18 +263,14 @@ public class GCODE_Sender {
      * @param inSteps - if change degrees to steps
      * @param isRightSide - direction of arm
      */
-    private static String Transition(Double xMove,Double yMove,Double zMove,Double speed,Boolean inSteps,Boolean isRightSide) {
+    private static String Transition(Double xMove,Double yMove,Double zMove,Double speed,Boolean inSteps,Boolean isRightSide,boolean oneStep) {
         StringBuilder comand = new StringBuilder();
-        System.out.println("x " + position[0] + "  y " + position[1]);
-
         double xm=(yMove!=null)?(isRelative?yMove+position[0]:yMove):position[0];
         double ym=(xMove!=null)?(isRelative?xMove+position[1]:xMove):position[1];
 
         //double xm = (xMove != null) ? (isRelative ? xMove + position[0] : xMove) : position[0];
         //double ym = (yMove != null) ? (isRelative ? yMove + position[1] : yMove) : position[1];
-        System.out.println("ZMOVE "+zMove);
         double zm = (zMove != null) ? (isRelative ? zMove + position[2] : zMove) : position[2];
-        System.out.println("ZMOVE "+zm);
 
 
         if(xm!=position[0]||ym!=position[1]){
@@ -295,34 +291,49 @@ public class GCODE_Sender {
                 double angle = gamma + alpha;
                 double alphaAdd = Math.toDegrees(angle);
                 double betaAdd = Math.toDegrees(beta);
-
+                System.out.println("KATY USTAWIONE OBLICZONE "+alphaAdd+" "+betaAdd);
                 if (Double.isNaN(alphaAdd))
                     alphaAdd = 0;
                 if (Double.isNaN(betaAdd))
                     betaAdd = 0;
 
-                double alphaChange = alphaAdd == 0 ? 0 : (angles[0] - alphaAdd) / totalSteps;
-                double betaChange = betaAdd == 0 ? 0 : (angles[1] - betaAdd) / totalSteps;
-                double zInSteps=zm/totalSteps;
+                double alphaChange = alphaAdd == 0 ? 0 : (angles[0] - alphaAdd);
+                double betaChange = betaAdd == 0 ? 0 : (angles[1] - betaAdd);
                 //attempt to interpolate
-
+                if(!oneStep)
                 for (int steps=0;steps<totalSteps;steps++) {
                         if (inSteps) {
-                            comand.append(L).append((long) ((alphaChange * ARM_LONG_STEPS_PER_ROTATION) / 360 * (isRightSide ? 1 : -1))).append(" ").append(S).append(((long) (-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION )/ 360) * (isRightSide ? 1 : -1));
+                            comand.append(L).append((long) ((alphaChange  / totalSteps* ARM_LONG_STEPS_PER_ROTATION) / 360 * (isRightSide ? 1 : -1))).append(" ").append(S).append(((long) (-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION )/ 360) * (isRightSide ? 1 : -1));
                             // -1 for direction
                             if (zm != position[2]&&isRelative) {
                                 //need to check if works with relative and absolute mode
-                                comand.append(" Z").append((long) zInSteps * MOTOR_STEPS_PRER_ROTATION*-1);
+                                comand.append(" Z").append((long) zm / totalSteps * MOTOR_STEPS_PRER_ROTATION*-1);
                             }
                         } else {
-                            comand.append("" + L).append(alphaChange).append(" ").append(S).append(betaChange);
+                            comand.append("" + L).append(alphaChange / totalSteps).append(" ").append(S).append(betaChange / totalSteps);
                         }
 
                         if (speed != null && speed != -1)
                             comand.append(" F").append((long) (speed * speedrate));
-
                         comand.append("\n");
 
+                }
+                else{
+                    if (inSteps) {
+                        comand.append(L).append((long) ((alphaChange * ARM_LONG_STEPS_PER_ROTATION) / 360 * (isRightSide ? 1 : -1))).append(" ").append(S).append(((long) (-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION )/ 360) * (isRightSide ? 1 : -1));
+                        // -1 for direction
+                        if (zm != position[2]&&isRelative) {
+                            //need to check if works with relative and absolute mode
+                            comand.append(" Z").append((long) zm * MOTOR_STEPS_PRER_ROTATION*-1);
+                        }
+                    } else {
+                        comand.append("" + L).append(alphaChange).append(" ").append(S).append(betaChange);
+                    }
+
+                    if (speed != null && speed != -1)
+                        comand.append(" F").append((long) (speed * speedrate));
+
+                    comand.append("\n");
                 }
 
                 if (!Double.isNaN(alphaAdd))
@@ -354,7 +365,7 @@ public class GCODE_Sender {
         double []positionCp=position.clone();
         boolean isRelativeCp=isRelative;
         isRelative=true;
-        String[] lines=Transition(xMove, yMove, zMove, null, true, isRightSide).split("\n");
+        String[] lines=Transition(xMove, yMove, zMove, null, true, isRightSide,false).split("\n");
         isRelative=isRelativeCp;
         try {
             if (!isPortOpen())
@@ -394,6 +405,60 @@ public class GCODE_Sender {
 
 
 
+
+    }
+    public static void moveBy(Double L,Double S){
+        double []anglesCp=angles.clone();
+        double []positionCp=position.clone();
+        System.out.println("PosBefore "+position[0]+" "+position[1]+"  angles "+angles[0]+" "+angles[1]+" "+L+" "+S);
+
+        double Ln=((L!=null)?(L+angles[0]):angles[0])* Math.PI / 180;
+        double Sn=(((S!=null)?(S+angles[1]):angles[1])-180)* Math.PI / 180;
+        double yPos=(Lr * Math.cos(Ln) +Sr * Math.cos(Sn+Ln));
+        double xPos=(Lr * Math.sin(Ln) +Sr * Math.sin(Sn+Ln));
+
+        boolean isRelativeCp=isRelative;
+        isRelative=false;
+        String[] lines=Transition(xPos, yPos, null, null, true, !isRightSide,true).split("\n");
+        isRelative=isRelativeCp;
+        System.out.println("PosAfter "+position[0]+" "+position[1]+"  angles "+angles[0]+" "+angles[1]+"  move "+xPos+" "+yPos);
+        System.out.println("PosAfter "+position[0]+" "+position[1]+"  angles "+Ln+" "+Sn);
+
+        try {
+            if (!isPortOpen())
+                openPort();
+            InputStream is = port.getInputStream();
+            BufferedInputStream bins = new BufferedInputStream(is);
+            PrintWriter pw = new PrintWriter(port.getOutputStream());
+
+            Thread.sleep(100);
+            startCommunication(pw,bins);
+            System.out.println("KOMUNIKACJA ");
+
+            for(String line : lines){
+                System.out.println(line+" xddd");
+                pw.write(line);
+                pw.flush();
+                byte[] buffer = new byte[1024];
+                do {
+                    try {
+                        Thread.sleep(100);
+                        bins.read(buffer);
+                        break;
+                    } catch (SerialPortTimeoutException e) {
+                        System.out.println("Timeout exception occurred: " + e.getMessage());
+                    }
+                } while (true);
+            }
+
+        } catch (IOException | InterruptedException ex) {
+            angles[0]=anglesCp[0];
+            angles[1]=anglesCp[1];
+            position[0]=positionCp[0];
+            position[1]=positionCp[1];
+            position[2]=positionCp[2];
+            Logger.getLogger(GCODE_Sender.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
     }
     public static void openPort() throws InterruptedException {

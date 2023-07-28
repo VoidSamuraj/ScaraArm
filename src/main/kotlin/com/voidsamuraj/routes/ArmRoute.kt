@@ -31,5 +31,12 @@ fun Route.armRoute() {
             z*=10
         GCODE_Sender.moveBy(x,y,z,isRightSide)
     }
-
+    post("/moveByAngle"){
+        if (!GCODE_Sender.isPortOpen())
+            GCODE_Sender.openPort()
+        val formParameters = call.receiveParameters()
+        val L = formParameters.getOrFail("L").toDoubleOrNull()
+        val S = formParameters.getOrFail("S").toDoubleOrNull()
+        GCODE_Sender.moveBy(L,S)
+    }
 }

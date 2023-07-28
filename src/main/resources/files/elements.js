@@ -252,7 +252,9 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     const data = {isRightSide: ''+isRightSide};
     const params = new URLSearchParams();
-
+    for (const key in data) {
+      params.append(key, data[key]);
+    }
          fetch("/files/draw/"+fileName, {method: "POST",body: params}).then(response => {
                   if (response.ok) {
                     console.log("File is processing.");

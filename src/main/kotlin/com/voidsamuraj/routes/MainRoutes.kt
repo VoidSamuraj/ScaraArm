@@ -20,7 +20,6 @@ fun Route.mainRoutes(){
 
             checkPermission(token = call.sessions.get("TOKEN")as MyToken?,
                 onSuccess = {
-
                     call.respondTemplate(template = "index.ftl", model= mapOf("expiration" to getTokenExpirationDate(call.sessions.get("TOKEN")as MyToken?)?.time,"lifeTime" to jwtExpirationSeconds))
                 },
                 onFailure = { call.respondRedirect("/login")}
@@ -28,7 +27,4 @@ fun Route.mainRoutes(){
 
         }
     }
-
-
-
 }
