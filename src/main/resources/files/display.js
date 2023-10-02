@@ -1,32 +1,38 @@
 import * as THREE from '/static/three/build/three.module.js'
-import {loadSTL}from '/static/stl.js'
-import {createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,getArmRange,getMinDistance,drawFile}from '/static/elements.js'
-import {setupHelpers}from '/static/sceneHelper.js'
+import {loadSTL,changeSTLColor}from '/static/stl.js'
+import {getRectangle,updateRectanglePercent,createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,drawArmRange,getMinDistance,drawFile}from '/static/elements.js'
+import {setupCanvasHelper,getRotationHelperGroup}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
 import {getCanMoveArm} from '/static/navigation.js'
 
-var przesuwanie=false;
 var isDragging=false;
 const panelSize=20;
+const armShift=panelSize/4
 const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','ramie1','ramie2','tool'];
-const arm2Movement=1.2;
-const maxHeight=3.4;
-const minHeight=-1;
-const MAX_ARM1_ANGLE=130;
-const MAX_ARM2_ANGLE=160;
+
+const arm1Length = 4;
+const arm2Length = 4.8;
+const arm2RotationShift=1;
+const maxHeight=2.1;
+const minHeight=-0.01;
+const MAX_ARM1_ANGLE=135;
+const MAX_ARM2_ANGLE=145;
+const MAX_ARM1_ANGLE_COLLISION=35;
 const armStep=1;
 const armColor=0xffa31a;
-const selectColor=0xff0000;
+const rotationTextHeight=7.53;
+const heightTextHeight=4.75;
+const selectColor=0xff2222;
 var rightSide = localStorage.getItem('rightSide');//direction of arm(movement area)
 if (rightSide === null)
     rightSide = false;
 else
     rightSide = JSON.parse(rightSide);
 
-var currentHeight=0;
-var currentToolX=9.55;
+var currentHeight=minHeight;
+var currentToolX=arm1Length+arm2Length;
 var currentToolY=0;//9.55
 
 var baseMesh=new THREE.Object3D();
@@ -36,8 +42,6 @@ var toolMesh=new THREE.Object3D();
 
 var lastSelectedMesh;
 
-const axesHelper1 = new THREE.AxesHelper(3);
-const axesHelper2 = new THREE.AxesHelper(3);
 const raycaster = new THREE.Raycaster();
 
 var arm1Pos= new THREE.Vector2();
@@ -61,33 +65,56 @@ positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed
 const scene = new THREE.Scene();
 const sceneHelper = new THREE.Scene();
 
-
-const textGeometry1 = new THREE.PlaneGeometry(0.5, 0.5);
-const textGeometry2 = new THREE.PlaneGeometry(0.5, 0.5);
+const textCircleSize=0.5;
+const textGeometry1 = new THREE.PlaneGeometry(textCircleSize, textCircleSize);
+const textGeometry2 = new THREE.PlaneGeometry(textCircleSize, textCircleSize);
+const textHeightGeometry = new THREE.PlaneGeometry(textCircleSize, textCircleSize);
 const textMaterial1 = new THREE.MeshBasicMaterial({ transparent: true });
 const textMaterial2 = new THREE.MeshBasicMaterial({ transparent: true });
+const textHeightMaterial = new THREE.MeshBasicMaterial({ transparent: true });
 
 // Stwórz Mesh z użyciem geometrii tekstu i materiału tekstu
 const arm1Text = new THREE.Mesh(textGeometry1, textMaterial1);
 scene.add(arm1Text);
 const arm2Text = new THREE.Mesh(textGeometry2, textMaterial2);
 scene.add(arm2Text);
-
-const circleMesh1= createCircle(scene,5,0,4.26,0.4);
-
-const circleMesh2= createCircle(scene,arm2Movement,0,6.06,0.4);
-
-var ringMesh1= createRing(scene,5,0,4.26,0.4,0.5,0);
-ringMesh1.rotateX(Math.PI);
-
-var ringMesh2= createRing(scene,arm2Movement,0,6.06,0.4,0.5,0);
-
+const heightText = new THREE.Mesh(textHeightGeometry, textHeightMaterial);
+scene.add(heightText);
+rotation2.add(heightText);
 
 arm1Text.rotateX(-Math.PI/2);
 arm2Text.rotateX(-Math.PI/2);
+heightText.rotateY(-Math.PI/2);
 
-updateTextTexture("0",30,arm1Text,5,0,4.26);
-updateTextTexture("0",30,arm2Text,arm2Movement,0,6.06);
+updateTextTexture("0",30,arm1Text,5,0,rotationTextHeight);
+updateTextTexture("0",30,arm2Text,arm2RotationShift,0,rotationTextHeight);
+updateTextTexture("0",40,heightText,-3.501,0,heightTextHeight);
+
+const heightRect = getRectangle(1.7,1.6,-3.5,0,heightTextHeight);
+scene.add(heightRect);
+rotation2.add(heightRect);
+
+var rectanglePercent = updateRectanglePercent(
+        scene,      //scene
+        rotation2,  //parentGroup
+        null,       //oldRectanglePercentGroup
+        1.96,       //width
+        1.6,        //height
+        0.28,       //barWidth
+        0,        //percentage
+        -3.38  ,    //x
+        0,          //y
+        heightTextHeight    //z
+    );
+
+
+
+const circleMesh1= createCircle(scene,5,0,rotationTextHeight,textCircleSize-0.005);
+const circleMesh2= createCircle(scene,arm2RotationShift,0,rotationTextHeight,textCircleSize-0.005);
+
+var ringMesh1= createRing(scene,5,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
+ringMesh1.rotateX(Math.PI);
+var ringMesh2= createRing(scene,arm2RotationShift,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
 
 // Kamera
 const width = window.innerWidth;
@@ -112,11 +139,11 @@ pivotPoint.add(camera);
 scene.add(pivotPoint);
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ canvas: canvas });
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setClearColor(0x1b1b1b);
 
-const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper });
+const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper, antialias: true });
 rendererHelper.setSize( canvasHelper.width, canvasHelper.height );
 rendererHelper.setClearColor(0x1b1b1b,0);
 let zoomLevel = 80;
@@ -135,37 +162,13 @@ var temp = new THREE.Vector3();
 var nowRounded;
 controls.addEventListener('change', updateHelper);
 
-function updateHelper(){
-    if(previousPosition===null){
-        previousPosition= new THREE.Vector3();
-        previousPosition.copy(controls.object.position);
-    }
-    if(previousRotation==null){
-        //compare don't work always with high precision
-        previousRotation= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
-    }
-    
-    nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
-    if (!previousRotation.equals(nowRounded)) {
-        arm1Text.rotation.z +=nowRounded.z-previousRotation.z;
-        arm2Text.rotation.z +=nowRounded.z-previousRotation.z;
-        controlsHelper.target = sceneHelper.position;
-        controlsHelper.object.rotation.copy(controls.object.rotation);
-        previousRotation=new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
-    }else{
-        
-        previousPosition.sub(controls.object.position);
-        toUndo.add(previousPosition);
-    }
-    temp.addVectors(controls.object.position,toUndo);
-    controlsHelper.object.position.copy(temp);
-    
-    rendererHelper.render(sceneHelper, cameraCanvasHelper);
-    previousPosition.copy(controls.object.position);
-}
 
 renderer.domElement.addEventListener('click', selectSTL);
 
+function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightSide){
+    return !isRightSide && armAngle>=-MAX_ARM_ANGLE && armAngle<=(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) ||
+    isRightSide && armAngle>=-(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) && armAngle<=MAX_ARM_ANGLE
+}
 
 renderer.domElement.addEventListener('wheel', function(event) {
     if (editMode && getCanMoveArm()) {
@@ -174,10 +177,10 @@ renderer.domElement.addEventListener('wheel', function(event) {
         switch(lastSelectedMesh.children[0].name){
 
             case stlNames[1]:
-                if((arm1Angle+zoomChange)>=-MAX_ARM1_ANGLE&&(arm1Angle+zoomChange)<=MAX_ARM1_ANGLE){
+                if(isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION, arm1Angle+zoomChange,rightSide)){
                     arm1Angle+=zoomChange;
-                    rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2Movement,panelSize,rightSide);
-                    updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,4.26);
+                    rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2RotationShift,armShift,rightSide);
+                    updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,rotationTextHeight);
                     updateRing(ringMesh1,0.4,0.5,rightSide?(arm1Angle%360):(-arm1Angle%360));
                     if(rightSide)
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
@@ -188,10 +191,10 @@ renderer.domElement.addEventListener('wheel', function(event) {
                 }
                 break;
             case stlNames[2]:
-                if((arm2Angle+zoomChange)>=0&&(arm2Angle+zoomChange)<=MAX_ARM2_ANGLE){
+                if(isAngleBetween(MAX_ARM2_ANGLE, null, arm2Angle+zoomChange,rightSide)){
                     arm2Angle+=zoomChange;
-                    rotateArm2(rotation2,zoomChange,arm2Movement,rightSide);
-                    updateTextTexture((Math.round(arm2Angle%360)).toString(),26,arm2Text,arm2Movement,0,6.06);
+                    rotateArm2(rotation2,zoomChange,arm2RotationShift,rightSide);
+                    updateTextTexture((Math.round(arm2Angle%360)).toString(),30,arm2Text,arm2RotationShift,0,rotationTextHeight);
                     updateRing(ringMesh2,0.4,0.5,rightSide?(arm2Angle%360):(-arm2Angle%360));
                     if(rightSide)
                         arm2Text.rotation.z += zoomChange * Math.PI / 180;
@@ -202,17 +205,38 @@ renderer.domElement.addEventListener('wheel', function(event) {
                 }
                 break;
             case stlNames[3]:
-                const scale=0.1;
+                const scale=0.05;
+                let lastHeight=currentHeight;
                 if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
                     currentHeight+=zoomChange*scale;
-                    moveArmBy(null,null,zoomChange*scale,rightSide);
-                    toolMesh.translateY(zoomChange*scale);
+
+                }else if(zoomChange>0&&(currentHeight+zoomChange*scale)>maxHeight)
+                    currentHeight=maxHeight;
+                else if(zoomChange<0&&(currentHeight+zoomChange*scale)<minHeight)
+                    currentHeight=minHeight;
+                if(currentHeight!=lastHeight){
+                    let percent=Math.round((currentHeight-minHeight)/(maxHeight-minHeight)*100);
+                    rectanglePercent = updateRectanglePercent(
+                            scene,              //scene
+                            rotation2,          //parentGroup
+                            rectanglePercent,   //oldRectanglePercentGroup
+                            1.96,               //width
+                            1.6,                //height
+                            0.28,               //barWidth
+                            percent,                 //percentage
+                            -3.38  ,            //x
+                            0,                  //y
+                            heightTextHeight    //z
+                        );
+                    updateTextTexture((currentHeight-minHeight).toFixed(2).toString(),40,heightText,-3.501,0,heightTextHeight);
+                    moveArmBy(null,null,currentHeight-lastHeight,rightSide);
+                    toolMesh.translateY(currentHeight-lastHeight);
                 }
                 break;
         }
     } else {
         controls.enableZoom=true;
-        lastSelectedMesh.children[0].material.color.set(armColor);
+        changeSTLColor(lastSelectedMesh,armColor);
 
     }
 }, {passive: false});
@@ -222,7 +246,7 @@ addGrid(scene,panelSize,0, 0,-1);
 // rysowanie obszaru zasięgu
 
 
-var armRange= getArmRange(scene,panelSize,3.8,5.75,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide);
+var armRange= drawArmRange(scene,panelSize,armShift,arm1Length,arm2Length,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
 scene.add(armRange);
 // Rysowanie sceny
 function animate() {
@@ -232,13 +256,13 @@ function animate() {
 }
 animate();
 
-move();
+setupMoveListener();
 
 //stl
-loadSTL(stlNames[0],panelSize/4, 0,-1, mesh => { baseMesh.add(mesh); });
-loadSTL(stlNames[1],panelSize/4, 0,-1, mesh => { arm1Mesh.add(mesh); });
-loadSTL(stlNames[2],panelSize/4, 0,-1, mesh => { arm2Mesh.add(mesh); });
-loadSTL(stlNames[3],panelSize/4, 0,-1, mesh => { toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
+loadSTL(stlNames[0],armShift, 0,5.1, mesh => { baseMesh.add(mesh); });
+loadSTL(stlNames[1],armShift, 0,5.1, mesh => { arm1Mesh.add(mesh); });
+loadSTL(stlNames[2],armShift, 0,5.1, mesh => { arm2Mesh.add(mesh); });
+loadSTL(stlNames[3],armShift, 0,5.1, mesh => { toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
 
 rotation2.add(arm2Mesh);
 rotation2.add(toolMesh);
@@ -249,7 +273,9 @@ rotation2.add(ringMesh2);
 rotation1.add(arm1Mesh);
 rotation1.add(rotation2);
 
-setupHelpers(cameraCanvasHelper,sceneHelper,pivotPointHelper,rotation1,rotation2,axesHelper1,axesHelper2,panelSize,arm2Movement);
+setupCanvasHelper(cameraCanvasHelper, sceneHelper, pivotPointHelper);
+const arm1RotationHelper=getRotationHelperGroup(rotation1, armShift, rotationTextHeight, textCircleSize);
+const arm2RotationHelper=getRotationHelperGroup(rotation2, arm2RotationShift, rotationTextHeight, textCircleSize);
 
 scene.add(rotation1);
 scene.add(rotation2);
@@ -265,7 +291,7 @@ toggle.addEventListener("change",function() {
     location.reload();
 });
 
-async function move(){
+async function setupMoveListener(){
     document.addEventListener('keydown', (event) => {
         if(toolEditMode){
             if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
@@ -277,7 +303,7 @@ async function move(){
                     moveArmBy(armStep,null,null,rightSide);
                 }
                 positionText.textContent="X="+currentToolX.toFixed(2)+" Y="+currentToolY.toFixed(2);
-                
+
             }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
                 currentToolX-=armStep;
                 if(!canMove())
@@ -310,38 +336,65 @@ async function move(){
     });
 }
 
+//update rotation of angle displays
+function updateHelper(){
+    if(previousPosition===null){
+        previousPosition= new THREE.Vector3();
+        previousPosition.copy(controls.object.position);
+    }
+    if(previousRotation==null){
+        //compare don't work always with high precision
+        previousRotation= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    }
+
+    nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    if (!previousRotation.equals(nowRounded)) {
+        arm1Text.rotation.z +=nowRounded.z-previousRotation.z;
+        arm2Text.rotation.z +=nowRounded.z-previousRotation.z;
+        controlsHelper.target = sceneHelper.position;
+        controlsHelper.object.rotation.copy(controls.object.rotation);
+        previousRotation=new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+    }else{
+
+        previousPosition.sub(controls.object.position);
+        toUndo.add(previousPosition);
+    }
+    temp.addVectors(controls.object.position,toUndo);
+    controlsHelper.object.position.copy(temp);
+
+    rendererHelper.render(sceneHelper, cameraCanvasHelper);
+    previousPosition.copy(controls.object.position);
+}
 
 function canMove(){
-    const Lr = 3.8;
-    const Sr = 5.75;
     const newRadius = Math.hypot(currentToolX, currentToolY);
-    
-    if (newRadius > Lr+Sr ||newRadius < getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr)) {
+
+    if (newRadius > arm1Length+arm2Length ||newRadius < getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Length)) {
         console.error("Object is outside workspace R<${newRadius}");
         return false;
     }
     let gamma = Math.atan2(currentToolY, currentToolX);
-    let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+    let toBeta = (arm1Length * arm1Length + arm2Length * arm2Length - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * arm1Length * arm2Length);
     let beta = Math.acos(toBeta);
-    
-    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+
+    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRadius);
     let alpha = Math.acos(toAlpha);
-    
+
     let angle = gamma + alpha;
     var arm1AngleNew = -(angle  * (180 / Math.PI));
     var arm2AngleNew = 180- (beta * (180 / Math.PI));
-    
+
     if (isNaN(arm1AngleNew))
         arm1AngleNew = 0;
-    
+
     if (isNaN(arm2AngleNew))
         arm2AngleNew = 0;
-    
-    if(arm1AngleNew>MAX_ARM1_ANGLE || arm1AngleNew<-MAX_ARM1_ANGLE)
+
+    if(!isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION,arm1AngleNew,rightSide))
         return false;
-    if(arm2AngleNew>MAX_ARM2_ANGLE || arm2AngleNew<-MAX_ARM2_ANGLE)
+    if(!isAngleBetween(MAX_ARM2_ANGLE, null,arm2AngleNew,rightSide))
         return false;
-    
+
     return true;
 }
 function moveArmBy(x,y,z,isRightSide){
@@ -384,15 +437,13 @@ function moveArmByAngle(L,S){
     });
 }
 function moveToolToPosition(checkRotation=true) {
-    const Lr = 3.8; // arm 1 length
-    const Sr = 5.75; // arm 2 length
     let newRadius = Math.hypot(currentToolX, currentToolY);
-    
+
     let gamma = Math.atan2(currentToolY, currentToolX);
-    let toBeta = (Lr * Lr + Sr * Sr - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * Lr * Sr);
+    let toBeta = (arm1Length * arm1Length + arm2Length * arm2Length - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * arm1Length * arm2Length);
     let beta = Math.acos(toBeta);
-    
-    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + Lr * Lr - Sr * Sr) / (2 * Lr * newRadius);
+
+    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRadius);
     let alpha = Math.acos(toAlpha);
     
     let angle = gamma + alpha;
@@ -427,16 +478,16 @@ function moveToolToPosition(checkRotation=true) {
         function interpolateStep() {
             if (steps < totalSteps) {
                 arm1Angle += arm1AngleNewCp / totalSteps; // update rotation
-                rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2Movement, panelSize,rightSide);
-                updateTextTexture((Math.round(arm1Angle % 360)).toString(), 30, arm1Text, 5, 0, 4.26);
+                rotateArm1(arm1AngleNewCp / totalSteps, rotation1, arm2Angle, rotation2, arm2RotationShift, armShift,rightSide);
+                updateTextTexture((Math.round(arm1Angle % 360)).toString(), 30, arm1Text, 5, 0, rotationTextHeight);
                 updateRing(ringMesh1, 0.4, 0.5, rightSide?(arm1Angle % 360):(-arm1Angle % 360));
                 if(rightSide)
                     arm2Text.rotation.z += arm1AngleNewCp / totalSteps * Math.PI / 180;
                 else
                     arm2Text.rotation.z -= arm1AngleNewCp / totalSteps * Math.PI / 180;
                 arm2Angle += arm2AngleNewCp / totalSteps;
-                rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2Movement,rightSide);
-                updateTextTexture((Math.round(arm2Angle % 360)).toString(), 26, arm2Text, arm2Movement, 0, 6.06);
+                rotateArm2(rotation2, arm2AngleNewCp / totalSteps, arm2RotationShift,rightSide);
+                updateTextTexture((Math.round(arm2Angle % 360)).toString(), 26, arm2Text, arm2RotationShift, 0, rotationTextHeight);
                 updateRing(ringMesh2, 0.4, 0.5, rightSide?(arm2Angle % 360):(-arm2Angle % 360));
                 if(rightSide)
                     arm2Text.rotation.z += arm2AngleNewCp / totalSteps * Math.PI / 180;
@@ -484,11 +535,10 @@ function updateToolPos(){
 function selectSTL(){
     if(getCanMoveArm()){
         const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
+        changeSTLColor(lastSelectedMesh,armColor);
 
-        lastSelectedMesh.children[0].material.color.set(armColor);
-
-        axesHelper1.visible=false;
-        axesHelper2.visible=false;
+        arm1RotationHelper.visible=false;
+        arm2RotationHelper.visible=false;
 
         editMode=false;
         toolEditMode=false;
@@ -511,23 +561,23 @@ function selectSTL(){
                 switch(object.name){
                     case stlNames[1]:
                         lastSelectedMesh=meshes[1];
-                        axesHelper1.visible=true;
+                        arm1RotationHelper.visible=true;
                         break;
                     case stlNames[2]:
                         lastSelectedMesh=meshes[2];
-                        axesHelper2.visible=true;
+                        arm2RotationHelper.visible=true;
                         break;
                     case stlNames[3]:
                         lastSelectedMesh=meshes[3];
                         toolEditMode=true;
                         break;
                 }
-                lastSelectedMesh.children[0].material.color.set(selectColor);
+                changeSTLColor(lastSelectedMesh,selectColor);
             }
         }
     }
 }
 function drawFileOnScene(fileName){
-    drawFile(scene,fileName,setToolPosition,panelSize/4,rightSide);
+    drawFile(scene,fileName,setToolPosition,armShift,rightSide);
 }
 window.drawFileOnScene=drawFileOnScene;

@@ -44,10 +44,10 @@ public class GCODE_Sender {
     private static final char S='S';//short axis name
 
     public static boolean isRightSide=false;
-    private static final long Lr=100; //long arm length
-    private static final long Sr=60;//short arm length
+    private static final long arm1Length=100; //long arm length
+    private static final long arm2Length=60;//short arm length
     //just to make sure everything in area
-    private static final long R=Sr+Lr;
+    private static final long R=arm2Length+arm1Length;
 
     private static final int MOTOR_STEPS_PRER_ROTATION=800;    //200 steps in 1 step mode, 400 in 1/2 step mode...
 
@@ -282,10 +282,10 @@ public class GCODE_Sender {
                 return "";
             }else{
                 double gamma = Math.atan2(ym, xm);//absolute degree angle to R
-                double toBeta = ((Lr * Lr) + (Sr * Sr) - (xm * xm) - (ym * ym)) / (2 * Lr * Sr);
+                double toBeta = ((arm1Length * arm1Length) + (arm2Length * arm2Length) - (xm * xm) - (ym * ym)) / (2 * arm1Length * arm2Length);
                 double beta = Math.acos(toBeta);//between  arms
 
-                double toAlpha = (xm * xm + ym * ym + Lr * Lr - Sr * Sr) / (2 * Lr * newRaius);
+                double toAlpha = (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRaius);
                 double alpha = Math.acos(toAlpha);   //between first arm and R
 
                 double angle = gamma + alpha;
@@ -414,8 +414,8 @@ public class GCODE_Sender {
 
         double Ln=((L!=null)?(L+angles[0]):angles[0])* Math.PI / 180;
         double Sn=(((S!=null)?(S+angles[1]):angles[1])-180)* Math.PI / 180;
-        double yPos=(Lr * Math.cos(Ln) +Sr * Math.cos(Sn+Ln));
-        double xPos=(Lr * Math.sin(Ln) +Sr * Math.sin(Sn+Ln));
+        double yPos=(arm1Length * Math.cos(Ln) +arm2Length * Math.cos(Sn+Ln));
+        double xPos=(arm1Length * Math.sin(Ln) +arm2Length * Math.sin(Sn+Ln));
 
         boolean isRelativeCp=isRelative;
         isRelative=false;

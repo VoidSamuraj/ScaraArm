@@ -11,6 +11,59 @@ export function createCircle(scene,x,y,z,size){
     return circleMesh;
 }
 
+export function getRectangle(width,height,x,y,z){
+    let rectangleMesh= new THREE.Mesh(new THREE.PlaneGeometry( width, height), new THREE.MeshBasicMaterial({ color: 0x454545 }));
+     rectangleMesh.rotateY(-Math.PI/2);
+     rectangleMesh.position.set(x, z, y);
+     return rectangleMesh;
+}
+
+function getRectanglePercent(width,height,barWidth,percent,x,y,z){
+     let rectangleMesh1= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
+     let rectangleMesh2= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
+     let rectangleMesh3= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
+     let rectangleMesh4= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
+
+     let spaceBetween=(width)/2;
+     let heightOfBar=z-(height*(100-percent)/200);
+
+     rectangleMesh1.rotateY(-Math.PI*3/4);
+     rectangleMesh1.position.set(x, heightOfBar, y-spaceBetween);
+     rectangleMesh2.rotateY(-Math.PI/4);
+     rectangleMesh2.position.set(x, heightOfBar, y+spaceBetween);
+     rectangleMesh3.rotateY(Math.PI*3/4);
+     rectangleMesh3.position.set(x+0.775, heightOfBar, y-spaceBetween);
+     rectangleMesh4.rotateY(Math.PI/4);
+     rectangleMesh4.position.set(x+0.775, heightOfBar, y+spaceBetween);
+
+     let group =new THREE.Group();
+     group.add(rectangleMesh1);
+     group.add(rectangleMesh2);
+     group.add(rectangleMesh3);
+     group.add(rectangleMesh4);
+     return group;
+}
+
+export function updateRectanglePercent(scene,parentGroup,oldRectanglePercentGroup,width,height,barWidth,percent,x,y,z){
+    if(oldRectanglePercentGroup!=null){
+        parentGroup.remove(oldRectanglePercentGroup);
+        scene.remove(oldRectanglePercentGroup);
+        // Usuń wszystkie geometrie w grupie i zwolnij ich zasoby
+        oldRectanglePercentGroup.children.forEach((mesh) => {
+          if (mesh.geometry) {
+            mesh.geometry.dispose();
+          }
+        });
+    }
+    if(percent!=0){
+        let newGroup=getRectanglePercent(width,height,barWidth,percent,x,y,z);
+        scene.add(newGroup);
+        parentGroup.add(newGroup);
+        return newGroup;
+    }
+    return null;
+}
+
 export function createRing(scene,x,y,z,min,max,degree){
     var ringMesh = new THREE.Mesh(new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide }));
     ringMesh.rotateX(-Math.PI/2);
@@ -31,45 +84,47 @@ export function addGrid(scene,panelSize,x,y,z){
     grid.position.set(x,z,y);
     scene.add(grid);
 
-    //panel pod siatką
+    //panel under grid
     const backgroundPlane = new THREE.Mesh(
             new THREE.PlaneBufferGeometry(panelSize, panelSize),
-    new THREE.MeshBasicMaterial({ color: 0x454545, side: THREE.DoubleSide})
-            );
+            new THREE.MeshBasicMaterial({ color: 0x454545, side: THREE.DoubleSide})
+        );
+
     backgroundPlane.position.set(x, z-0.01, y);
     backgroundPlane.rotation.x=90 * Math.PI / 180;
     scene.add(backgroundPlane);
 }
 
 export function addLight(scene,panelSize){
-    const light1 = new THREE.PointLight(0xffffff, 1, 1000);
+
+    const light1 = new THREE.PointLight(0xffffff, 0.6, 1000);
     light1.position.set(panelSize/2, 50, panelSize/2);
     scene.add(light1);
 
-    const light2 = new THREE.PointLight(0xffffff, 1, 1000);
+    const light2 = new THREE.PointLight(0xffffff, 0.6, 1000);
     light2.position.set(panelSize/2, 50, -panelSize/2);
     scene.add(light2);
 
-    const light3 = new THREE.PointLight(0xffffff, 1, 1000);
+    const light3 = new THREE.PointLight(0xffffff, 0.6, 1000);
     light3.position.set(-panelSize/2, 50, -panelSize/2);
     scene.add(light3);
 
-    const light4 = new THREE.PointLight(0xffffff, 1, 1000);
+    const light4 = new THREE.PointLight(0xffffff, 0.6, 1000);
     light4.position.set(-panelSize/2, 50, panelSize/2);
     scene.add(light4);
 }
 
-export function drawLines(scene, panelSize){
+export function drawLines(scene, panelSize,armShift){
     const redGeometry = new THREE.BufferGeometry();
     const greenGeometry = new THREE.BufferGeometry();
 
     const greenArray = new Float32Array([
-        panelSize/4, -1, 0,
+        armShift, -1, 0,
         -panelSize/2, -1, 0,
     ]);
     const redArray = new Float32Array([
-        panelSize/4, -1, -panelSize/2,
-        panelSize/4, -1, panelSize/2,
+        armShift, -1, -panelSize/2,
+        armShift, -1, panelSize/2,
     ]);
 
     redGeometry.setAttribute('position', new THREE.BufferAttribute(redArray, 3));
@@ -110,116 +165,123 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
     const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
 
+
     mesh.position.set(x,z+0.01,y/*-0.1*/);
     mesh.material.map = texture;
 }
 
-//dystans( najbliższy dystans)
-export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr){
+//closest distance of tool to center(arm1 rotation point)
+export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Length){
+
     let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
     let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
-    return Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
+
+    let x = arm1Length * Math.cos(a1) + arm2Length * Math.cos(a1 + a2);
+    let y = arm1Length * Math.sin(a1) + arm2Length * Math.sin(a1 + a2);
+
+    return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
 }
-export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,rightSide) {
+export function drawArmRange(scene,panelSize,armShift, arm1Length, arm2Length, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide) {
 
-    distance=getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,Lr,Sr);
-
-    let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
-    let a2=(MAX_ARM2_ANGLE)* Math.PI / 180;
-    var distance = Math.sqrt((Lr * Lr) + (Sr * Sr) - (2 * Lr * Sr * Math.cos(a1 + a2)))
-
-
-    const scale=50;
+    let distance=getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Length);
+    let scale=50;
+    let lineWidth=(arm1Length+arm2Length-distance)*scale;
+    let lineCenter=((arm1Length+arm2Length-distance)/2+distance)*scale;
 
     // main arc
-    const canvas1 = document.createElement('canvas');
-    const context1 = canvas1.getContext('2d');
-    canvas1.width = panelSize*scale;
-    canvas1.height = panelSize*scale;
-    const texture1 = new THREE.Texture(canvas1);
-    texture1.needsUpdate = true;
+    const canvasMainArc = document.createElement('canvas');
+    const contextMainArc = canvasMainArc.getContext('2d');
+    canvasMainArc.width = panelSize*scale;
+    canvasMainArc.height = panelSize*scale;
+    const textureMainArc = new THREE.Texture(canvasMainArc);
+    textureMainArc.needsUpdate = true;
 
-
-    context1.beginPath();
-    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
-    context1.lineWidth = (Lr+Sr-distance)*scale;
-    context1.strokeStyle = '#ff0000';
-    context1.stroke();
+    contextMainArc.beginPath();
+    contextMainArc.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, 0, (MAX_ARM1_ANGLE+MAX_ARM1_ANGLE_COLLISION) * Math.PI / 180);
+    contextMainArc.lineWidth = lineWidth;
+    contextMainArc.strokeStyle = '#ff0000';
+    contextMainArc.stroke();
 
     //part to cut
-    const canvas2 = document.createElement('canvas');
-    const context2 = canvas2.getContext('2d');
-    canvas2.width = panelSize*scale;
-    canvas2.height = panelSize*scale;
-    const texture2 = new THREE.Texture(canvas2);
-    texture2.needsUpdate = true;
+    const canvasToCut = document.createElement('canvas');
+    const contextToCut = canvasToCut.getContext('2d');
+    canvasToCut.width = panelSize*scale;
+    canvasToCut.height = panelSize*scale;
+    const textureToCut = new THREE.Texture(canvasToCut);
+    textureToCut.needsUpdate = true;
 
-    context2.beginPath();
-    context2.lineWidth = Sr*scale;
-    context2.strokeStyle = '#ff0000';
-    context2.arc((panelSize/2+Lr)*scale, panelSize/2*scale, Sr/2*scale,0, 2*Math.PI);
-    context2.stroke();
-
-    const canvas3 = document.createElement('canvas');
-    const context3 = canvas3.getContext('2d');
-    canvas3.width = panelSize*scale;
-    canvas3.height = panelSize*scale;
-    const texture3 = new THREE.Texture(canvas3);
-    texture3.needsUpdate = true;
-
+    contextToCut.beginPath();
+    contextToCut.lineWidth = scale;
+    contextToCut.fillStyle = '#ff0000';
+    contextToCut.arc((panelSize/2+arm1Length)*scale, panelSize/2*scale, arm2Length*scale,0, 2*Math.PI);
+    contextToCut.closePath()
+    contextToCut.fill();
+    
     //draw round end
-    context3.strokeStyle = '#ff0000';
-    context3.beginPath();
-    context3.lineWidth = Sr*scale;
-    var xp1=Lr;
+    const canvasRoundEnd = document.createElement('canvas');
+    const contextRoundEnd = canvasRoundEnd.getContext('2d');
+    canvasRoundEnd.width = panelSize*scale;
+    canvasRoundEnd.height = panelSize*scale;
+    const textureRoundEnd = new THREE.Texture(canvasRoundEnd);
+    textureRoundEnd.needsUpdate = true;
+
+    contextRoundEnd.fillStyle = '#ff0000';
+    contextRoundEnd.beginPath();
+    contextRoundEnd.lineWidth = scale;
+    var xp1=arm1Length;
     var yp1=0;
-    var angle=MAX_ARM1_ANGLE*Math.PI/90;
-    var x1=(xp1*Math.cos(angle)-yp1*Math.sin(angle)+panelSize/2)*scale;
-    var y1=(xp1*Math.sin(angle)+yp1*Math.cos(angle)+panelSize/2)*scale;
+    var angle=(MAX_ARM1_ANGLE+MAX_ARM1_ANGLE_COLLISION)*Math.PI/180;
+    var x1=(arm1Length*Math.cos(angle)-yp1*Math.sin(angle)+panelSize/2)*scale;
+    var y1=(arm1Length*Math.sin(angle)+yp1*Math.cos(angle)+panelSize/2)*scale;
 
-    context3.arc(x1, y1, Sr/2*scale,0, 2*Math.PI );
-    context3.stroke();
-
-    //canvas to reverse and cut from canvas 3
-    const canvas4 = document.createElement('canvas');
-    const context4 = canvas4.getContext('2d');
-    canvas4.width = panelSize*scale;
-    canvas4.height = panelSize*scale;
-    const texture4 = new THREE.Texture(canvas4);
-    texture4.needsUpdate = true;
-    context4.beginPath();
-    context4.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, 2 * Math.PI);
-    context4.lineWidth = (Lr+Sr-distance)*scale;
-    context4.strokeStyle = '#ff0000';
-    context4.stroke();
-
-    context3.globalCompositeOperation = 'destination-in';
-    context3.drawImage(canvas4, 0, 0);
-    context3.globalCompositeOperation = 'source-over';
-
-    context1.beginPath();
-    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
-    context1.lineWidth = (Lr+Sr-distance)*scale;
-    context1.strokeStyle = '#ff0000';
-    context1.stroke();
+    contextRoundEnd.arc(x1, y1, arm2Length*scale,0, 2*Math.PI );
+    contextRoundEnd.closePath()
+    contextRoundEnd.fill();
 
 
+    //canvas to reverse and cut from canvasRoundEnd
 
-    //cut canvas 2 from canvas 1
-    context1.globalCompositeOperation = 'destination-out';
-    context1.drawImage(canvas2, 0, 0);
-    context1.globalCompositeOperation = 'source-over';
-    context1.drawImage(canvas3, 0, 0);
+    const canvasReverseCut = document.createElement('canvas');
+    const contextReverseCut = canvasReverseCut.getContext('2d');
+    canvasReverseCut.width = panelSize*scale;
+    canvasReverseCut.height = panelSize*scale;
+    const textureReverseCut = new THREE.Texture(canvasReverseCut);
+    textureReverseCut.needsUpdate = true;
+    contextReverseCut.beginPath();
+    contextReverseCut.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, 0, 2 * Math.PI);
+    contextReverseCut.lineWidth = lineWidth;
+    contextReverseCut.strokeStyle = '#ff0000';
+    contextReverseCut.stroke();
 
-    //fill gap after canvas 3 remove
-    context1.beginPath();
-    context1.arc((panelSize/2)*scale, (panelSize/2)*scale, ((Lr+Sr-distance)/2+distance)*scale, (MAX_ARM1_ANGLE - 40)*2 * Math.PI / 180,MAX_ARM1_ANGLE*2 * Math.PI / 180 );
-    context1.lineWidth = (Lr+Sr-distance)*scale;
-    context1.stroke();
+    contextRoundEnd.globalCompositeOperation = 'destination-in';
+    contextRoundEnd.drawImage(canvasReverseCut, 0, 0);
+    contextRoundEnd.globalCompositeOperation = 'source-over';
+/*
+    contextMainArc.beginPath();
+    contextMainArc.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
+    contextMainArc.lineWidth = lineWidth;
+    contextMainArc.strokeStyle = '#ff0000';
+    contextMainArc.stroke();
+*/
 
+    contextMainArc.drawImage(canvasRoundEnd, 0, 0);
+    //cut canvasToCut from mainCanvas
+    contextMainArc.globalCompositeOperation = 'destination-out';
+    contextMainArc.drawImage(canvasToCut, 0, 0);
+    contextMainArc.globalCompositeOperation = 'source-over';
+
+
+
+    //fill gap after contextReverseCut remove
+    /*
+    contextMainArc.beginPath();
+    contextMainArc.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, (MAX_ARM1_ANGLE - 40)*2 * Math.PI / 180,MAX_ARM1_ANGLE*2 * Math.PI / 180 );
+    contextMainArc.lineWidth = lineWidth;
+   contextMainArc.stroke();
+*/
 
     //change opacity of canvas
-    var imageData = context1.getImageData(0, 0, canvas1.width, canvas1.height);
+    var imageData = contextMainArc.getImageData(0, 0, canvasMainArc.width, canvasMainArc.height);
     var data = imageData.data;
 
     var alpha = 0.5;
@@ -230,12 +292,12 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
         data[i + 3] = alpha * data[i + 3]; //alpha
     }
 
-    context1.putImageData(imageData, 0, 0);
+    contextMainArc.putImageData(imageData, 0, 0);
 
     const geometry = new THREE.PlaneGeometry(panelSize, panelSize);
     const material = new THREE.MeshBasicMaterial({transparent: true, depthWrite: false, depthTest: true, wireframe: false});
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.material.map = texture1;
+    mesh.material.map = textureMainArc;
     mesh.rotateX(-Math.PI/2);
 
     if(rightSide)
@@ -244,7 +306,7 @@ export function getArmRange(scene,panelSize, Lr, Sr, MAX_ARM1_ANGLE,MAX_ARM2_ANG
         mesh.rotateZ(-MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
         mesh.scale.y = -1;
     }
-    mesh.position.set(panelSize/4, -0.97,0);
+    mesh.position.set(armShift, -0.97,0);
 
     return mesh;
 }

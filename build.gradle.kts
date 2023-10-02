@@ -13,7 +13,7 @@ plugins {
                 id("org.jetbrains.kotlin.plugin.serialization") version "1.8.10"
 }
 
-group = "com.voidsamiraj"
+group = "com.voidsamuraj"
 version = "0.0.1"
 application {
     mainClass.set("io.ktor.server.netty.EngineMain")
@@ -41,7 +41,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
-
+    
+    implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
     implementation("io.ktor:ktor-client-serialization-jvm:1.6.4")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")

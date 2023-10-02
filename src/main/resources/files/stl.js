@@ -1,27 +1,25 @@
 import * as THREE from '/static/three/build/three.module.js'
 import { STLLoader } from '/static/three/examples/jsm/loaders/STLLoader.js';
-
-const loader = new STLLoader();
+const SLoader = new STLLoader();
 const armColor=0xffa31a;
-
-
+export function changeSTLColor(stl,color){
+    stl.children[0].material.color.set(color);
+    stl.children[0].material.emissive.set(color);
+}
 export function loadSTL(nazwa,x,y,z,callback){
+    SLoader.load(`/static/stl/${nazwa}.stl`, (geometry) => {
 
-    loader.load(`/static/stl/${nazwa}.stl`, (geometry) => {
-
-          const shadowMaterial = new THREE.MeshStandardMaterial({
+          const shadowMaterial = new THREE.MeshPhongMaterial({
                                        color: armColor,
-                                       roughness: 0.8, // zmniejszenie roughness
-                                       lightMapIntensity: 0.8, // zwiększenie lightMapIntensity
+                                       emissive:armColor,       //to prevent black down side
+                                       emissiveIntensity:0.01
                                      });
 
-          shadowMaterial.castShadow = true;
-
-
-          // mesh z geometry
           const mesh = new THREE.Mesh(geometry, shadowMaterial);
+
           mesh.position.set(x,z,y);
           mesh.receiveShadow = true;
+          mesh.castShadow = true;
 
           mesh.rotation.x=-90 * Math.PI / 180;
 

@@ -1,18 +1,18 @@
 import * as THREE from '/static/three/build/three.module.js'
 
-export function rotateArm1(arm1Angle,rotation1,arm2Angle,rotation2,arm2Movement,panelSize,rightSide){
+export function rotateArm1(arm1Angle,rotation1,arm2Angle,rotation2,arm2Movement,armShift,rightSide){
 
     rotateArm2(rotation2,-arm2Angle,arm2Movement,rightSide);
-    rotation1.translateX(panelSize/4);
-    rotation2.translateX(panelSize/4);
+    rotation1.translateX(armShift);
+    rotation2.translateX(armShift);
    var stopnie = rightSide ? -arm1Angle : arm1Angle;
    stopnie *= Math.PI / 180;
 
     rotation1.rotateY(stopnie);
     rotation2.rotateY(stopnie);
 
-    rotation1.translateX(-panelSize/4);
-    rotation2.translateX(-panelSize/4);
+    rotation1.translateX(-armShift);
+    rotation2.translateX(-armShift);
     rotateArm2(rotation2,arm2Angle,arm2Movement,rightSide);
 }
 
