@@ -16,7 +16,7 @@ fun Route.armRoute() {
         GCODE_Sender.closePort()
     }
     post("/move"){
-        if (!GCODE_Sender.isPortOpen())
+        if (!GCODE_Sender.isPortOpen)
             GCODE_Sender.openPort()
         val formParameters = call.receiveParameters()
         var x = formParameters.getOrFail("x").toDoubleOrNull()
@@ -29,10 +29,10 @@ fun Route.armRoute() {
             y*=10
         if(z!=null)
             z*=10
-        GCODE_Sender.moveBy(x,y,z,isRightSide)
+        GCODE_Sender.moveBy(x,y,z,isRightSide!!)
     }
     post("/moveByAngle"){
-        if (!GCODE_Sender.isPortOpen())
+        if (!GCODE_Sender.isPortOpen)
             GCODE_Sender.openPort()
         val formParameters = call.receiveParameters()
         val L = formParameters.getOrFail("L").toDoubleOrNull()

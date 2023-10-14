@@ -52,18 +52,38 @@
                 </li>
             </ul>
         </nav>
-        <nav id="optionsMenu">
+    <nav id="optionsMenu">
             <ul>
                 <li class="button menu-button" id="closeOptionsIcon">
                     <img class="icons" src="static/icon/back.svg" alt="back">
                 </li>
                 <li class="button menu-button" id="switch">
-                    <input id="toggle" class="toggle" type="checkbox" role="switch" name="toggle">
+                    <input id="toggle" class="toggle" type="checkbox" role="switch" name="toggle"">
                     <label for="toggle" class="slot">
                         <span class="slot__label">Left</span>
                         <span class="slot__label">Right</span>
                     </label>
                 </li>
+                <form id="armForm">
+                    <li class="button button-no-hover menu-button menu-button-no-hover">
+                        <input id="arm1Length" class="range" type="number" min="3" max="8" >
+                        <label for="arm1Length" class="slot">
+                            <span class="slot__label">Arm 1 length</span>
+                        </label>
+                    </li>
+                    <li class="button button-no-hover menu-button menu-button-no-hover">
+                        <input id="arm2Length" class="range" type="number" min="3" max="8">
+                        <label for="arm2Length" class="slot">
+                            <span class="slot__label">Arm 2 length</span>
+                        </label>
+                    </li>
+                    <li title="This is distance between tool center and arm 2 end" class="button button-no-hover menu-button menu-button-no-hover">
+                        <input id="toolDistance" class="range" type="number" min="0.5" max="3">
+                        <label for="toolDistance" class="slot">
+                            <span class="slot__label" >Tool distance</span>
+                        </label>
+                    </li>
+                </form>
                 <div id="actions">
                 <li class="button menu-button">
                     <div class="upload-btn-wrapper">
@@ -96,6 +116,11 @@
         <script type="module" src="static/navigation.js"></script>
 
         <script>
+           function onEditSize(event){
+                        if(event.charCode==13)
+                            alert("TEST");
+                        return (event.charCode >= 48 && event.charCode <= 57) || event.key === '.' || event.key === ','
+                    }
             const expirationText = "${expiration}";
             const lifeText = "${lifeTime}";
 

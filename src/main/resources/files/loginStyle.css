@@ -84,7 +84,6 @@ input{
     line-height: 1;
     overflow: hidden;
     height: 2.5em;
-
     background-color: #ffa31a;
     color: #f0f0f0;
     border:  2px solid #f0f0f0;
@@ -112,4 +111,53 @@ input{
 }
 #auth>form>div>button{
     width: calc(50% - 20px);
+}
+
+@media screen and (max-width: 1024px){
+    #auth{
+        width:60%;
+        padding:60px;
+    }
+    input{
+        height: 8em;
+        border-radius: 4em;
+    }
+    #auth input{
+        margin-top: 10px;
+        margin-bottom:40px;
+    }
+}
+
+@media screen and (max-width: 1024px) and (min-width: 769px){
+    #auth *{
+        font-size: 1.6em;
+    }
+    #auth button{
+        font-size: 0.6em;
+    }
+}
+
+@media screen and (max-width: 769px){
+    #auth *{
+        font-size: 1.3em;
+    }
+}
+@media screen and (max-width: 700px){
+    #auth button{
+        font-size: 1em;
+    }
+}
+@media screen and (max-width: 600px){
+    #auth *{
+        font-size: 1em;
+    }
+    #auth input{
+        margin-bottom:30px;
+    }
+}
+
+@media screen and (max-width: 480px){
+    #auth input{
+        margin-bottom:20px;
+    }
 }

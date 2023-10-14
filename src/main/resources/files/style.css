@@ -25,8 +25,13 @@ body {
     background-color: #5A5A5A;
     box-shadow: 0px 0px 6px #5A5A5A;
     cursor: pointer;
-
 }
+.button-no-hover:hover{
+    background-color: #454545;
+    box-shadow: 0px 0px 0px #5A5A5A;
+    cursor: pointer;
+}
+
 #arm canvas#myCanvas{
     width:100% !important;
     height:100% !important;
@@ -67,7 +72,9 @@ canvas {
 .menu-button:hover{
     background-color: #5A5A5A;
 }
-
+.menu-button-no-hover:hover{
+    background-color: rgba(0,0,0,0) !important;
+}
 
 nav{
     width: 300px;
@@ -233,6 +240,24 @@ li button:hover{
 table button{
     padding:5px;
 }
+input[type="number"] {
+  border-radius: 0.75em;
+  color: #f0f0f0;
+  width: 4em;
+  height: 2em;
+  font-size: 1.2em;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0; /* Ustawić margines na 0, aby ukryć obszar strzałek */
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 
 #logout,td>button:nth-child(2){
     background-color: #990000;
@@ -265,16 +290,16 @@ td>button:first-child:hover{
 #optionsMenu{
     z-index: 3;
     background-color: #2C2F3E;
-    left: -300px;
+    left: -400px;
+    width: 400px;
+}
+#optionsMenu .menu-button{
+  width: 370px;
 }
 #loadMenu .menu-button input[type=file] {
     width: 570px;
 }
 
-#actions{
-    position: absolute;
-    bottom: 0px;
-}
 .icons{
     margin: auto;
 }
@@ -381,12 +406,49 @@ table td, table th {
 
 #positionText{
     margin: 0px;
-    color: transparent;
+    color: #ffa31a;
     font-size: 1.5em;
     font-weight: bold;
     letter-spacing: 0.1em;
     line-height: 1;
     overflow: hidden;
     height: 1em;
-    -webkit-text-stroke: 0.05em #ffa31a;
+}
+@media screen and (max-width: 960px) {
+    #positionBox{
+        min-width: 220px;
+    }
+    #pivot{
+        width:250px !important;
+        height:250px !important;
+    }
+}
+@media screen and (max-width: 768px){
+    #pivot{
+        width:200px !important;
+        height:200px !important;
+    }
+    table{
+        font-size:150%;
+    }
+    #loadMenu{
+        max-width: calc(100% - 74px);
+    }
+    .menu-button{
+        max-width: calc(100% - 30px);
+    }
+
+}
+@media screen and (max-width: 680px){
+    #pivot{
+        display: none;
+    }
+}
+
+@media screen and (max-width: 600px){
+    #positionText{
+        color: #ffa31a;
+        font-size: 1.3em;
+        -webkit-text-stroke: 0;
+    }
 }

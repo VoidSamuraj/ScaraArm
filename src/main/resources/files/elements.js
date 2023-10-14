@@ -79,10 +79,13 @@ export function updateRing(ringMesh,min,max,degree){
     ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide });
 }
 
-export function addGrid(scene,panelSize,x,y,z){
-    const grid = new THREE.GridHelper(panelSize, panelSize, 0xffffff, 0xffffff);
-    grid.position.set(x,z,y);
-    scene.add(grid);
+export function addGrid(scene,panelSize,x,y,z,divisions){
+    let grid1 = new THREE.GridHelper(panelSize, divisions, 0x777777, 0x777777);
+    let grid2 = new THREE.GridHelper(panelSize, divisions/10, 0xffffff, 0xffffff);
+    grid1.position.set(x,z,y);
+    grid2.position.set(x,z,y);
+    scene.add(grid1);
+    scene.add(grid2);
 
     //panel under grid
     const backgroundPlane = new THREE.Mesh(
@@ -238,9 +241,7 @@ export function drawArmRange(scene,panelSize,armShift, arm1Length, arm2Length, M
     contextRoundEnd.closePath()
     contextRoundEnd.fill();
 
-
     //canvas to reverse and cut from canvasRoundEnd
-
     const canvasReverseCut = document.createElement('canvas');
     const contextReverseCut = canvasReverseCut.getContext('2d');
     canvasReverseCut.width = panelSize*scale;
@@ -256,29 +257,26 @@ export function drawArmRange(scene,panelSize,armShift, arm1Length, arm2Length, M
     contextRoundEnd.globalCompositeOperation = 'destination-in';
     contextRoundEnd.drawImage(canvasReverseCut, 0, 0);
     contextRoundEnd.globalCompositeOperation = 'source-over';
-/*
-    contextMainArc.beginPath();
-    contextMainArc.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, 0, MAX_ARM1_ANGLE*2 * Math.PI / 180);
-    contextMainArc.lineWidth = lineWidth;
-    contextMainArc.strokeStyle = '#ff0000';
-    contextMainArc.stroke();
-*/
+
+    //corners of toolRange
+    const canvasCorners = document.createElement('canvas');
+    const contextCorners = canvasCorners.getContext('2d');
+    canvasCorners.width = panelSize*scale;
+    canvasCorners.height = panelSize*scale;
+    const textureCorners = new THREE.Texture(canvasCorners);
+    textureCorners.needsUpdate = true;
+    contextCorners.drawImage(canvasRoundEnd, 0, 0);
+    contextCorners.globalCompositeOperation = 'destination-out';
+    contextCorners.drawImage(canvasMainArc, 0, 0);
 
     contextMainArc.drawImage(canvasRoundEnd, 0, 0);
+
     //cut canvasToCut from mainCanvas
     contextMainArc.globalCompositeOperation = 'destination-out';
     contextMainArc.drawImage(canvasToCut, 0, 0);
     contextMainArc.globalCompositeOperation = 'source-over';
 
-
-
-    //fill gap after contextReverseCut remove
-    /*
-    contextMainArc.beginPath();
-    contextMainArc.arc((panelSize/2)*scale, (panelSize/2)*scale, lineCenter, (MAX_ARM1_ANGLE - 40)*2 * Math.PI / 180,MAX_ARM1_ANGLE*2 * Math.PI / 180 );
-    contextMainArc.lineWidth = lineWidth;
-   contextMainArc.stroke();
-*/
+    contextMainArc.drawImage(canvasCorners, 0, 0);
 
     //change opacity of canvas
     var imageData = contextMainArc.getImageData(0, 0, canvasMainArc.width, canvasMainArc.height);

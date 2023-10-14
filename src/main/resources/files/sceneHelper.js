@@ -39,8 +39,7 @@ function getCanvasHelperGroup(width,length,lineShift){
 export function getRotationHelperGroup(rotationGroup, armShift,helperHeight,lineShift){
     let armHelperGroup=getCanvasHelperGroup(0.1, 3,lineShift);
     getCanvasHelperGroup(armHelperGroup,0.1, 3,lineShift);
-    armHelperGroup.translateX(armShift);
-    armHelperGroup.translateY(helperHeight);
+    armHelperGroup.position.set(armShift,helperHeight,0);
     rotationGroup.add(armHelperGroup);
     armHelperGroup.visible=false;
     return armHelperGroup;

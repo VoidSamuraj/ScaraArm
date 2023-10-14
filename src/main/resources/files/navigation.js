@@ -7,8 +7,19 @@ const direction=document.getElementById('switch');
 const checkbox=document.getElementById('toggle');
 const logout=document.getElementById('logout');
 const deleteAccount=document.getElementById('deleteAccount');
+const armForm=document.getElementById('armForm');
+const arm1Length=document.getElementById('arm1Length');
+const arm2Length=document.getElementById('arm2Length');
+const toolDistance=document.getElementById('toolDistance');
+arm1Length.value=parseFloat(localStorage.getItem('arm1Length') || 4)*5;
+arm2Length.value=parseFloat(localStorage.getItem('arm2Length') || 4)*5;
+toolDistance.value=parseFloat(localStorage.getItem('toolDistanceToArm') || 0.8)*5;
+const maxArmLength=40;
+const minArmLength=15;
+const maxToolLength=25;
+const minToolLength=4;
 
-const optionMenuHide='-226px';
+const optionMenuHide='-400px';
 const loadMenuHide='-600px';
 const barWidth='74px';
 
@@ -26,6 +37,50 @@ var expanded= false;
 var menuDisplayed=false;
 var canMoveArm=true;
 export function getCanMoveArm(){return canMoveArm;}
+
+function formatFloat(text,min,max){
+    let formatted=text.replace('/,/g', '.');
+    if(formatted.split('.').length - 1>1 || formatted>max || formatted<min){
+        alert("Please insert valid number between "+min+" and "+max);
+        return null;
+    }
+    return parseFloat(formatted);
+}
+
+function onEditSize(event,name,updateDrawing){
+    if(event.charCode==13){
+        let valFormatted;
+        switch(name){
+            case "arm1Length":
+            valFormatted=formatFloat(arm1Length.value,minArmLength,maxArmLength);
+            break;
+            case "arm2Length":
+            valFormatted=formatFloat(arm2Length.value,minArmLength,maxArmLength);
+            break;
+            case "toolDistanceToArm":
+            valFormatted=formatFloat(toolDistance.value,minToolLength,maxToolLength);
+            break;
+        }
+        if(valFormatted!=null){
+            localStorage.setItem(name,valFormatted/5);
+            arm1Length.value=parseFloat(localStorage.getItem('arm1Length') || 4)*5;
+            arm2Length.value=parseFloat(localStorage.getItem('arm2Length') || 4)*5;
+            toolDistance.value=parseFloat(localStorage.getItem('toolDistanceToArm') || 0.8)*5;
+            updateDrawing();
+        }
+
+    }else if(!((event.charCode >= 48 && event.charCode <= 57) || event.key === '.' || event.key === ',')){
+        event.preventDefault();
+        return false;
+    }
+    return true
+}
+
+export function setupOptionMenu(updateDrawing){
+    arm1Length.addEventListener('keypress', function(event){onEditSize(event,"arm1Length",updateDrawing);});
+    arm2Length.addEventListener('keypress', function(event){onEditSize(event,"arm2Length",updateDrawing);});
+    toolDistance.addEventListener('keypress', function(event){onEditSize(event,"toolDistanceToArm",updateDrawing);});
+}
 
 loadMenu.style.minHeight=firstMenuStyle.height;
 optionsMenu.style.minHeight=firstMenuStyle.height;
@@ -119,7 +174,7 @@ optionsButton.addEventListener('click', function(){
 document.getElementById('menuIcon').addEventListener('click', function() {
     if(menuDisplayed){
         loadMenu.style.left = loadMenuHide;
-        optionsMenu.style.left = '-300px';
+        optionsMenu.style.left = '-400px';
         setTimeout(function(){
             firstMenuUl[1].style.transform = 'translateY('+optionMenuHide+')';
             firstMenu.style.height= barWidth;
@@ -279,5 +334,3 @@ function turnOffOverlay(){
     overlay.style.display='none';
 }
 document.addEventListener("DOMContentLoaded",fillTable);
-
-
