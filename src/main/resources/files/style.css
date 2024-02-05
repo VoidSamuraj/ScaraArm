@@ -136,7 +136,7 @@ li>a{
 .toggle:focus {
     outline: transparent;
 }
-.toggle,input{
+.toggle,input, #ports,#ports option{
     border-radius: 0.75em;
     box-shadow: 0 0 0 0.1em inset;
     cursor: pointer;
@@ -168,10 +168,13 @@ li>a{
 .toggle:checked ~ .slot .slot__label:nth-child(2) {
     transform: translateY(-100%) scaleY(1);
 }
-input{
+input, #ports, #ports option{
     border-radius: 1.5em;
     height: 3em;
     width:100%;
+}
+select option:checked {
+    color: blue;
 }
 
 nav .slot, nav a {
@@ -240,7 +243,7 @@ li button:hover{
 table button{
     padding:5px;
 }
-input[type="number"] {
+input[type="number"],#ports{
   border-radius: 0.75em;
   color: #f0f0f0;
   width: 4em;
@@ -254,7 +257,7 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0; /* Ustawić margines na 0, aby ukryć obszar strzałek */
 }
-input[type=number] {
+input[type="number"]{
   -moz-appearance: textfield;
 }
 
@@ -286,6 +289,11 @@ td>button:first-child:hover{
     left: 5px;
     top: 70px;
     opacity: 0;
+}
+.menu-button #ports,.menu-button #ports option{
+    font-size: 1.2em;
+    height: 2em;
+    width: 10em;
 }
 #optionsMenu{
     z-index: 3;

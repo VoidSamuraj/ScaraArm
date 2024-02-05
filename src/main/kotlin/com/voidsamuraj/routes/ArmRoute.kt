@@ -1,23 +1,25 @@
 package com.voidsamuraj.routes
 
-import com.voidsamuraj.gcode.GCODE_Sender
+import com.fazecast.jSerialComm.SerialPort
+import com.voidsamuraj.gcode.GCodeSender
 import io.ktor.server.application.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
 
 
 fun Route.armRoute() {
     post("/startMove"){
-        GCODE_Sender.openPort()
+        GCodeSender.openPort()
     }
     post("/endMove"){
-        GCODE_Sender.endCommunication()
-        GCODE_Sender.closePort()
+        GCodeSender.endCommunication()
+        GCodeSender.closePort()
     }
     post("/move"){
-        if (!GCODE_Sender.isPortOpen)
-            GCODE_Sender.openPort()
+        if (!GCodeSender.isPortOpen)
+            GCodeSender.openPort()
         val formParameters = call.receiveParameters()
         var x = formParameters.getOrFail("x").toDoubleOrNull()
         var y = formParameters.getOrFail("y").toDoubleOrNull()
@@ -29,14 +31,18 @@ fun Route.armRoute() {
             y*=10
         if(z!=null)
             z*=10
-        GCODE_Sender.moveBy(x,y,z,isRightSide!!)
+        GCodeSender.moveBy(x,y,z,isRightSide!!)
     }
+    get("/availablePorts"){
+        call.respond( SerialPort.getCommPorts().map{ it.systemPortName})
+    }
+
     post("/moveByAngle"){
-        if (!GCODE_Sender.isPortOpen)
-            GCODE_Sender.openPort()
+        if (!GCodeSender.isPortOpen)
+            GCodeSender.openPort()
         val formParameters = call.receiveParameters()
         val L = formParameters.getOrFail("L").toDoubleOrNull()
         val S = formParameters.getOrFail("S").toDoubleOrNull()
-        GCODE_Sender.moveBy(L,S)
+        GCodeSender.moveBy(L,S)
     }
 }

@@ -64,7 +64,13 @@
                         <span class="slot__label">Right</span>
                     </label>
                 </li>
-                <form id="armForm">
+                <li class="button button-no-hover menu-button menu-button-no-hover">
+                    <select id="ports" >
+                      <option value="opcja1">Opcja 1</option>
+                      <option value="opcja2">Opcja 2</option>
+                      <option value="opcja3">Opcja 3</option>
+                    </select>
+                </li>
                     <li class="button button-no-hover menu-button menu-button-no-hover">
                         <input id="arm1Length" class="range" type="number" min="3" max="8" >
                         <label for="arm1Length" class="slot">
@@ -83,7 +89,6 @@
                             <span class="slot__label" >Tool distance</span>
                         </label>
                     </li>
-                </form>
                 <div id="actions">
                 <li class="button menu-button">
                     <div class="upload-btn-wrapper">

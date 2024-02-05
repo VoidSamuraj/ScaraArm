@@ -1,41 +1,55 @@
 import * as THREE from '/static/three/build/three.module.js'
 import {loadSTL,changeSTLColor}from '/static/stl.js'
-import {getRectangle,updateRectanglePercent,createCircle,createRing,updateRing,addGrid,addLight,drawLines,updateTextTexture,drawArmRange,getMinDistance,drawFile}from '/static/elements.js'
+import {getRectangle,updateRectanglePercent,createCircle,createRing,updateRing,addGrid,addLight,drawCartesianLines,updateTextTexture,drawArmRange,getMinDistance,drawFile}from '/static/elements.js'
 import {setupCanvasHelper,getRotationHelperGroup}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
 import {getCanMoveArm, setupOptionMenu} from '/static/navigation.js'
 
-var isDragging=false;
+// main file to display and manage elements of arm and related UI
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                              parameters of arm and UI
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
 const panelSize=20;
 const armShift=panelSize/4
-const lastMouseClicked = new THREE.Vector2();
 const stlNames=['blok','arm1p1','arm1p2','arm2p1','arm2p2','toolmain','toolextension'];
 
-const scaleOfNotation=5;
+//scale of the base plate and grid under arm, this scale dimensions
+const scaleOfPlateSize=1.5;
+//scale of base plate divisions
+const scaleOfGridDivisions=10;
 const defaultArmLength=4;
 const defaultToolDistance=0.8;
-var arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArm1Length);
-var arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
-var toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
-setupOptionMenu(changeArmDimens);
-
-
-var arm2TotalLength = arm2Length+toolDistanceToArm;
-var additionalToolLength=toolDistanceToArm-defaultToolDistance;
-var additionalArm1Length=arm1Length-defaultArmLength;
-var additionalArm2Length=arm2Length-defaultArmLength;
-var arm2RotationShift=1-additionalArm1Length;
 const maxHeight=2.1;
 const minHeight=-0.01;
 const MAX_ARM1_ANGLE=135;
 const MAX_ARM2_ANGLE=145;
+//max angle of one side to prevent tool collision with arm base
 const MAX_ARM1_ANGLE_COLLISION=35;
 const armStep=1;
 const armColor=0xffa31a;
 const rotationTextHeight=7.53;
 const heightTextHeight=4.75;
 const selectColor=0xff2222;
+
+var arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArm1Length);
+var arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
+var toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
+setupOptionMenu(changeArmDimens);
+var arm1Angle=0;
+var arm2Angle=0;
+
+var arm2TotalLength = arm2Length+toolDistanceToArm;
+var additionalToolLength=toolDistanceToArm-defaultToolDistance;
+var additionalArm1Length=arm1Length-defaultArmLength;
+var additionalArm2Length=arm2Length-defaultArmLength;
+var arm2RotationShift=1-additionalArm1Length;
+
+var editMode=false;
+var toolEditMode=false;
+
 var rightSide = localStorage.getItem('rightSide');//direction of arm(movement area)
 if (rightSide === null)
     rightSide = false;
@@ -46,34 +60,24 @@ var currentHeight=minHeight;
 var currentToolX=arm1Length+arm2TotalLength;
 var currentToolY=0;
 
-var baseMesh=new THREE.Object3D();
-var arm1Mesh=new THREE.Object3D();
-var arm1MeshBase=new THREE.Object3D();
-var arm2Mesh=new THREE.Object3D();
-var toolMesh=new THREE.Object3D();
 
-var lastSelectedMesh;
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                              Objects on scene
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
-const raycaster = new THREE.Raycaster();
-
-var arm1Pos= new THREE.Vector2();
-var arm2Pos= new THREE.Vector2();
-
-var editMode=false;
-var toolEditMode=false;
-
-var arm1Angle=0;
-var arm2Angle=0;
+const baseMesh=new THREE.Object3D();
+const arm1Mesh=new THREE.Object3D();
+const arm2Mesh=new THREE.Object3D();
+const toolMesh=new THREE.Object3D();
 
 const rotation1 = new THREE.Group();
 const rotation2 = new THREE.Group();
-
 
 const canvas= document.getElementById('myCanvas');
 const canvasHelper= document.getElementById('pivot');
 const positionText= document.getElementById('positionText');
 updatePositionText();
-// Inicjalizacja sceny
+
 const scene = new THREE.Scene();
 const sceneHelper = new THREE.Scene();
 
@@ -84,15 +88,25 @@ const textHeightGeometry = new THREE.PlaneGeometry(textCircleSize, textCircleSiz
 const textMaterial1 = new THREE.MeshBasicMaterial({ transparent: true });
 const textMaterial2 = new THREE.MeshBasicMaterial({ transparent: true });
 const textHeightMaterial = new THREE.MeshBasicMaterial({ transparent: true });
+const circleMesh1= createCircle(scene,5,0,rotationTextHeight,textCircleSize-0.005);
+const circleMesh2= createCircle(scene,arm2RotationShift,0,rotationTextHeight,textCircleSize-0.005);
 
-// Stwórz Mesh z użyciem geometrii tekstu i materiału tekstu
 const arm1Text = new THREE.Mesh(textGeometry1, textMaterial1);
-scene.add(arm1Text);
 const arm2Text = new THREE.Mesh(textGeometry2, textMaterial2);
-scene.add(arm2Text);
 const heightText = new THREE.Mesh(textHeightGeometry, textHeightMaterial);
+const heightRect = getRectangle(1.7,1.6,-3.5+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
+
+var ringMesh1= createRing(scene,5,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
+ringMesh1.rotateX(Math.PI);
+var ringMesh2= createRing(scene,arm2RotationShift,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
+var lastSelectedMesh;
+
+scene.add(arm1Text);
+scene.add(arm2Text);
 scene.add(heightText);
+scene.add(heightRect);
 rotation2.add(heightText);
+rotation2.add(heightRect);
 
 arm1Text.rotateX(-Math.PI/2);
 arm2Text.rotateX(-Math.PI/2);
@@ -102,10 +116,7 @@ updateTextTexture("0",30,arm1Text,5,0,rotationTextHeight);
 updateTextTexture("0",30,arm2Text,arm2RotationShift,0,rotationTextHeight);
 updateTextTexture("0",40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
 
-const heightRect = getRectangle(1.7,1.6,-3.5+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
-scene.add(heightRect);
-rotation2.add(heightRect);
-
+//bar displaying percentage currentHeight relative to maxHeight-minHeight
 var rectanglePercent = updateRectanglePercent(
         scene,      //scene
         rotation2,  //parentGroup
@@ -118,10 +129,215 @@ var rectanglePercent = updateRectanglePercent(
         0,          //y
         heightTextHeight    //z
     );
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                              Camera
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+const camera = new THREE.OrthographicCamera(
+        width / -2, // left end
+width / 2, // right end
+height / 2, // top end
+height / -2, // bottom end
+1, // close plan
+1000 // far plan
+        );
+camera.position.set(0, 5, 20);
+
+
+const pivotPointHelper = new THREE.Object3D();
+const cameraCanvasHelper = new THREE.PerspectiveCamera(75, canvasHelper.width / canvasHelper.height, 0.01, 1000);
+
+// Point of camera rotation
+const pivotPoint = new THREE.Object3D();
+pivotPoint.add(camera);
+scene.add(pivotPoint);
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor(0x1b1b1b);
+
+const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper, antialias: true });
+rendererHelper.setSize( canvasHelper.width, canvasHelper.height );
+rendererHelper.setClearColor(0x1b1b1b,0);
+let zoomLevel = 80;
+camera.zoom = zoomLevel;
+camera.updateProjectionMatrix();
+cameraCanvasHelper.zoom = zoomLevel/2;
+rendererHelper.render(sceneHelper, cameraCanvasHelper);
+
+var controls = new OrbitControls(camera, renderer.domElement);
+var controlsHelper = new OrbitControls(cameraCanvasHelper, rendererHelper.domElement);
+
+//rotation and position for helper
+var previousRotation = null;
+var previousPosition = null;
+//store info about last position of helper
+var toUndo = new THREE.Vector3();
+var temp = new THREE.Vector3();
+
+//update helpers rotation
+document.addEventListener('DOMContentLoaded',function() {updateHelper();});
+controls.addEventListener('change', updateHelper);
+
+animate();
+
+// if device is not mobile, define click, keyboard and wheel event
+if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
+    renderer.domElement.addEventListener('click', selectSTL);
+    setupMoveListener();
+    renderer.domElement.addEventListener('wheel', function(event) {
+        if (editMode && getCanMoveArm()) {
+            controls.enableZoom=false;
+            const zoomChange = event.deltaY > 0 ? 1 : -1;
+            let reacted=false;
+            lastSelectedMesh.traverse((children)=>{
+                if(!reacted)
+                    switch(children.name){
+
+                case stlNames[1]:
+                case stlNames[2]:
+                case "cubeArmExtension1p1":
+                case "cubeArmExtension1p2":
+                    if(isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION, arm1Angle+zoomChange,rightSide)){
+                        arm1Angle+=zoomChange;
+                        rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2RotationShift,armShift,rightSide);
+                        updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,rotationTextHeight);
+                        updateRing(ringMesh1,0.4,0.5,rightSide?(arm1Angle%360):(-arm1Angle%360));
+                        if(rightSide)
+                            arm2Text.rotation.z += zoomChange * Math.PI / 180;
+                        else
+                            arm2Text.rotation.z -= zoomChange * Math.PI / 180;
+                        moveArmByAngle((rightSide?zoomChange:-zoomChange),null);
+                        updateToolPos();
+                        reacted=true;
+                    }
+                    break;
+                case stlNames[3]:
+                case stlNames[4]:
+                case "cubeArmExtension2":
+                    if(isAngleBetween(MAX_ARM2_ANGLE, null, arm2Angle+zoomChange,rightSide)){
+                        arm2Angle+=zoomChange;
+                        rotateArm2(rotation2,zoomChange,arm2RotationShift,rightSide);
+                        updateTextTexture((Math.round(arm2Angle%360)).toString(),30,arm2Text,arm2RotationShift,0,rotationTextHeight);
+                        updateRing(ringMesh2,0.4,0.5,rightSide?(arm2Angle%360):(-arm2Angle%360));
+                        if(rightSide)
+                            arm2Text.rotation.z += zoomChange * Math.PI / 180;
+                        else
+                            arm2Text.rotation.z -= zoomChange * Math.PI / 180;
+                        moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
+                        console.log("ANGLE_4 "+arm1Angle+" "+arm2Angle+" "+currentToolX+" "+currentToolY)
+                        updateToolPos();
+                        console.log("ANGLE_5 "+arm1Angle+" "+arm2Angle+" "+currentToolX+" "+currentToolY)
+                        reacted=true;
+                    }
+                    break;
+                case stlNames[5]:
+                case stlNames[6]:
+                case "cubeToolExtension1":
+                case "cubeToolExtension2":
+                    const scale=0.05;
+                    let lastHeight=currentHeight;
+                    if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
+                        currentHeight+=zoomChange*scale;
+
+                    }else if(zoomChange>0&&(currentHeight+zoomChange*scale)>maxHeight)
+                        currentHeight=maxHeight;
+                    else if(zoomChange<0&&(currentHeight+zoomChange*scale)<minHeight)
+                        currentHeight=minHeight;
+                    if(currentHeight!=lastHeight){
+                        let percent=Math.round((currentHeight-minHeight)/(maxHeight-minHeight)*100);
+                        rectanglePercent = updateRectanglePercent(
+                                scene,              //scene
+                                rotation2,          //parentGroup
+                                rectanglePercent,   //oldRectanglePercentGroup
+                                1.96,               //width
+                                1.6,                //height
+                                0.28,               //barWidth
+                                percent,                 //percentage
+                                -3.38+(defaultArmLength*2-arm1Length-arm2Length),            //x
+                                0,                  //y
+                                heightTextHeight    //z
+                            );
+                        updateTextTexture((currentHeight-minHeight).toFixed(2).toString(),40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
+                        moveArmBy(null,null,currentHeight-lastHeight,rightSide);
+                        toolMesh.translateY(currentHeight-lastHeight);
+                    }
+                    reacted=true;
+                    break;
+            }
+            });
+
+        } else {
+            controls.enableZoom=true;
+            changeSTLColor(lastSelectedMesh,armColor);
+
+        }
+    }, {passive: false});
+}
+
+addLight(scene,panelSize);
+addGrid(scene,panelSize*scaleOfPlateSize,0, 0,-1,panelSize*scaleOfGridDivisions*scaleOfPlateSize);
+
+var armRange= drawArmRange(panelSize*2,armShift,arm1Length,arm2TotalLength,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
+scene.add(armRange);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//                              STL
+//////////////////////////////////////////////////////////////////////////////////////////////////
+loadSTL(stlNames[0],armShift, 0,5.1, mesh => { mesh.name=stlNames[0];baseMesh.add(mesh); });
+loadSTL(stlNames[1],armShift, 0,5.1, mesh => { mesh.name=stlNames[1];arm1Mesh.add(mesh); });
+loadSTL(stlNames[2],armShift-additionalArm1Length, 0,5.1, mesh => { mesh.name=stlNames[2];arm1Mesh.add(mesh); });
+loadSTL(stlNames[3],armShift-additionalArm1Length, 0,5.1, mesh => {mesh.name=stlNames[3]; arm2Mesh.add(mesh); });
+loadSTL(stlNames[4],armShift-additionalArm1Length-additionalArm2Length, 0,5.1, mesh => {mesh.name=stlNames[4]; arm2Mesh.add(mesh); });
+loadSTL(stlNames[5],armShift-additionalArm1Length-additionalArm2Length, 0,5.1, mesh => {mesh.name=stlNames[5]; toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
+loadSTL(stlNames[6],armShift-additionalArm1Length-additionalArm2Length-additionalToolLength, 0,5.1, mesh => { mesh.name=stlNames[6];toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
+
+addAdditionalLength();
+
+
+rotation2.add(arm2Mesh);
+rotation2.add(toolMesh);
+rotation2.add(arm2Text);
+rotation2.add(circleMesh2);
+rotation2.add(ringMesh2);
+
+rotation1.add(arm1Mesh);
+rotation1.add(rotation2);
+
+setupCanvasHelper(cameraCanvasHelper, sceneHelper, pivotPointHelper);
+const arm1RotationHelper=getRotationHelperGroup(rotation1, armShift, rotationTextHeight, textCircleSize);
+const arm2RotationHelper=getRotationHelperGroup(rotation2, arm2RotationShift, rotationTextHeight, textCircleSize);
+
+scene.add(rotation1);
+scene.add(rotation2);
+scene.add(baseMesh);
+
+//lines drawn on arm base
+drawCartesianLines(scene, panelSize*scaleOfPlateSize,armShift);
+
+
+const toggle=document.getElementById("toggle");
+toggle.checked=rightSide;
+toggle.addEventListener("change",function() {
+    //update direction
+    rightSide=toggle.checked;
+    localStorage.setItem('rightSide', rightSide);
+    location.reload();
+});
+
+/**
+ * Function to dispose old elements, draw them in new positions and connect by meshes, redraw arm range
+ */
 function changeArmDimens(){
     currentToolX=arm1Length+arm2TotalLength;
     currentToolY=0;
-    moveToolToPosition(true,1);
+    moveToolOnSceneToPosition(true,1);
     arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArm1Length);
     arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArm1Length);
     toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
@@ -210,185 +426,13 @@ function changeArmDimens(){
         scene.remove(armRange);
         armRange.material.dispose();
         armRange.geometry.dispose();
-        armRange= drawArmRange(scene,panelSize*2,armShift,arm1Length,arm2TotalLength,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
+        armRange= drawArmRange(panelSize*2,armShift,arm1Length,arm2TotalLength,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
         scene.add(armRange);
 }
 
-const circleMesh1= createCircle(scene,5,0,rotationTextHeight,textCircleSize-0.005);
-const circleMesh2= createCircle(scene,arm2RotationShift,0,rotationTextHeight,textCircleSize-0.005);
-
-var ringMesh1= createRing(scene,5,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
-ringMesh1.rotateX(Math.PI);
-var ringMesh2= createRing(scene,arm2RotationShift,0,rotationTextHeight+0.001,0.4,textCircleSize,0);
-
-// Kamera
-const width = window.innerWidth;
-const height = window.innerHeight;
-const camera = new THREE.OrthographicCamera(
-        width / -2, // lewy kraniec
-width / 2, // prawy kraniec
-height / 2, // górny kraniec
-height / -2, // dolny kraniec
-1, // bliski plan
-1000 // daleki plan
-        );
-camera.position.set(0, 5, 20);
-
-
-const pivotPointHelper = new THREE.Object3D();
-const cameraCanvasHelper = new THREE.PerspectiveCamera(75, canvasHelper.width / canvasHelper.height, 0.01, 1000);
-
-// Punkt obrotu kamery
-const pivotPoint = new THREE.Object3D();
-pivotPoint.add(camera);
-scene.add(pivotPoint);
-
-// Renderer
-const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setClearColor(0x1b1b1b);
-
-const rendererHelper = new THREE.WebGLRenderer({ canvas: canvasHelper, antialias: true });
-rendererHelper.setSize( canvasHelper.width, canvasHelper.height );
-rendererHelper.setClearColor(0x1b1b1b,0);
-let zoomLevel = 80;
-camera.zoom = zoomLevel;
-camera.updateProjectionMatrix();
-cameraCanvasHelper.zoom = zoomLevel/2;
-rendererHelper.render(sceneHelper, cameraCanvasHelper);
-
-var controls = new OrbitControls(camera, renderer.domElement);
-var controlsHelper = new OrbitControls(cameraCanvasHelper, rendererHelper.domElement);
-
-var previousRotation = null;
-var previousPosition = null;
-var toUndo = new THREE.Vector3();
-var temp = new THREE.Vector3();
-var nowRounded;
-controls.addEventListener('change', updateHelper);
-
-function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightSide){
-    return !isRightSide && armAngle>=-MAX_ARM_ANGLE && armAngle<=(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) ||
-    isRightSide && armAngle>=-(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) && armAngle<=MAX_ARM_ANGLE
-}
-
-if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
-    renderer.domElement.addEventListener('click', selectSTL);
-    renderer.domElement.addEventListener('wheel', function(event) {
-        if (editMode && getCanMoveArm()) {
-            controls.enableZoom=false;
-            const zoomChange = event.deltaY > 0 ? 1 : -1;
-            let reacted=false;
-            lastSelectedMesh.traverse((children)=>{
-                if(!reacted)
-                    switch(children.name){
-
-                case stlNames[1]:
-                case stlNames[2]:
-                case "cubeArmExtension1p1":
-                case "cubeArmExtension1p2":
-                    if(isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION, arm1Angle+zoomChange,rightSide)){
-                        arm1Angle+=zoomChange;
-                        rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2RotationShift,armShift,rightSide);
-                        updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,rotationTextHeight);
-                        updateRing(ringMesh1,0.4,0.5,rightSide?(arm1Angle%360):(-arm1Angle%360));
-                        if(rightSide)
-                            arm2Text.rotation.z += zoomChange * Math.PI / 180;
-                        else
-                            arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                        moveArmByAngle((rightSide?zoomChange:-zoomChange),null);
-                        updateToolPos();
-                        reacted=true;
-                    }
-                    break;
-                case stlNames[3]:
-                case stlNames[4]:
-                case "cubeArmExtension2":
-                    if(isAngleBetween(MAX_ARM2_ANGLE, null, arm2Angle+zoomChange,rightSide)){
-                        arm2Angle+=zoomChange;
-                        rotateArm2(rotation2,zoomChange,arm2RotationShift,rightSide);
-                        updateTextTexture((Math.round(arm2Angle%360)).toString(),30,arm2Text,arm2RotationShift,0,rotationTextHeight);
-                        updateRing(ringMesh2,0.4,0.5,rightSide?(arm2Angle%360):(-arm2Angle%360));
-                        if(rightSide)
-                            arm2Text.rotation.z += zoomChange * Math.PI / 180;
-                        else
-                            arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                        moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
-                        updateToolPos();
-                        reacted=true;
-                    }
-                    break;
-                case stlNames[5]:
-                case stlNames[6]:
-                case "cubeToolExtension1":
-                case "cubeToolExtension2":
-                    const scale=0.05;
-                    let lastHeight=currentHeight;
-                    if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
-                        currentHeight+=zoomChange*scale;
-
-                    }else if(zoomChange>0&&(currentHeight+zoomChange*scale)>maxHeight)
-                        currentHeight=maxHeight;
-                    else if(zoomChange<0&&(currentHeight+zoomChange*scale)<minHeight)
-                        currentHeight=minHeight;
-                    if(currentHeight!=lastHeight){
-                        let percent=Math.round((currentHeight-minHeight)/(maxHeight-minHeight)*100);
-                        rectanglePercent = updateRectanglePercent(
-                                scene,              //scene
-                                rotation2,          //parentGroup
-                                rectanglePercent,   //oldRectanglePercentGroup
-                                1.96,               //width
-                                1.6,                //height
-                                0.28,               //barWidth
-                                percent,                 //percentage
-                                -3.38+(defaultArmLength*2-arm1Length-arm2Length),            //x
-                                0,                  //y
-                                heightTextHeight    //z
-                            );
-                        updateTextTexture((currentHeight-minHeight).toFixed(2).toString(),40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
-                        moveArmBy(null,null,currentHeight-lastHeight,rightSide);
-                        toolMesh.translateY(currentHeight-lastHeight);
-                    }
-                    reacted=true;
-                    break;
-            }
-            });
-
-        } else {
-            controls.enableZoom=true;
-            changeSTLColor(lastSelectedMesh,armColor);
-
-        }
-    }, {passive: false});
-}
-
-addLight(scene,panelSize);
-addGrid(scene,panelSize*1.6,1, 0,-1,panelSize*scaleOfNotation*1.6);
-// rysowanie obszaru zasięgu
-
-
-var armRange= drawArmRange(scene,panelSize*2,armShift,arm1Length,arm2TotalLength,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
-scene.add(armRange);
-// Rysowanie sceny
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-    rendererHelper.render(sceneHelper, cameraCanvasHelper);
-}
-animate();
-
-setupMoveListener();
-
-//stl
-loadSTL(stlNames[0],armShift, 0,5.1, mesh => { mesh.name=stlNames[0];baseMesh.add(mesh); });
-loadSTL(stlNames[1],armShift, 0,5.1, mesh => { mesh.name=stlNames[1];arm1Mesh.add(mesh); });
-loadSTL(stlNames[2],armShift-additionalArm1Length, 0,5.1, mesh => { mesh.name=stlNames[2];arm1Mesh.add(mesh); });
-loadSTL(stlNames[3],armShift-additionalArm1Length, 0,5.1, mesh => {mesh.name=stlNames[3]; arm2Mesh.add(mesh); });
-loadSTL(stlNames[4],armShift-additionalArm1Length-additionalArm2Length, 0,5.1, mesh => {mesh.name=stlNames[4]; arm2Mesh.add(mesh); });
-loadSTL(stlNames[5],armShift-additionalArm1Length-additionalArm2Length, 0,5.1, mesh => {mesh.name=stlNames[5]; toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
-loadSTL(stlNames[6],armShift-additionalArm1Length-additionalArm2Length-additionalToolLength, 0,5.1, mesh => { mesh.name=stlNames[6];toolMesh.add(mesh);lastSelectedMesh=toolMesh; });
-
-addAdditionalLength();
+/**
+ * Function that creates additional meshes to make connection between cuted stl to change arms and tool sizes
+ */
 function addAdditionalLength(){
 
     if(additionalToolLength>0){
@@ -436,11 +480,8 @@ function addAdditionalLength(){
         	bevelOffset: -0.1,
         	bevelSegments: 1
         };
-
-        let geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
-        let material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
         let cubeArmExtension1p2= new THREE.Mesh(
-            geometry,
+            new THREE.ExtrudeGeometry( shape, extrudeSettings ),
             new THREE.MeshPhongMaterial({color: armColor, emissive:armColor, emissiveIntensity:0.01 })
         );
         cubeArmExtension1p2.rotateX(-Math.PI/2);
@@ -463,98 +504,114 @@ function addAdditionalLength(){
 
 }
 
-rotation2.add(arm2Mesh);
-rotation2.add(toolMesh);
-rotation2.add(arm2Text);
-rotation2.add(circleMesh2);
-rotation2.add(ringMesh2);
+/**
+ * Function animating changes on the scene
+ */
+function animate() {
+    //set animation refreshing
+    requestAnimationFrame(animate);
+    //re-render scene
+    renderer.render(scene, camera);
+    rendererHelper.render(sceneHelper, cameraCanvasHelper);
+}
 
-rotation1.add(arm1Mesh);
-rotation1.add(rotation2);
+/**
+ * Function checking if armAngle is inside range (-MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION) if isRightSide. Else (-MAX_ARM_ANGLE_COLLISION, MAX_ARM_ANGLE).
+ * If MAX_ARM_ANGLE_COLLISION is Undefined then it uses MAX_ARM_ANGLE as replacement.
+ * @param {number} MAX_ARM_ANGLE - max angle
+ * @param {number} MAX_ARM_ANGLE_COLLISION  - max for other side
+ * @param {number} armAngle - angle to check
+ * @param {boolean} isRightSide - specifies orientation of arm  
+ * @returns {boolean} - is angle inside range
+ */
+function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightSide){
+    return !isRightSide && armAngle>=-MAX_ARM_ANGLE && armAngle<=(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) ||
+    isRightSide && armAngle>=-(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) && armAngle<=MAX_ARM_ANGLE
+}
 
-setupCanvasHelper(cameraCanvasHelper, sceneHelper, pivotPointHelper);
-const arm1RotationHelper=getRotationHelperGroup(rotation1, armShift, rotationTextHeight, textCircleSize);
-const arm2RotationHelper=getRotationHelperGroup(rotation2, arm2RotationShift, rotationTextHeight, textCircleSize);
-
-scene.add(rotation1);
-scene.add(rotation2);
-scene.add(baseMesh);
-
-drawLines(scene, panelSize);
-const toggle=document.getElementById("toggle");
-toggle.checked=rightSide;
-toggle.addEventListener("change",function() {
-    //update direction
-    rightSide=toggle.checked;
-    localStorage.setItem('rightSide', rightSide);
-    location.reload();
-});
-
+/**
+ * Function to setup keydown listener to move tool by keyboard
+ */
 async function setupMoveListener(){
     document.addEventListener('keydown', (event) => {
         if(toolEditMode){
-            if(event.code === 'ArrowUp'||event.code === 'Numpad8'){
-                currentToolX+=armStep;
-                if(!canMove())
-                    currentToolX-=armStep;
-                else{
-                    moveToolToPosition();
-                    moveArmBy(armStep,null,null,rightSide);
-                }
-                updatePositionText();
-
-            }else if(event.code === 'ArrowDown'||event.code === 'Numpad2'){
-                currentToolX-=armStep;
-                if(!canMove())
-                    currentToolX+=armStep;
-                else{
-                    moveToolToPosition();
-                    moveArmBy(-armStep,null,null,rightSide);
-                }
-                updatePositionText();
-            }else if(event.code === 'ArrowLeft'||event.code === 'Numpad4'){
-                currentToolY+=armStep;
-                if(!canMove())
-                    currentToolY-=armStep;
-                else{
-                    moveToolToPosition();
-                    moveArmBy(null,armStep,null,rightSide);
-                }
-                updatePositionText();
-            }else if(event.code === 'ArrowRight'||event.code === 'Numpad6'){
-                currentToolY-=armStep;
-                if(!canMove())
-                    currentToolY+=armStep;
-                else{
-                    moveToolToPosition();
-                    moveArmBy(null,-armStep,null,rightSide);
-                }
-                updatePositionText();
+            switch(event.code) {
+                case 'ArrowUp':
+                case 'Numpad8':
+                case 'KeyW':
+                    if(canMove(currentToolX+armStep,currentToolY)){
+                        currentToolX+=armStep;
+                        moveToolOnSceneToPosition();
+                        moveArmBy(armStep,null,null,rightSide);
+                        updatePositionText();
+                    }
+                break;
+                case 'ArrowDown':
+                case 'Numpad2':
+                case 'KeyS':
+                    if(canMove(currentToolX-armStep,currentToolY)){
+                        currentToolX-=armStep;
+                        moveToolOnSceneToPosition();
+                        moveArmBy(-armStep,null,null,rightSide);
+                        updatePositionText();
+                    }
+                break;
+                case 'ArrowLeft':
+                case 'Numpad4':
+                case 'KeyA':
+                    if(canMove(currentToolX,currentToolY+armStep)){
+                        currentToolY+=armStep;
+                        moveToolOnSceneToPosition();
+                        moveArmBy(null,armStep,null,rightSide);
+                        updatePositionText();
+                    }
+                break;
+                case 'ArrowRight':
+                case 'Numpad6':
+                case 'KeyD':
+                    if(canMove(currentToolX,currentToolY-armStep)){
+                        currentToolY-=armStep;
+                        moveToolOnSceneToPosition();
+                        moveArmBy(null,-armStep,null,rightSide);
+                        updatePositionText();
+                    }
+                break;
+                default:
+                break;
             }
+
         }
     });
 }
+
+/**
+ * Text displayed on top of screen, displaying tool coordinates
+ */
 function updatePositionText(){
-    positionText.textContent="X="+(currentToolX*scaleOfNotation).toFixed(2)+" Y="+(currentToolY*scaleOfNotation).toFixed(2);
+    positionText.textContent="X="+(currentToolX).toFixed(2)+" Y="+(currentToolY).toFixed(2);
 }
-//update rotation of angle displays
+
+/**
+ * Update helper rotation and camera position based on the main scene.
+ */
 function updateHelper(){
+    var nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
     if(previousPosition===null){
         previousPosition= new THREE.Vector3();
         previousPosition.copy(controls.object.position);
     }
     if(previousRotation==null){
-        //compare don't work always with high precision
-        previousRotation= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+        controlsHelper.target = sceneHelper.position;
+        controlsHelper.object.rotation.copy(controls.object.rotation);
+        previousRotation= new THREE.Vector3(nowRounded.x,nowRounded.y,nowRounded.z);
     }
 
-    nowRounded= new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
     if (!previousRotation.equals(nowRounded)) {
         arm1Text.rotation.z +=nowRounded.z-previousRotation.z;
         arm2Text.rotation.z +=nowRounded.z-previousRotation.z;
         controlsHelper.target = sceneHelper.position;
         controlsHelper.object.rotation.copy(controls.object.rotation);
-        previousRotation=new THREE.Vector3(controls.object.rotation.x.toFixed(3),controls.object.rotation.y.toFixed(3),controls.object.rotation.z.toFixed(3));
+        previousRotation=new THREE.Vector3(nowRounded.x,nowRounded.y,nowRounded.z);
     }else{
 
         previousPosition.sub(controls.object.position);
@@ -567,18 +624,24 @@ function updateHelper(){
     previousPosition.copy(controls.object.position);
 }
 
-function canMove(){
-    const newRadius = Math.hypot(currentToolX, currentToolY);
-
+/**
+ * Function checking if arm can move to position
+ * @param {number} toolX - x pos of tool
+ * @param {number} toolY - x pos of tool
+ * @returns {boolean} - if tool is inside radius and angles are in range
+ */
+function canMove(toolX, toolY){
+    const newRadius = Math.hypot(toolX, toolY);
+    
     if (newRadius > arm1Length+arm2TotalLength ||newRadius < getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2TotalLength)) {
-        console.error("Object is outside workspace R<${newRadius}");
+        //console.error("Object is outside workspace R<"+newRadius);
         return false;
     }
-    let gamma = Math.atan2(currentToolY, currentToolX);
-    let toBeta = (arm1Length * arm1Length + arm2TotalLength * arm2TotalLength - currentToolX * currentToolX - currentToolY * currentToolY) / (2 * arm1Length * arm2TotalLength);
+    let gamma = Math.atan2(toolY, toolX);
+    let toBeta = (arm1Length * arm1Length + arm2TotalLength * arm2TotalLength - toolX * toolX - toolY * toolY) / (2 * arm1Length * arm2TotalLength);
     let beta = Math.acos(toBeta);
 
-    let toAlpha = (currentToolX * currentToolX + currentToolY * currentToolY + arm1Length * arm1Length - arm2TotalLength * arm2TotalLength) / (2 * arm1Length * newRadius);
+    let toAlpha = (toolX * toolX + toolY * toolY + arm1Length * arm1Length - arm2TotalLength * arm2TotalLength) / (2 * arm1Length * newRadius);
     let alpha = Math.acos(toAlpha);
 
     let angle = gamma + alpha;
@@ -598,6 +661,15 @@ function canMove(){
 
     return true;
 }
+
+/**
+ * Function to move physical arm by axis movement
+ * @param {number} x - relative movement in X axis, null if no movement
+ * @param {number} y - relative movement in X axis, null if no movement
+ * @param {number} z - relative movement in X axis, null if no movement
+ * @param {boolean} isRightSide - specifies orientation of arm  
+ * @TODO verify function and integrate
+ */
 function moveArmBy(x,y,z,isRightSide){
     const data = {
       x: ''+x,
@@ -619,10 +691,18 @@ function moveArmBy(x,y,z,isRightSide){
     });
 
 }
-function moveArmByAngle(L,S){
+
+/**
+ * Function to move physical arm by angle
+ * @param {number} firstArmAngle - relative movement of first arm, null if no movement
+ * @param {number} secondArmAngle - relative movement of second arm, null if no movement
+ * @param {boolean} isRightSide - specifies orientation of arm  
+ * @TODO verify function and integrate
+ */
+function moveArmByAngle(firstArmAngle,secondArmAngle){
     const data = {
-      L: ''+L,
-      S: ''+S
+      L: ''+firstArmAngle,
+      S: ''+secondArmAngle
     };
     const params = new URLSearchParams();
 
@@ -637,7 +717,13 @@ function moveArmByAngle(L,S){
       console.error('Error:', error);
     });
 }
-function moveToolToPosition(checkRotation=true,totalSteps=20) {
+
+/**
+ * Update arm on the screen, based on currentToolX and currentToolY
+ * @param {boolean} checkRotation - verify or not if arm angle is in range
+ * @param {int} totalSteps - to divide one movement into totalSteps to make movement more linear 
+ */
+function moveToolOnSceneToPosition(checkRotation=true,totalSteps=20) {
     let newRadius = Math.hypot(currentToolX, currentToolY);
 
     let gamma = Math.atan2(currentToolY, currentToolX);
@@ -661,15 +747,21 @@ function moveToolToPosition(checkRotation=true,totalSteps=20) {
     
     let arm1AngleNewCp = arm1AngleNew - arm1Angle;
     let arm2AngleNewCp = arm2AngleNew - arm2Angle;
-    let arm1AngleNewRound = Math.floor(arm1AngleNewCp);
-    let arm2AngleNewRound = Math.floor(arm2AngleNewCp);
     let canRotate = true;
     
     if(checkRotation){
+  /*
         if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
             canRotate = false;
         if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
             canRotate = false;
+*/
+        if(!isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION,arm1AngleNew,rightSide))
+            canRotate = false;
+        if(!isAngleBetween(MAX_ARM2_ANGLE, null,arm2AngleNew,rightSide))
+            canRotate = false;
+
+
     }
     let steps = 0; // interpolation steps
 
@@ -702,6 +794,12 @@ function moveToolToPosition(checkRotation=true,totalSteps=20) {
         interpolateStep();
     }
 }
+
+/**
+ * Set position on of the tool and update displayed arm
+ * @param {THREE.Vector3} vector 
+ * @param {boolean} isRightSide - specifies orientation of arm  
+ */
 function setToolPosition(vector,isRightSide){
     currentToolX=vector.x;
     currentToolY=-vector.y;
@@ -712,23 +810,29 @@ function setToolPosition(vector,isRightSide){
     
     toolMesh.translateY(vector.z-currentHeight);
     currentHeight=vector.z;
-    moveToolToPosition(false);
+    moveToolOnSceneToPosition(false);
     updatePositionText();
 }
 
+/**
+ * Update position based on current rotation, update position text
+ */
 function updateToolPos(){
 
-    let a1=-arm1Angle* (Math.PI / 180);
-    let a2=-arm2Angle* (Math.PI / 180);
-    
-    let x = arm1Length * Math.cos(a1) + arm2Length * Math.cos(a1 + a2);
-    let y = arm1Length * Math.sin(a1) + arm2Length * Math.sin(a1 + a2);
-    
-    currentToolX=x;
-    currentToolY=y;
+    let a1 = -arm1Angle * (Math.PI / 180);
+    let a2 = -arm2Angle * (Math.PI / 180);
+
+    let x = arm1Length * Math.cos(a1) + arm2TotalLength * Math.cos(a1 + a2);
+    let y = arm1Length * Math.sin(a1) + arm2TotalLength * Math.sin(a1 + a2);
+
+    currentToolX = x;
+    currentToolY = y;
     updatePositionText();
 }
 
+/**
+ * Function listtening for clicks on an object and mark it as selected(lastSelectedMesh). Show cartesian axis lines for arm.
+ */
 function selectSTL(){
     if(getCanMoveArm()){
         const meshes = [baseMesh, arm1Mesh, arm2Mesh,toolMesh];
@@ -782,6 +886,10 @@ function selectSTL(){
         }
     }
 }
+/**
+ * Load file and draw it on the scene
+ * @param {string} fileName 
+ */
 function drawFileOnScene(fileName){
     drawFile(scene,fileName,setToolPosition,armShift,rightSide);
 }

@@ -1,6 +1,14 @@
 import * as THREE from '/static/three/build/three.module.js'
 
-//for Canvas Helper
+//Set of methods to draw axes of directions (x, y, z)
+
+/**
+ * Create Canvas Helper - 3 lines corresponding to cartesian directions
+ * @param {float} width - thickness of line
+ * @param {float} length of line
+ * @param {float} lineShift moves meshes along their axis to look better at center, prevent the roundings from protruding
+ * @returns Three.group of lines(capsules)
+ */
 function getCanvasHelperGroup(width,length,lineShift){
 
     let geoR = new THREE.CapsuleGeometry( width/2, length, 4, 8 );
@@ -35,7 +43,15 @@ function getCanvasHelperGroup(width,length,lineShift){
     group.add(blueC);
     return group;
 }
-//for arm directions Helper
+
+/**
+ * Creates Canvas helper in group,
+ * @param {THREE.Group} rotationGroup - group which will contain helper
+ * @param {float} armShift set distance from center
+ * @param {float} helperHeight set position of helper
+ * @param {float} lineShift moves meshes along their axis to look better at center, prevent the roundings from protruding
+ * @returns Three.group of lines(capsules)
+ */
 export function getRotationHelperGroup(rotationGroup, armShift,helperHeight,lineShift){
     let armHelperGroup=getCanvasHelperGroup(0.1, 3,lineShift);
     getCanvasHelperGroup(armHelperGroup,0.1, 3,lineShift);
@@ -45,7 +61,12 @@ export function getRotationHelperGroup(rotationGroup, armShift,helperHeight,line
     return armHelperGroup;
 }
 
-//for second canvas
+/**
+ * Creates Canvas helper on canvas, set camera focus on helper
+ * @param {THREE.PerspectiveCamera} cameraCanvasHelper - camera to put on scene
+ * @param {THREE.Scene} sceneHelper - scene to display helper 
+ * @param {THREE.Object3D} pivotPointHelper - pivot used for rotation and camera focus
+ */
 export function setupCanvasHelper(cameraCanvasHelper,sceneHelper,pivotPointHelper){
     cameraCanvasHelper.updateProjectionMatrix();
     let groupHelper=getCanvasHelperGroup(0.04, 0.8,null);

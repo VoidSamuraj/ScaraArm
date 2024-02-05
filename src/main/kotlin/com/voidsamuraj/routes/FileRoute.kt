@@ -1,7 +1,7 @@
 package com.voidsamuraj.routes
 
 import com.voidsamuraj.dao.dao
-import com.voidsamuraj.gcode.GCODE_Sender
+import com.voidsamuraj.gcode.GCodeSender
 import com.voidsamuraj.models.MyToken
 import com.voidsamuraj.plugins.checkPermission
 import com.voidsamuraj.plugins.getUserId
@@ -23,7 +23,7 @@ import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-val filesFolder="FILES"
+const val filesFolder="FILES"
 suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess:suspend ()->Unit){
     val token=call.sessions.get("TOKEN")as MyToken?
     checkPermission(token = token,
@@ -91,7 +91,7 @@ fun Route.fileRoute(){
             checkUserPermission(){
                 val fileName = call.parameters["fileName"]
                 if(fileName!=null){
-                    GCODE_Sender.sendGcode(filesFolder+"/"+fileName)
+                    GCodeSender.sendGCode(filesFolder+"/"+fileName)
                     call.respond(HttpStatusCode.OK, "File is processing")
                 }else
                     call.respond(HttpStatusCode.NotFound,"File not found")

@@ -1,8 +1,18 @@
 import * as THREE from '/static/three/build/three.module.js'
 
+// Functions to draw elements on scene
 
 var stlGroup = new THREE.Group();
 
+/**
+ * Create circle and adds it to scene.
+ * @param {number} size - circle size.
+ * @param {number} x - x coordinates.
+ * @param {number} y - y coordinates.
+ * @param {number} z - z coordinates.
+ * @param {THREE.Scene} scene - scene witch will contain circle.
+ * @returns {THREE.Mesh} - mesh representing circle.
+ */
 export function createCircle(scene,x,y,z,size){
     var circleMesh = new THREE.Mesh(new THREE.CircleGeometry(size, 30), new THREE.MeshBasicMaterial({ color: 0x454545 }));
     circleMesh.rotateX(-Math.PI/2);
@@ -11,13 +21,43 @@ export function createCircle(scene,x,y,z,size){
     return circleMesh;
 }
 
+/**
+ * Create rectangle and adds it to scene.
+ * @param {number} width - width of rectangle.
+ * @param {number} height - height of rectangle.
+ * @param {number} x - x coordinates.
+ * @param {number} y - y coordinates.
+ * @param {number} z - z coordinates.
+ * @returns {THREE.Mesh} - mesh representing recrangle.
+ */
 export function getRectangle(width,height,x,y,z){
     let rectangleMesh= new THREE.Mesh(new THREE.PlaneGeometry( width, height), new THREE.MeshBasicMaterial({ color: 0x454545 }));
      rectangleMesh.rotateY(-Math.PI/2);
      rectangleMesh.position.set(x, z, y);
      return rectangleMesh;
 }
-
+/**
+ * Function to create 4 bars representing percentage, bars are located like:
+ * ```plaintext
+ *           width
+ *  |-----------------------|  
+ *                             _ _
+ *    /                   \     |   bar width     
+ *   /                     \   _|_
+ * 
+ * 
+ *   \                     /
+ *    \                   /
+ * ```
+ * @param {number} width - distance between bars in one axis, for second axis this is hardcoded 
+ * @param {number} height - max height of bar
+ * @param {number} barWidth - width of bar
+ * @param {number} percent - percent of bar, this will calculate displayed height
+ * @param {number} x - x pos of whole element
+ * @param {number} y - y pos of whole element 
+ * @param {number} z - z pos of whole element 
+ * @returns {THREE.Group}- group containing all elements (bars)
+ */
 function getRectanglePercent(width,height,barWidth,percent,x,y,z){
      let rectangleMesh1= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
      let rectangleMesh2= new THREE.Mesh(new THREE.PlaneGeometry( barWidth, height*percent/100), new THREE.MeshBasicMaterial({ color: 0xbfbfbf }));
@@ -44,11 +84,39 @@ function getRectanglePercent(width,height,barWidth,percent,x,y,z){
      return group;
 }
 
+/**
+ * Function to update percentage Bars, to Init bars use: **getRectanglePercent**. 
+ * Old bars are replaced by new one. Bars are located like:
+ * ```plaintext
+ *           width
+ *  |-----------------------|  
+ *                             _ _
+ *    /                   \     |   bar width     
+ *   /                     \   _|_
+ * 
+ * 
+ *   \                     /
+ *    \                   /
+ * 
+ * ```
+ * @param {THREE.Scene} scene - scene containing bars
+ * @param {THREE.Group} parentGroup - group containing **oldRectanglePercentGroup**
+ * @param {THREE.Group} oldRectanglePercentGroup - old group returned by **getRectanglePercent**
+ * @param {number} width - distance between bars in one axis, for second axis this is hardcoded 
+ * @param {number} height - max height of bar
+ * @param {number} barWidth - width of bar
+ * @param {number} percent - percent of bar, this will calculate displayed height
+ * @param {number} x - x pos of whole element
+ * @param {number} y - y pos of whole element 
+ * @param {number} z - z pos of whole element 
+ * @see getRectanglePercent
+ * @returns {THREE.Group|null} new group representing bars
+ */
 export function updateRectanglePercent(scene,parentGroup,oldRectanglePercentGroup,width,height,barWidth,percent,x,y,z){
     if(oldRectanglePercentGroup!=null){
         parentGroup.remove(oldRectanglePercentGroup);
         scene.remove(oldRectanglePercentGroup);
-        // Usuń wszystkie geometrie w grupie i zwolnij ich zasoby
+        // Remove all geometries and free resources
         oldRectanglePercentGroup.children.forEach((mesh) => {
           if (mesh.geometry) {
             mesh.geometry.dispose();
@@ -64,8 +132,19 @@ export function updateRectanglePercent(scene,parentGroup,oldRectanglePercentGrou
     return null;
 }
 
-export function createRing(scene,x,y,z,min,max,degree){
-    var ringMesh = new THREE.Mesh(new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide }));
+/**
+ * Create ring or part of it on scene.
+ * @param {THREE.Scene} scene - scene witch will contain ring.
+ * @param {number} x - x pos of element
+ * @param {number} y - y pos of element 
+ * @param {number} z - z pos of element 
+ * @param {number} innerRad - inner radius 
+ * @param {number} outerRad - outer radius
+ * @param {number} degree - degrees of ring
+ * @returns 
+ */
+export function createRing(scene,x,y,z,innerRad,outerRad,degree){
+    var ringMesh = new THREE.Mesh(new THREE.RingGeometry(innerRad, outerRad, 30, 1, 0, degree * Math.PI / 180), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide }));
     ringMesh.rotateX(-Math.PI/2);
     ringMesh.rotateZ(-Math.PI);
     ringMesh.position.set(x, z, y);
@@ -73,12 +152,29 @@ export function createRing(scene,x,y,z,min,max,degree){
     return ringMesh;
 }
 
-export function updateRing(ringMesh,min,max,degree){
+/**
+ * Replace ring mesh created by **createRing**
+ * @param {THREE.Mesh} ringMesh - old mesh to replace
+ * @param {number} innerRad - inner radius 
+ * @param {number} outerRad - outer radius
+ * @param {number} degree - degrees of ring
+ * @see createRing
+ */
+export function updateRing(ringMesh,innerRad,outerRad,degree){
     ringMesh.geometry.dispose();
-    ringMesh.geometry = new THREE.RingGeometry(min, max, 30, 1, 0, degree * Math.PI / 180);
+    ringMesh.geometry = new THREE.RingGeometry(innerRad, outerRad, 30, 1, 0, degree * Math.PI / 180);
     ringMesh.material = new THREE.MeshBasicMaterial({ color: 0xbfbfbf, side: THREE.DoubleSide });
 }
 
+/**
+ * Create a grid and panel under it, which will be used as a work area for the arm.
+ * @param {THREE.Scene} scene - scene witch will contain grid.
+ * @param {number} panelSize - x and y width of panel
+ * @param {number} x - x pos of element
+ * @param {number} y - y pos of element 
+ * @param {number} z - z pos of element 
+ * @param {int} divisions - number of divisions(density of grid)
+ */
 export function addGrid(scene,panelSize,x,y,z,divisions){
     let grid1 = new THREE.GridHelper(panelSize, divisions, 0x777777, 0x777777);
     let grid2 = new THREE.GridHelper(panelSize, divisions/10, 0xffffff, 0xffffff);
@@ -89,7 +185,7 @@ export function addGrid(scene,panelSize,x,y,z,divisions){
 
     //panel under grid
     const backgroundPlane = new THREE.Mesh(
-            new THREE.PlaneBufferGeometry(panelSize, panelSize),
+            new THREE.PlaneGeometry(panelSize, panelSize),
             new THREE.MeshBasicMaterial({ color: 0x454545, side: THREE.DoubleSide})
         );
 
@@ -98,6 +194,11 @@ export function addGrid(scene,panelSize,x,y,z,divisions){
     scene.add(backgroundPlane);
 }
 
+/**
+ * Function will create 4 lights in corners of panel at height equal 50 
+ * @param {THREE.Scene} scene - scene witch will contain lighting.
+ * @param {number} panelSize - width of square panel
+ */
 export function addLight(scene,panelSize){
 
     const light1 = new THREE.PointLight(0xffffff, 0.6, 1000);
@@ -117,7 +218,13 @@ export function addLight(scene,panelSize){
     scene.add(light4);
 }
 
-export function drawLines(scene, panelSize,armShift){
+/**
+ * Function to draw lines corresponding to Cartesian directions.
+ * @param {THREE.Scene} scene - scene witch will contain lines.
+ * @param {number} panelSize - width of square panel
+ * @param {number} armShift - shift of center of lines    
+ */
+export function drawCartesianLines(scene, panelSize,armShift){
     const redGeometry = new THREE.BufferGeometry();
     const greenGeometry = new THREE.BufferGeometry();
 
@@ -133,7 +240,6 @@ export function drawLines(scene, panelSize,armShift){
     redGeometry.setAttribute('position', new THREE.BufferAttribute(redArray, 3));
     greenGeometry.setAttribute('position', new THREE.BufferAttribute(greenArray, 3));
 
-
     const redMaterial = new THREE.LineBasicMaterial({
         color: 0xff0000
     });
@@ -147,23 +253,32 @@ export function drawLines(scene, panelSize,armShift){
 
 }
 
-export function updateTextTexture(text, size, mesh,x,y,z) {
+/**
+ * Function to update text displaying angles of arms
+ * @param {string} text - degrees represented as string 
+ * @param {number} fontSize - size of font
+ * @param {THREE.Mesh} mesh - mesh on witch will be placed text
+ * @param {number} x - x pos of element
+ * @param {number} y - y pos of element 
+ * @param {number} z - z pos of element 
+ */
+export function updateTextTexture(text, fontSize, mesh,x,y,z) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    var fontSize=size;
+    var fSize=fontSize;
     if(text.length==3)
-        fontSize=parseInt(fontSize*2/3);
+        fSize=parseInt(fSize*2/3);
     else if(text.length==1)
-        fontSize=parseInt(fontSize*3/2);
+        fSize=parseInt(fSize*3/2);
 
-    ctx.font = fontSize + 'px Arial';
+    ctx.font = fSize + 'px Arial';
     const textWidth = ctx.measureText(text).width;
     canvas.width = textWidth;
-    canvas.height = fontSize;
+    canvas.height = fSize;
 
-    ctx.font = fontSize + 'px Arial';
+    ctx.font = fSize + 'px Arial';
     ctx.fillStyle = "#bfbfbf";
-    ctx.fillText(text, 0, fontSize);
+    ctx.fillText(text, 0, fSize);
 
     const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
@@ -173,7 +288,14 @@ export function updateTextTexture(text, size, mesh,x,y,z) {
     mesh.material.map = texture;
 }
 
-//closest distance of tool to center(arm1 rotation point)
+/**
+ * Function calculating min radius to center, witch can be accessed by tool. 
+ * @param {number} MAX_ARM1_ANGLE - max possible angle of arm 1, it is the same for both directions
+ * @param {number} MAX_ARM2_ANGLE - max possible angle of arm 2, it is the same for both directions
+ * @param {number} arm1Length - length of arm 1
+ * @param {number} arm2Length - length of arm 2
+ * @returns {number} - min radius operatable by tool 
+ */
 export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Length){
 
     let a1=(90+MAX_ARM1_ANGLE)* Math.PI / 180;
@@ -184,7 +306,21 @@ export function getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Leng
 
     return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
 }
-export function drawArmRange(scene,panelSize,armShift, arm1Length, arm2Length, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide) {
+
+/**
+ * Function witch draw space avalible for tool based on **MAX_ARM1_ANGLE, MAX_ARM2_ANGLE, arm1Length, arm2Length**
+ * @param {THREE.Scene} scene - scene witch will contain lines.
+ * @param {number} panelSize - width of square panel
+ * @param {number} armShift - shift from center
+ * @param {number} arm1Length - length of arm 1
+ * @param {number} arm2Length - length of arm 2
+ * @param {number} MAX_ARM1_ANGLE - max possible angle of arm 1,s it is the same for both directions
+ * @param {number} MAX_ARM2_ANGLE - max possible angle of arm 2, it is the same for both directions
+ * @param {number} MAX_ARM1_ANGLE_COLLISION - max possible angle for arm 1 from other side, this is to prevent tool collision with arm base
+ * @param {boolean} rightSide specifies orientation of arm 
+ * @returns {THREE.Mesh} - mesh containing drawing
+ */
+export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide) {
 
     let distance=getMinDistance(MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,arm1Length,arm2Length);
     let scale=50;
@@ -309,12 +445,22 @@ export function drawArmRange(scene,panelSize,armShift, arm1Length, arm2Length, M
     return mesh;
 }
 
+/**
+ * Function to draw file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
+ * @param {THREE.Scene} scene - scene witch will contain file.
+ * @param {string} fileName - name of file to draw 
+ * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
+ * @param {number} xShift - shift of model position
+ * @param {boolean} isRightSide - specifies orientation of arm  
+ * @TODO 1.display message in UI on file loading error
+ *  2.Check if sending code to arm blocks UI/Server
+ *  3.Synchronize arm code execution and Drawing state
+ */
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     const data = {isRightSide: ''+isRightSide};
-    const params = new URLSearchParams();
-    for (const key in data) {
-      params.append(key, data[key]);
-    }
+    const params = new URLSearchParams(data);
+
+        //sending code to arm 
          fetch("/files/draw/"+fileName, {method: "POST",body: params}).then(response => {
                   if (response.ok) {
                     console.log("File is processing.");
@@ -354,74 +500,77 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     var zPos=0;
     var changedSomething=false;
     const scale=0.1;
-
+    
+    //draw file on the screen
     if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
         fetch('/files/'+fileName, { method: 'GET' })
                 .then(response => response.blob())
                 .then(blob => {
 
                     var reader = new FileReader();
-            reader.onload = function() {
-                var fileData = reader.result;
-                var lines = fileData.split('\n');
-                lines.forEach(line => {
-                    if((!line.includes(';')) && line.includes("G1")){
-                        let commands=line.split(' ');
-                        changedSomething=false;
-                        commands.forEach(command=>{
-                            var firstCharacter = command.charAt(0);
-                            switch (firstCharacter) {
-                                case "X":
-                                    xPos=parseFloat(command.slice(1))*scale;
-                                    changedSomething=true;
-                                    break;
-                                case "Y":
-                                    yPos=parseFloat(command.slice(1))*scale;
-                                    changedSomething=true;
-                                    break;
-                                case "Z":
-                                    zPos=parseFloat(command.slice(1))*scale;
-                                    changedSomething=true;
-                                    if(!firstHeightSet){
-                                        currentHeight=zPos;
-                                        firstHeightSet=true;
-                                    }
-                                    if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
-                                        currentHeight=currentHeight-(zPos*0.5);
-                                        secondHeightSet=true;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
+                reader.onload = function() {
+                    var fileData = reader.result;
+                    var lines = fileData.split('\n');
+                    //push vector to array if position changed
+                    lines.forEach(line => {
+                        if((!line.includes(';')) && line.includes("G1")){
+                            let commands=line.split(' ');
+                            changedSomething=false;
+                            commands.forEach(command=>{
+                                var firstCharacter = command.charAt(0);
+                                switch (firstCharacter) {
+                                    case "X":
+                                        xPos=parseFloat(command.slice(1))*scale;
+                                        changedSomething=true;
+                                        break;
+                                    case "Y":
+                                        yPos=parseFloat(command.slice(1))*scale;
+                                        changedSomething=true;
+                                        break;
+                                    case "Z":
+                                        zPos=parseFloat(command.slice(1))*scale;
+                                        changedSomething=true;
 
-                        });
-                        if(changedSomething){
-                            points.push(new THREE.Vector3(xPos, yPos, zPos));
+                                        if(!firstHeightSet){
+                                            currentHeight=zPos;
+                                            firstHeightSet=true;
+                                        }
+                                        if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                                            currentHeight=currentHeight-(zPos*0.5);
+                                            secondHeightSet=true;
+                                        }
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            });
+                            if(changedSomething){
+                                points.push(new THREE.Vector3(xPos, yPos, zPos));
+                            }
                         }
+
+                    });
+                    //current height is used to calculate thickness of line, if not set then set as start point -0.1
+                    if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
+                        currentHeight=points[0].z- 0.1;
+                    for(var i = 0; i < points.length - 1; i++) {
+                        (function(index) {
+                            setTimeout(function() {
+                                //update arm angles for UI
+                                onLineRead(points[index + 1],isRightSide);
+                                if(currentHeight!=points[index + 1].z){
+                                    lastHeight=currentHeight;
+                                }
+                                currentHeight=points[index + 1].z;
+                                console.log("POS "+points[index + 1].x+" "+points[index + 1].y+" "+points[index + 1].z);
+                                draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
+                            }, 500 * index);
+                        })(i);
                     }
 
-                });
-
-                if((points[0] !== undefined)&&!(firstHeightSet&&firstHeightSet))
-                    currentHeight=points[0].z- 0.1;
-                for(var i = 0; i < points.length - 1; i++) {
-                    (function(index) {
-                        setTimeout(function() {
-                            onLineRead(points[index + 1],isRightSide);
-                            if(currentHeight!=points[index + 1].z){
-                                lastHeight=currentHeight;
-
-                            }
-                            currentHeight=points[index + 1].z;
-                            console.log("POS "+points[index + 1].x+" "+points[index + 1].y+" "+points[index + 1].z);
-                            draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
-                        }, 500 * index);
-                    })(i);
-                }
-
-            };
-            reader.readAsText(blob);
+                };
+                reader.readAsText(blob);
 
         })
                 .catch(error => {
@@ -429,7 +578,13 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
         });
     }
 }
-
+/**
+ * Function to draw line of model from the code, being drawed on the screen and add it to group specified as argument.
+ * @param {THREE.Group} group - group of object being drawn
+ * @param {THREE.Vector3} startPoint - start point of line
+ * @param {THREE.Vector3} endPoint - end point of line
+ * @param {number} lineWidth - thickness of line
+ */
 function draw3DLine(group,startPoint,endPoint,lineWidth){
     var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
     var distance = direction.length();
