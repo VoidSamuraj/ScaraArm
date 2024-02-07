@@ -44,7 +44,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
-    
+    testImplementation("io.mockk:mockk:1.13.9")
+
     implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
     implementation("io.ktor:ktor-client-serialization-jvm:1.6.4")

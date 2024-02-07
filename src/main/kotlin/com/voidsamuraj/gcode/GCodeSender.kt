@@ -18,20 +18,21 @@ import kotlin.math.*
  * Set of function to transform cartesian to scara and send to arduino
  * @author Karol Robak
  */
-object GCodeSender {
-    private var port: SerialPort? = null
-    @Throws(InterruptedException::class, IOException::class)
-    fun main() {
-        val src = "/home/karol/Pobrane/t3.txt"
-        val out = "/home/karol/Pobrane/output.txt"
-        // if false generated code is in degrees, else steps are calculated
-        val sendGCode = true
-        makeGCodeFile(src, out, sendGCode, isRightSide)
-        if (sendGCode) {
-            sendGCode(out)
-        }
-    }
 
+@Throws(InterruptedException::class, IOException::class)
+fun main() {
+    val src = "/home/karol/Pobrane/t3.txt"
+    val out = "/home/karol/Pobrane/output.txt"
+    // if false generated code is in degrees, else steps are calculated
+    val sendGCode = false
+    GCodeSender.makeGCodeFile(src, out, sendGCode, false)
+    if (sendGCode) {
+        GCodeSender.sendGCode(out)
+    }
+}
+object GCodeSender {
+
+    private var port: SerialPort? = null
     private var SERIAL_PORT = "/dev/ttyACM0" //"COM5";
 
     /**
@@ -60,8 +61,8 @@ object GCodeSender {
     private const val L = 'L' //long axis name
     private const val S = 'S' //short axis name
     private var isRightSide = false
-    private var arm1Length: Long = 100 //long arm length in mm
-    private var arm2Length: Long = 60 //short arm length in mm
+    private var arm1Length: Long =200// 100 //long arm length in mm
+    private var arm2Length: Long = 200//60 //short arm length in mm
 
     fun setArmDirection(isRightSide: Boolean){
         this.isRightSide=isRightSide
@@ -260,21 +261,22 @@ object GCodeSender {
             FileWriter(fout).use { fw ->
                 var fr= FileReader(fin)
                 var br = BufferedReader(fr)
-                var line: String
+                var line: String?
                 var maxSpeed = 0.0
 
                 //loop for search max speed
                 while (br.readLine().also { line = it } != null) {
-                    val nr = line.indexOf('F')
-                    if (line.contains("F")) {
-                        val end = line.indexOf(' ', nr)
+                    val nr = line!!.indexOf('F')
+                    val comment = line!!.indexOf(';')
+                    if (nr != -1 && nr < comment) {
+                        val end = line!!.indexOf(' ', nr)
                         val newSpeed: Double = if (end != -1)
-                                line.substring(nr + 1, end).toDouble()
+                                line!!.substring(nr + 1, end).toDouble()
                             else
-                                line.substring(nr + 1).toDouble()
+                                line!!.substring(nr + 1).toDouble()
                         if (newSpeed > maxSpeed) maxSpeed = newSpeed
                     }
-                    if (line.contains("f") || line.contains("G1") || line.contains("G0")) commandNumber += totalSteps
+                    if (line!!.contains("f") || line!!.contains("G1") || line!!.contains("G0")) commandNumber += totalSteps
                 }
                 //reduce speed multiplier based on max speed in file
                 if (RAPID_SPEED < maxSpeed) speedrate = maxSpeed / RAPID_SPEED
@@ -282,12 +284,12 @@ object GCodeSender {
                 br = BufferedReader(fr)
                 fw.write("commands $commandNumber\n")
                 while (br.readLine().also { line = it } != null) {
-                    if (line.contains("G90")) //absolute mode
+                    if (line!!.contains("G90")) //absolute mode
                         isRelative = false
-                    else if (line.contains("G91"))  //relative mode
+                    else if (line!!.contains("G91"))  //relative mode
                         isRelative = true
-                    else if (line.contains("G1")) { // movement
-                        val commands: List<String> = line
+                    else if (line!!.contains("G1")) { // movement
+                        val commands: List<String> = line!!
                             .split(";")
                         for (one in commands) {
                             val command: List<String> = one.split(" ")
@@ -299,7 +301,7 @@ object GCodeSender {
                 fw.flush()
             }
         } catch (exception: IOException) {
-            System.err.println("makeGcodeFileError: $exception")
+            System.err.println("makeGcodeFileError:${exception.stackTrace[0].lineNumber}  $exception")
         }
     }
 
@@ -346,7 +348,7 @@ object GCodeSender {
 
     /**
      * All magic happens here
-     * calculates global transition and updates current location
+     * calculates global transition and updates current location and angles
      * It splits command to number of points specified in [totalSteps]
      * when totalSteps<=1 there will be one command. You can edit [totalSteps] by [setTotalSteps]
      * @see totalSteps
@@ -356,6 +358,8 @@ object GCodeSender {
      * @param speed speed of movement
      * @param inSteps change degrees to motor steps
      * @param isRightSide direction of arm
+     * @return calculated global transition
+     * TODO throw exception or perform http request to inform user about object outside workspace
      */
     private fun transition(
         xMove: Double?,
@@ -368,14 +372,18 @@ object GCodeSender {
         val comand = StringBuilder()
         val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
         val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
-
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
         if (xm != position[0] || ym != position[1]) {
             val newRaius: Double = hypot(xm, ym)
+            val minRadius: Double = hypot(arm2Length*cos(-55.0*PI/180), arm2Length*sin(-55.0*PI/180)+ arm1Length)
+
             return if (newRaius > R) {
-                System.err.println("Object is outside workspace R<$newRaius")
+                System.err.println("Object is outside workspace MAX_RADIUS<$newRaius")
                 ""
-            } else {
+            } else if(newRaius<minRadius){
+                System.err.println("Object is outside workspace MIN_RADIUS<$newRaius")
+                ""
+            }else {
                 val gamma: Double = atan2(ym, xm) //absolute degree angle to R
                 val toBeta =
                     (arm1Length * arm1Length + arm2Length * arm2Length - xm * xm - ym * ym) / (2 * arm1Length * arm2Length)

@@ -20,6 +20,7 @@ const stlNames=['blok','arm1p1','arm1p2','arm2p1','arm2p2','toolmain','toolexten
 const scaleOfPlateSize=1.5;
 //scale of base plate divisions
 const scaleOfGridDivisions=10;
+//it is divided by 5, because of different metrics used
 const defaultArmLength=4;
 const defaultToolDistance=0.8;
 const maxHeight=2.1;
@@ -231,9 +232,7 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                         else
                             arm2Text.rotation.z -= zoomChange * Math.PI / 180;
                         moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
-                        console.log("ANGLE_4 "+arm1Angle+" "+arm2Angle+" "+currentToolX+" "+currentToolY)
                         updateToolPos();
-                        console.log("ANGLE_5 "+arm1Angle+" "+arm2Angle+" "+currentToolX+" "+currentToolY)
                         reacted=true;
                     }
                     break;
