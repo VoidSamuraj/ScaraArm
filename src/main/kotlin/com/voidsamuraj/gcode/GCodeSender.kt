@@ -63,7 +63,43 @@ object GCodeSender {
     private var isRightSide = false
     private var arm1Length: Long =200// 100 //long arm length in mm
     private var arm2Length: Long = 200//60 //short arm length in mm
+    private var isRelative = false
+    private var speedrate = 1.0 // speed multiply
+    private var speedNow = 0.0
+    private var R = arm2Length + arm1Length
+    private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
+    private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
+    private var totalSteps = 5 // all interpolation steps, divide one command to have linear movement
+    private var MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
+    private var ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
+        get() = field * MOTOR_STEPS_PRER_ROTATION
+    private var ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
+        get() = field * MOTOR_STEPS_PRER_ROTATION
+    private var ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
+        get() = field * MOTOR_STEPS_PRER_ROTATION
 
+    /**
+     * Function to reset state to unmodified, it not moves arm
+     */
+    fun resetState(){
+        isRightSide = false
+        arm1Length =200// 100 //long arm length in mm
+        arm2Length = 200//60 //short arm length in mm
+        isRelative = false
+        speedrate = 1.0 // speed multiply
+        speedNow = 0.0
+        R = arm2Length + arm1Length
+        position[0]=0.0
+        position[1]=R.toDouble()
+        position[2]=0.0
+        angles[0] = 90.0
+        angles[1] =180.0
+        totalSteps = 5 // all interpolation steps, divide one command to have linear movement
+        MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
+        ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
+        ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
+        ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
+    }
     fun setArmDirection(isRightSide: Boolean){
         this.isRightSide=isRightSide
     }
@@ -89,17 +125,6 @@ object GCodeSender {
         HALF(400),
         ONE_QUARTER(800)
     }
-
-
-    private var R = arm2Length + arm1Length
-    private var MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
-    private var ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
-        get() = field * MOTOR_STEPS_PRER_ROTATION
-    private var ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
-        get() = field * MOTOR_STEPS_PRER_ROTATION
-    private var ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
-        get() = field * MOTOR_STEPS_PRER_ROTATION
-
 
     /**
      * Sets step mode, default is 1/4 - 800
@@ -139,12 +164,6 @@ object GCodeSender {
     fun setMaxSpeed(maxSpeed:Int){
         RAPID_SPEED=maxSpeed
     }
-    private var isRelative = false
-    private var speedrate = 1.0 // speed multiply
-    private var speedNow = 0.0
-    private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
-    private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
-    private var totalSteps = 5 // all interpolation steps, divide one command to have linear movement
 
     /**
      * set totatSteps - the number of divisions of single command.
@@ -271,12 +290,12 @@ object GCodeSender {
                     if (nr != -1 && nr < comment) {
                         val end = line!!.indexOf(' ', nr)
                         val newSpeed: Double = if (end != -1)
-                                line!!.substring(nr + 1, end).toDouble()
-                            else
-                                line!!.substring(nr + 1).toDouble()
+                            line!!.substring(nr + 1, end).toDouble()
+                        else
+                            line!!.substring(nr + 1).toDouble()
                         if (newSpeed > maxSpeed) maxSpeed = newSpeed
                     }
-                    if (line!!.contains("f") || line!!.contains("G1") || line!!.contains("G0")) commandNumber += totalSteps
+                    if (line!!.contains("X") || line!!.contains("Y") || line!!.contains("Z")) commandNumber += totalSteps
                 }
                 //reduce speed multiplier based on max speed in file
                 if (RAPID_SPEED < maxSpeed) speedrate = maxSpeed / RAPID_SPEED
@@ -290,11 +309,8 @@ object GCodeSender {
                         isRelative = true
                     else if (line!!.contains("G1")) { // movement
                         val commands: List<String> = line!!
-                            .split(";")
-                        for (one in commands) {
-                            val command: List<String> = one.split(" ")
-                            fw.write(calculate(command, inSteps, isRightSide))
-                        }
+                            .split(";")[0].split(" "). filter { it!="" }
+                        fw.write(calculate(commands, inSteps, isRightSide))
                     }
                 }
                 br.close()
@@ -313,7 +329,6 @@ object GCodeSender {
      * @return calculated scara code for one command (line)
      */
     private fun calculate(code: List<String>, inSteps: Boolean, isRightSide: Boolean): String {
-        var ret = ""
         var x: Double? = null
         var y: Double? = null
         var z: Double? = null
@@ -339,10 +354,8 @@ object GCodeSender {
                 else -> {}
             }
         }
-        if (have) {
-            ret += transition(x, y, z, speedNow, inSteps, isRightSide)
-            return ret
-        }
+        if (have)
+            return transition(x, y, z, speedNow, inSteps, isRightSide)
         return ""
     }
 
@@ -360,6 +373,7 @@ object GCodeSender {
      * @param isRightSide direction of arm
      * @return calculated global transition
      * TODO throw exception or perform http request to inform user about object outside workspace
+     * TODO add Z move and integrate with arm code
      */
     private fun transition(
         xMove: Double?,
@@ -377,71 +391,69 @@ object GCodeSender {
             val newRaius: Double = hypot(xm, ym)
             val minRadius: Double = hypot(arm2Length*cos(-55.0*PI/180), arm2Length*sin(-55.0*PI/180)+ arm1Length)
 
-            return if (newRaius > R) {
+            if (newRaius > R) {
                 System.err.println("Object is outside workspace MAX_RADIUS<$newRaius")
-                ""
+
             } else if(newRaius<minRadius){
                 System.err.println("Object is outside workspace MIN_RADIUS<$newRaius")
-                ""
-            }else {
-                val gamma: Double = atan2(ym, xm) //absolute degree angle to R
-                val toBeta =
-                    (arm1Length * arm1Length + arm2Length * arm2Length - xm * xm - ym * ym) / (2 * arm1Length * arm2Length)
-                val beta: Double = acos(toBeta) //between  arms
-                val toAlpha =
-                    (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRaius)
-                val alpha: Double = acos(toAlpha) //between first arm and R
-                val angle = gamma + alpha
-                var alphaAdd: Double = Math.toDegrees(angle)
-                var betaAdd: Double = Math.toDegrees(beta)
-                if (alphaAdd.isNaN()) alphaAdd = 0.0
-                if (betaAdd.isNaN()) betaAdd = 0.0
-                val alphaChange: Double = if (alphaAdd == 0.0) 0.0 else angles[0] - alphaAdd
-                val betaChange: Double = if (betaAdd == 0.0) 0.0 else angles[1] - betaAdd
-                //attempt to interpolate
-                if (totalSteps>1) for (steps in 0 until totalSteps) {
-                    if (inSteps) {
-                        comand.append(L)
-                            .append((alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
-                            .append(" ").append(S)
-                            .append((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
-                        // -1 for direction
-                        if (zm != position[2] && isRelative) {
-                            //need to check if works with relative and absolute mode
-                            comand.append(" Z")
-                                .append(zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1)
-                        }
-                    } else {
-                        comand.append("" + L).append(alphaChange / totalSteps).append(" ")
-                            .append(S).append(betaChange / totalSteps)
-                    }
-                    if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
-                    comand.append("\n")
-                } else {
-                    if (inSteps) {
-                        comand.append(L)
-                            .append((alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
-                            .append(" ").append(S)
-                            .append((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
-                        // -1 for direction
-                        if (zm != position[2] && isRelative) {
-                            //need to check if works with relative and absolute mode
-                            comand.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
-                        }
-                    } else {
-                        comand.append("" + L).append(alphaChange).append(" ").append(S)
-                            .append(betaChange)
-                    }
-                    if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
-                    comand.append("\n")
-                }
-                if (!alphaAdd.isNaN()) angles[0] = alphaAdd
-                if (!betaAdd.isNaN()) angles[1] = betaAdd
-                if (xm != position[0]) position[0] = xm
-                if (ym != position[1]) position[1] = ym
-                if (zm != position[2]) position[2] = zm
-                comand.toString()
             }
+            val gamma: Double = atan2(ym, xm) //absolute degree angle to R
+            val toBeta =
+                (arm1Length * arm1Length + arm2Length * arm2Length - xm * xm - ym * ym) / (2 * arm1Length * arm2Length)
+            val beta: Double = acos(toBeta) //between  arms
+            val toAlpha =
+                (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRaius)
+            val alpha: Double = acos(toAlpha) //between first arm and R
+            val angle = gamma + alpha
+            var alphaAdd: Double = Math.toDegrees(angle)
+            var betaAdd: Double = Math.toDegrees(beta)
+            if (alphaAdd.isNaN()) alphaAdd = 0.0
+            if (betaAdd.isNaN()) betaAdd = 0.0
+            val alphaChange: Double = if (alphaAdd == 0.0) 0.0 else angles[0] - alphaAdd
+            val betaChange: Double = if (betaAdd == 0.0) 0.0 else angles[1] - betaAdd
+            //attempt to interpolate
+            if (totalSteps>1) for (steps in 0 until totalSteps) {
+                if (inSteps) {
+                    comand.append(L)
+                        .append((alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
+                        .append(" ").append(S)
+                        .append((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
+                    // -1 for direction
+                    if (zm != position[2] && isRelative) {
+                        //need to check if works with relative and absolute mode
+                        comand.append(" Z")
+                            .append(zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1)
+                    }
+                } else {
+                    comand.append("" + L).append(alphaChange / totalSteps).append(" ")
+                        .append(S).append(betaChange / totalSteps)
+                }
+                if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
+                comand.append("\n")
+            } else {
+                if (inSteps) {
+                    comand.append(L)
+                        .append((alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
+                        .append(" ").append(S)
+                        .append((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
+                    // -1 for direction
+                    if (zm != position[2] && isRelative) {
+                        //need to check if works with relative and absolute mode
+                        comand.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
+                    }
+                } else {
+                    comand.append("" + L).append(alphaChange).append(" ").append(S)
+                        .append(betaChange)
+                }
+                if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
+                comand.append("\n")
+            }
+            if (!alphaAdd.isNaN()) angles[0] = alphaAdd
+            if (!betaAdd.isNaN()) angles[1] = betaAdd
+            if (xm != position[0]) position[0] = xm
+            if (ym != position[1]) position[1] = ym
+            if (zm != position[2]) position[2] = zm
+            return comand.toString()
         } else if (zm != position[2] && isRelative) {
             comand.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
             comand.append("\n")
@@ -612,7 +624,7 @@ object GCodeSender {
         }
     }
     fun closePort() {
-         port?.closePort()
+        port?.closePort()
     }
     val isPortOpen: Boolean
         get() = port != null && port!!.isOpen
