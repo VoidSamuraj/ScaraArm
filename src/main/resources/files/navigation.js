@@ -58,7 +58,7 @@ var expanded= false;
 var menuDisplayed=false;
 var canMoveArm=true;
 
-fetch('/availablePorts', { method: 'GET' });
+fetch('/ports', { method: 'GET' });
 
 
 loadMenu.style.minHeight=firstMenuStyle.height;
@@ -240,7 +240,7 @@ manual.addEventListener('click',function(){
     optionsMenu.style.left = optionMenuHide;
     loadMenu.style.left = loadMenuHide;
     canMoveArm=true;
-        fetch('/startMove', {
+        fetch('/movement/start', {
           method: 'POST'})
         .catch(error => {
           console.error('Error:', error);
@@ -270,7 +270,7 @@ loadFileButton.addEventListener('click', function() {
             canMoveArm=true;
         }
     },time);
-            fetch('/endMove', {
+            fetch('/movement/end', {
               method: 'POST'})
             .catch(error => {
               console.error('Error:', error);
@@ -333,7 +333,7 @@ function fillTable(){
 //delete selected file
 window.deleteFile=function(fileName){
     if (confirm("Confirm deletion of "+fileName) == true) {
-        fetch("/files/delete/"+fileName, {
+        fetch("/files/"+fileName, {
             method: "DELETE"
         }).then(response => {
             if (response.ok) {
@@ -386,7 +386,7 @@ logout.addEventListener('click', function() {
 
     if (confirm("Are you sure you want to Logout?") == true) {
         let xhr = new XMLHttpRequest();
-        xhr.open('POST', '/logout');
+        xhr.open('POST', '/user/logout');
 
         xhr.onload = function() {
             if (xhr.status === 200) {
@@ -401,7 +401,7 @@ deleteAccount.addEventListener('click', function() {
     if (confirm("Are you sure you want to delete account?")) {
         if(confirm("Flies associated with account will be removed. Do you want to continue?")){
             let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/delete');
+            xhr.open('DELETE', '/user');
 
             xhr.onload = function() {
                 if (xhr.status === 200) {

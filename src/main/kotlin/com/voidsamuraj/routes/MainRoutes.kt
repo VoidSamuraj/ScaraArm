@@ -13,7 +13,7 @@ import io.ktor.server.sessions.*
 
 fun Route.mainRoutes(){
     get(){
-        call.respondRedirect("/login")
+        call.respondRedirect("/user/login")
     }
     route("/index"){
         get {
@@ -22,7 +22,7 @@ fun Route.mainRoutes(){
                 onSuccess = {
                     call.respondTemplate(template = "index.ftl", model= mapOf("expiration" to getTokenExpirationDate(call.sessions.get("TOKEN")as MyToken?)?.time,"lifeTime" to jwtExpirationSeconds))
                 },
-                onFailure = { call.respondRedirect("/login")}
+                onFailure = { call.respondRedirect("/user/login")}
             )
 
         }

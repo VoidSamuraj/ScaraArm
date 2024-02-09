@@ -34,7 +34,6 @@ object GCodeSender {
 
     private var port: SerialPort? = null
     private var SERIAL_PORT = "/dev/ttyACM0" //"COM5";
-
     /**
      * sets port and closes previous connections
      * @param port should look like: Linux - "/dev/ttyACM0", Windows - "COM5"

@@ -45,38 +45,38 @@ fun PipelineContext<Unit,ApplicationCall>.generateToken(user:User):MyToken{
 }
 
 suspend fun PipelineContext<Unit,ApplicationCall>.onAuthError(){
-    call.respondRedirect("/login")
+    call.respondRedirect("/user/login")
 
 }
 fun Route.authRoute(){
-    get("/login"){
-        if(errorMessage!=""){
-            call.respondTemplate(template="login.ftl", model = mapOf("message" to errorMessage))
-            errorMessage=""
-        }else{
-            val token=call.sessions.get("TOKEN")as MyToken?
-            checkPermission(token = token,
-                onSuccess = {
-                    call.respondRedirect("/index")},
-                onFailure = {
-                    call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
-                })
+    route("/user"){
+        get("/login"){
+            if(errorMessage!=""){
+                call.respondTemplate(template="login.ftl", model = mapOf("message" to errorMessage))
+                errorMessage=""
+            }else{
+                val token=call.sessions.get("TOKEN")as MyToken?
+                checkPermission(token = token,
+                    onSuccess = {
+                        call.respondRedirect("/index")},
+                    onFailure = {
+                        call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
+                    })
+            }
         }
-    }
-
-    post("/auth") {
-        val formParameters = call.receiveParameters()
-        val login = formParameters.getOrFail("login")
-        val password = formParameters.getOrFail("password")
-        val dbPassword=dao.getUserPassword(login=login)
-        if(dbPassword!=null&&HashPassword.comparePasswords(password,dbPassword))
-            dao.getUserId(login)?.let {id -> dao.getUser(id)?.let{user ->  onAuthenticate(user)}}
-        else {
-            errorMessage="Login error"
-            onAuthError()
+        post("/login") {
+            val formParameters = call.receiveParameters()
+            val login = formParameters.getOrFail("login")
+            val password = formParameters.getOrFail("password")
+            val dbPassword=dao.getUserPassword(login=login)
+            if(dbPassword!=null&&HashPassword.comparePasswords(password,dbPassword))
+                dao.getUserId(login)?.let {id -> dao.getUser(id)?.let{user ->  onAuthenticate(user)}}
+            else {
+                errorMessage="Login error"
+                onAuthError()
+            }
         }
-    }
-        post("/extend"){
+        post("/refresh-token-expiration"){
             val token=call.sessions.get("TOKEN")as MyToken?
             checkPermission(token = token,
                 onSuccess = {
@@ -91,38 +91,39 @@ fun Route.authRoute(){
 
                     call.respond(HttpStatusCode.OK, "Success")
                 },
-                onFailure = { call.respondRedirect("/login")}
+                onFailure = { call.respondRedirect("/user/login")}
             )
         }
-    post("/logout") {
-        call.sessions.clear("TOKEN")
-        call.respondText("Logged out successfully")
-    }
-
-    post("/register") {
-        val formParameters = call.receiveParameters()
-        val login = formParameters.getOrFail("login")
-        val password = HashPassword.hashPassword(formParameters.getOrFail("password"))
-        val newUser=dao.addNewUser(login = login, password =  password, filesId = "")
-        if(newUser!=null)
-            onAuthenticate(newUser)
-        else {
-            errorMessage="Register error"
-            onAuthError()
+        post("/logout") {
+            call.sessions.clear("TOKEN")
+            call.respondText("Logged out successfully")
         }
-    }
-    post("/delete") {
-        val token=call.sessions.get("TOKEN")as MyToken?
-        call.sessions.clear("TOKEN")
-        getUserId(token)?.let{userId->
-            dao.getUser(userId)?.filesId?.split(";")?.forEach { fileId->
-                File(filesFolder+"/"+dao.getFileName(fileId.toInt())).delete()
-                dao.deleteFile(fileId.toInt())
+        post("/register") {
+            val formParameters = call.receiveParameters()
+            val login = formParameters.getOrFail("login")
+            val password = HashPassword.hashPassword(formParameters.getOrFail("password"))
+            val newUser=dao.addNewUser(login = login, password =  password, filesId = "")
+            if(newUser!=null)
+                onAuthenticate(newUser)
+            else {
+                errorMessage="Register error"
+                onAuthError()
             }
-            dao.deleteUser(userId)
-            call.respondText("Account deleted successfully")
         }
+        delete {
+            val token=call.sessions.get("TOKEN")as MyToken?
+            call.sessions.clear("TOKEN")
+            getUserId(token)?.let{userId->
+                dao.getUser(userId)?.filesId?.split(";")?.forEach { fileId->
+                    File(filesFolder+"/"+dao.getFileName(fileId.toInt())).delete()
+                    dao.deleteFile(fileId.toInt())
+                }
+                dao.deleteUser(userId)
+                call.respondText("Account deleted successfully")
+            }
 
+
+        }
 
     }
 }

@@ -1,31 +1,17 @@
 package com.voidsamuraj.gcode
 
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
-import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
+
 import java.io.File
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.jvm.isAccessible
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 
 class GcodeSenderTest {
     private val path="src/test/kotlin/com/voidsamuraj/gcode/gcodes/"
 
-    @Before
-    fun setUp() {
-        mockkObject(GCodeSender)
-    }
-
-    @After
-    fun tearDown() {
-        unmockkAll()
-    }
     @Test
     fun testCalculate(){
         val input:List<String> = listOf("G1","X160","Y160")
@@ -87,7 +73,7 @@ class GcodeSenderTest {
         GCodeSender.resetState()
         GCodeSender.makeGCodeFile(path+src, path+out, true, true)
         val file = File(path+out)
-        assertTrue("No created file",file.exists())
+        assertTrue(file.exists(),"No created file")
         val content = file.readText().trim()
         val expectedContent = "commands 10\n" +
                 "L-8 S-230 F0\n" +
@@ -100,7 +86,7 @@ class GcodeSenderTest {
                 "L9 S23 F0\n" +
                 "L9 S23 F0\n" +
                 "L9 S23 F0"
-        assertEquals("File content is not equal",expectedContent, content)
+        assertEquals(expectedContent, content,"File content is not equal")
 
     }
     @Test
@@ -145,7 +131,7 @@ class GcodeSenderTest {
                 "L-0.06643913318320642 S0.045315420664994124 F60000\n" +
                 "L-0.06643913318320642 S0.045315420664994124 F60000\n" +
                 "L-0.06643913318320642 S0.045315420664994124 F60000"
-        assertEquals("File content is not equal",expectedContent, content)
+        assertEquals(expectedContent, content,"File content is not equal")
 
     }
 

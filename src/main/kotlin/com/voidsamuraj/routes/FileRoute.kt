@@ -77,27 +77,66 @@ fun Route.fileRoute(){
                 call.respond(files)
             }
         }
-        get("/{fileName}"){
-            checkUserPermission(){
-                val fileName = call.parameters["fileName"]
-                val file=File(filesFolder+"/"+fileName)
-                if(file.exists())
-                    call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
-                else
-                    call.respond(HttpStatusCode.NotFound,"File Not Found")
+        route("/{fileName}"){
+            get{
+                checkUserPermission(){
+                    val fileName = call.parameters["fileName"]
+                    val file=File(filesFolder+"/"+fileName)
+                    if(file.exists())
+                        call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+                    else
+                        call.respond(HttpStatusCode.NotFound,"File Not Found")
+                }
             }
-        }
-        post("/draw/{filename}"){
-            checkUserPermission(){
-                val fileName = call.parameters["fileName"]
-                if(fileName!=null){
-                    GCodeSender.sendGCode(filesFolder+"/"+fileName)
-                    call.respond(HttpStatusCode.OK, "File is processing")
-                }else
-                    call.respond(HttpStatusCode.NotFound,"File not found")
+            post("/draw"){
+                checkUserPermission(){
+                    val fileName = call.parameters["fileName"]
+                    if(fileName!=null){
+                        GCodeSender.sendGCode(filesFolder+"/"+fileName)
+                        call.respond(HttpStatusCode.OK, "File is processing")
+                    }else
+                        call.respond(HttpStatusCode.NotFound,"File not found")
 
+                }
+            }
+            delete{
+                checkUserPermission{
+                    val fileName = call.parameters["fileName"]
+                    val file=File(filesFolder+"/"+fileName)
+
+                    val token = call.sessions.get("TOKEN") as MyToken?
+                    val id = getUserId(token)
+                    var list:List<String> = emptyList()
+                    if (id!=null) {
+                        list = dao.getUser(id)?.filesId?.split(";")?.map {fileId->
+                            if(fileId.isNotEmpty())
+                                dao.getFileName(fileId.toInt()) ?: ""
+                            else
+                                ""
+                        }?: emptyList()
+                    }
+
+                    if(file.exists()&&list.contains(fileName))
+                        if(file.delete()) {
+                            val ml:MutableList<String> = dao.getUser(id!!)?.filesId?.split(";")?.toMutableList()?: mutableListOf()
+                            val fileMap = ml.associate { key -> key to dao.getFileName(key.toInt()) }.toMutableMap()
+                            fileMap.keys.filter { key -> fileMap[key] == fileName }
+                                .forEach { key ->
+                                    key+dao.deleteFile(key.toInt())
+                                    fileMap.remove(key)
+                                }
+                            dao.editUser(
+                                id = id,
+                                filesId = fileMap.keys.joinToString(";")
+                            )
+                            call.respond(HttpStatusCode.OK, "File was deleted")
+                        }
+                    call.respond(HttpStatusCode.NoContent, "FILE not deleted")
+                }
             }
         }
+
+
         post ("/upload"){
             checkUserPermission(){
                 try {
@@ -135,41 +174,7 @@ fun Route.fileRoute(){
                 }
             }
         }
-        delete("/delete/{fileName}"){
-            checkUserPermission(){
-                val fileName = call.parameters["fileName"]
-                val file=File(filesFolder+"/"+fileName)
 
-                val token = call.sessions.get("TOKEN") as MyToken?
-                val id = getUserId(token)
-                var list:List<String> = emptyList()
-                if (id!=null) {
-                    list = dao.getUser(id)?.filesId?.split(";")?.map {fileId->
-                        if(fileId.isNotEmpty())
-                            dao.getFileName(fileId.toInt()) ?: ""
-                        else
-                            ""
-                    }?: emptyList()
-                }
-
-                if(file.exists()&&list.contains(fileName))
-                    if(file.delete()) {
-                        val ml:MutableList<String> = dao.getUser(id!!)?.filesId?.split(";")?.toMutableList()?: mutableListOf()
-                        val fileMap = ml.associate { key -> key to dao.getFileName(key.toInt()) }.toMutableMap()
-                        fileMap.keys.filter { key -> fileMap[key] == fileName }
-                            .forEach { key ->
-                                key+dao.deleteFile(key.toInt())
-                                fileMap.remove(key)
-                            }
-                        dao.editUser(
-                            id = id,
-                            filesId = fileMap.keys.joinToString(";")
-                        )
-                        call.respond(HttpStatusCode.OK, "File was deleted")
-                    }
-                call.respond(HttpStatusCode.NoContent, "FILE not deleted")
-            }
-        }
     }
 }
 

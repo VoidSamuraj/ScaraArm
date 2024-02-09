@@ -5,8 +5,6 @@ import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 fun Application.staticRoute(){
     routing {
-        static("/static") {
-            resources("files")
-        }
+        staticResources("/static","files")
     }
 }

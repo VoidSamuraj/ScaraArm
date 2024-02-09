@@ -461,7 +461,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     const params = new URLSearchParams(data);
 
         //sending code to arm 
-         fetch("/files/draw/"+fileName, {method: "POST",body: params}).then(response => {
+         fetch("/files/"+fileName+"/draw", {method: "POST",body: params}).then(response => {
                   if (response.ok) {
                     console.log("File is processing.");
                   } else {

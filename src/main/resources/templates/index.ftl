@@ -147,7 +147,7 @@
             document.getElementById("extendButton").addEventListener('click', extend );
             function extend(){
                 let xhr = new XMLHttpRequest();
-                xhr.open('POST', '/extend');
+                xhr.open('POST', '/user/refresh-token-expiration');
 
                 xhr.onload = function() {
                     if (xhr.status === 200) {

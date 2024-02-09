@@ -708,7 +708,7 @@ function moveArmByAngle(firstArmAngle,secondArmAngle){
     for (const key in data) {
       params.append(key, data[key]);
     }
-    fetch('/moveByAngle', {
+    fetch('/movement/angle', {
       method: 'POST',
       body: params
     })

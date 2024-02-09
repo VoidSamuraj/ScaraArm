@@ -43,7 +43,8 @@ dependencies {
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.21")
+    testImplementation(kotlin("test"))
     testImplementation("io.mockk:mockk:1.13.9")
 
     implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
@@ -71,4 +72,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.fazecast/jSerialComm
     implementation("com.fazecast:jSerialComm:2.10.2")
 
+}
+tasks.test {
+    useJUnitPlatform()
 }
