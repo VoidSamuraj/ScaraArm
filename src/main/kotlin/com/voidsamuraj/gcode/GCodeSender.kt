@@ -1,7 +1,6 @@
 package com.voidsamuraj.gcode
 
 import com.fazecast.jSerialComm.SerialPort
-import com.fazecast.jSerialComm.SerialPortTimeoutException
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.File
@@ -21,27 +20,28 @@ import kotlin.math.*
 
 @Throws(InterruptedException::class, IOException::class)
 fun main() {
-    val src = "/home/karol/Pobrane/t3.txt"
+    GCodeSender.openPort()
+    /*val src = "/home/karol/Pobrane/t3.txt"
     val out = "/home/karol/Pobrane/output.txt"
     // if false generated code is in degrees, else steps are calculated
     val sendGCode = false
     GCodeSender.makeGCodeFile(src, out, sendGCode, false)
     if (sendGCode) {
         GCodeSender.sendGCode(out)
-    }
+    }*/
 }
 object GCodeSender {
 
     private var port: SerialPort? = null
-    private var SERIAL_PORT = "/dev/ttyACM0" //"COM5";
+    private var SERIAL_PORT = "ttyACM0" //"COM5";
     /**
      * sets port and closes previous connections
      * @param port should look like: Linux - "/dev/ttyACM0", Windows - "COM5"
      */
     fun setPort(port:String){
+        endCommunication()
+        closePort()
         SERIAL_PORT=port
-        if(isPortOpen)
-            endCommunication()
     }
     enum class Platform{
         WINDOWS,
@@ -199,16 +199,13 @@ object GCodeSender {
                                 while (br.readLine().also { line = it } != null) {
                                     line?.let { pw.write(it) }
                                     pw.flush()
-                                    val buffer = ByteArray(1024)
                                     do {
                                         try {
                                             Thread.sleep(100)
-                                            bins.read(buffer)
-                                            break
-                                        } catch (e: SerialPortTimeoutException) {
-                                            println("Timeout exception occurred: " + e.message)
+                                        } catch (e:  InterruptedException) {
+                                            println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
                                         }
-                                    } while (true)
+                                    } while (!isOKReturned(bins))
                                 }
                                 endCommunication(pw)
                             } catch (ex: IOException) {
@@ -245,22 +242,26 @@ object GCodeSender {
      */
     @Throws(IOException::class, InterruptedException::class)
     private fun startCommunication(pw: PrintWriter, bins: BufferedInputStream) {
-        var st: String
-        val bf = ByteArray(1024)
         do {
             try {
                 pw.write("START")
                 pw.flush()
                 Thread.sleep(100)
-                bins.read(bf)
-                st = String(bf)
-                if (st.trim().compareTo("OK",ignoreCase = true) == 0) {
+                if (isOKReturned(bins))
                     break
-                }
-            } catch (e: SerialPortTimeoutException) {
-                println("Timeout exception occurred: " + e.message)
+            } catch (e: IOException) {
+                println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
             }
         } while (true)
+        //clean stream
+        do {
+            try {
+                bins.read()
+            } catch (e: IOException) {
+                println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+            }
+        } while (bins.available() > 0)
+
     }
 
     /**
@@ -490,36 +491,31 @@ object GCodeSender {
                 println(line)
                 pw.write(line)
                 pw.flush()
-                val buffer = ByteArray(1024)
                 do {
                     try {
                         Thread.sleep(100)
-                        bins.read(buffer)
-                        break
-                    } catch (e: SerialPortTimeoutException) {
-                        System.err.println("Timeout exception occurred: " + e.message)
+                    } catch (e:  InterruptedException) {
+                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
                     }
-                } while (true)
+                } while (!isOKReturned(bins))
             }
-        } catch (ex: IOException) {
-            angles[0] = anglesCp[0]
-            angles[1] = anglesCp[1]
-            position[0] = positionCp[0]
-            position[1] = positionCp[1]
-            position[2] = positionCp[2]
-            Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
-        } catch (ex: InterruptedException) {
-            angles[0] = anglesCp[0]
-            angles[1] = anglesCp[1]
-            position[0] = positionCp[0]
-            position[1] = positionCp[1]
-            position[2] = positionCp[2]
-            Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+        } catch (ex: Exception) {
+            when(ex){
+                is IOException,
+                is InterruptedException->{
+                    angles[0] = anglesCp[0]
+                    angles[1] = anglesCp[1]
+                    position[0] = positionCp[0]
+                    position[1] = positionCp[1]
+                    position[2] = positionCp[2]
+                    Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+                }
+                else -> throw ex
+            }
         }
     }
     /**
      * function to move arm by rotation. Function creates connection to communicate
-     * TODO change code to have established connection and connect only when necessary
      * TODO needed testing
      * @param firstArmRelativeAngle rotation in degrees relative to current position
      * @param secondArmRelativeAngle rotation in degrees relative to current position
@@ -550,31 +546,40 @@ object GCodeSender {
                 println(line)
                 pw.write(line)
                 pw.flush()
-                val buffer = ByteArray(1024)
                 do {
                     try {
                         Thread.sleep(100)
-                        bins.read(buffer)
-                        break
-                    } catch (e: SerialPortTimeoutException) {
-                        println("Timeout exception occurred: " + e.message)
+                    } catch (e:  InterruptedException) {
+                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
                     }
-                } while (true)
+                } while (!isOKReturned(bins))
             }
-        } catch (ex: IOException) {
-            angles[0] = anglesCp[0]
-            angles[1] = anglesCp[1]
-            position[0] = positionCp[0]
-            position[1] = positionCp[1]
-            position[2] = positionCp[2]
-            Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
-        } catch (ex: InterruptedException) {
-            angles[0] = anglesCp[0]
-            angles[1] = anglesCp[1]
-            position[0] = positionCp[0]
-            position[1] = positionCp[1]
-            position[2] = positionCp[2]
-            Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+        } catch (ex: Exception) {
+            when(ex){
+                is IOException,
+                is InterruptedException->{
+                    angles[0] = anglesCp[0]
+                    angles[1] = anglesCp[1]
+                    position[0] = positionCp[0]
+                    position[1] = positionCp[1]
+                    position[2] = positionCp[2]
+                    Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+                }
+                else -> throw ex
+            }
+        }
+    }
+
+    private fun isOKReturned(bins:BufferedInputStream):Boolean{
+        val bf = ByteArray(1024)
+        try {
+            bins.read(bf)
+            val st = String(bf, charset = Charsets.UTF_8).trim()
+            return st.contains("OK",ignoreCase = true)
+
+        } catch (e: IOException) {
+            println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+            return false
         }
     }
 
@@ -593,7 +598,7 @@ object GCodeSender {
         port!!.setComPortParameters(9600, 8, 1, 0)
 
         if(serverPlatform==Platform.WINDOWS)
-            port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0)
+            port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0)
         else if(serverPlatform==Platform.LINUX)
             port!!.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0)
 

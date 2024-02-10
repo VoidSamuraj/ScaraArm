@@ -176,6 +176,73 @@ input, #ports, #ports option{
 select option:checked {
     color: blue;
 }
+.radioItem [type="radio"]{
+    display:none;
+}
+.radioItem + .radioItem{
+    margin-top: 15px;
+}
+
+.radioItem label{
+    display: block;
+    padding: 20px 60px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 250px;
+    white-space: nowrap;
+    position: relative;
+}
+.radioItem label:after,
+.radioItem label:before{
+    content: "";
+    position: absolute;
+    border-radius:50%;
+}
+.radioItem label:after{
+    height:20px;
+    width: 20px;
+    border: 2px solid #FFA31A;
+    left:20px;
+    top: calc(50% - 12px);
+}
+.radioItem label:before{
+    background: #f0f0f0;
+    height: 10px;
+    width: 10px;
+    left: 27px;
+    top: calc(50% - 5px);
+    transform: scale(5);
+    transition: .4s ease-in-out 0s;
+    opacity: 0;
+    visibility: hidden;
+}
+.radio-item [type="radio"]:checked ~ label{
+    border-color: #f0f0f0;
+}
+.radioItem input[type="radio"]:checked + label{
+    background: #FFA31A;
+    font-weight: bold;
+}
+.radioItem [type="radio"]:checked ~ label:before{
+    opacity:1;
+    visibility:visible;
+    transform: scale(1);
+}
+.radioItem [type="radio"]:checked + label:before{
+    background: #f0f0f0;
+
+}
+.radioItem [type="radio"]:checked + label:after{
+    border: 2px solid #f0f0f0;
+}
+.radioList{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 
 nav .slot, nav a {
     color: transparent;
@@ -295,13 +362,13 @@ td>button:first-child:hover{
     height: 2em;
     width: 10em;
 }
-#optionsMenu{
+#optionsMenu, #portMenu{
     z-index: 3;
     background-color: #2C2F3E;
     left: -400px;
     width: 400px;
 }
-#optionsMenu .menu-button{
+#optionsMenu .menu-button, #portMenu .menu-button{
   width: 370px;
 }
 #loadMenu .menu-button input[type=file] {
@@ -376,7 +443,7 @@ td>button{
     width: 100%;
 }
 
-#tableLi{
+#tableFiles, #tablePorts{
      overflow: auto;
      display:block !important;
      flex-direction: unset !important;
@@ -399,6 +466,14 @@ table td, table th {
     border:1px solid #f0cc00;
     padding:5px;
 }
+
+#tablePorts td,#tablePorts th{
+    border: 0px;
+}
+#tablePorts td{
+    text-align:center;
+}
+
 #positionBox{
     position: absolute;
     min-width: 300px;

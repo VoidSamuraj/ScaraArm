@@ -26,6 +26,28 @@
             </ul>
 
         </nav>
+        <nav id="portMenu">
+            <ul>
+                <li class="button menu-button" id="closePortIcon">
+                    <img class="icons" src="static/icon/back.svg" alt="back">
+                </li>
+                <li class="button menu-button" >
+                    <div class="upload-btn-wrapper">
+                        <button id="portButton">Refresh Ports</button>
+                    </div>
+                </li>
+                <li id="tablePorts">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Port</th>
+                            </tr>
+                        </thead>
+                        <tbody class="radioList"></tbody>
+                    </table>
+                </li>
+            </ul>
+        </nav>      
         <nav id="loadMenu">
             <ul>
                 <li class="button menu-button" id="closeLoadIcon">
@@ -37,7 +59,7 @@
                     </div>
                     <input type="file" name="myfile" id="myfile">
                 </li>
-                <li id="tableLi">
+                <li id="tableFiles">
                     <table>
                         <thead>
                             <tr>

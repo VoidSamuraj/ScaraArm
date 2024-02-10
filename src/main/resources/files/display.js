@@ -681,7 +681,7 @@ function moveArmBy(x,y,z,isRightSide){
     for (const key in data) {
       params.append(key, data[key]);
     }
-    fetch('/move', {
+    fetch('/arm/movement/cartesian', {
       method: 'POST',
       body: params
     })
@@ -708,7 +708,7 @@ function moveArmByAngle(firstArmAngle,secondArmAngle){
     for (const key in data) {
       params.append(key, data[key]);
     }
-    fetch('/movement/angle', {
+    fetch('/arm/movement/angle', {
       method: 'POST',
       body: params
     })
