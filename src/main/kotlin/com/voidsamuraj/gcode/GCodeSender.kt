@@ -183,44 +183,33 @@ object GCodeSender {
         try {
             if (!isPortOpen) openPort()
             val iStream: InputStream = port!!.inputStream
-            println("OPEN")
             val bins = BufferedInputStream(iStream)
             val pw = PrintWriter(port!!.outputStream)
             val fin = File(fileToSend)
             Thread.sleep(500)
             startCommunication(pw, bins)
-            println("KOMUNIKACJA ")
             try {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         val t = Thread {
-                            try {
-                                var line: String?
-                                while (br.readLine().also { line = it } != null) {
-                                    line?.let { pw.write(it) }
-                                    pw.flush()
-                                    do {
-                                        try {
-                                            Thread.sleep(100)
-                                        } catch (e:  InterruptedException) {
-                                            println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
-                                        }
-                                    } while (!isOKReturned(bins))
+                            var line: String?
+                            while (br.readLine().also { line = it } != null) {
+                                line?.let { pw.write(it) }
+                                pw.flush()
+                                for(i in 1..3){
+                                    if (isOKReturned(bins))
+                                        break
+                                    if(i==3)
+                                        throw IOException("Arm is not responding")
                                 }
-                                endCommunication(pw)
-                            } catch (ex: IOException) {
-                                Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
-                            } catch (ex: InterruptedException) {
-                                Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
                             }
+                            endCommunication(pw)
                         }
                         t.start()
                         t.join()
                     }
                 }
-            } catch (ex: IOException) {
-                Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
-            } finally {
+            }  finally {
                 bins.close()
                 iStream.close()
                 pw.close()
@@ -246,7 +235,6 @@ object GCodeSender {
             try {
                 pw.write("START")
                 pw.flush()
-                Thread.sleep(100)
                 if (isOKReturned(bins))
                     break
             } catch (e: IOException) {
@@ -323,7 +311,7 @@ object GCodeSender {
 
     /**
      * Reads params from array (whole line) and sends to [transition] to calculate movement
-     * @param code array of comands
+     * @param code array of commands
      * @param inSteps change degrees to motor steps
      * @param isRightSide changes direction of arm
      * @return calculated scara code for one command (line)
@@ -383,26 +371,26 @@ object GCodeSender {
         inSteps: Boolean,
         isRightSide: Boolean,
     ): String {
-        val comand = StringBuilder()
+        val command = StringBuilder()
         val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
         val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
         if (xm != position[0] || ym != position[1]) {
-            val newRaius: Double = hypot(xm, ym)
+            val newRadius: Double = hypot(xm, ym)
             val minRadius: Double = hypot(arm2Length*cos(-55.0*PI/180), arm2Length*sin(-55.0*PI/180)+ arm1Length)
 
-            if (newRaius > R) {
-                System.err.println("Object is outside workspace MAX_RADIUS<$newRaius")
+            if (newRadius > R) {
+                System.err.println("Object is outside workspace MAX_RADIUS<$newRadius")
 
-            } else if(newRaius<minRadius){
-                System.err.println("Object is outside workspace MIN_RADIUS<$newRaius")
+            } else if(newRadius<minRadius){
+                System.err.println("Object is outside workspace MIN_RADIUS<$newRadius")
             }
             val gamma: Double = atan2(ym, xm) //absolute degree angle to R
             val toBeta =
                 (arm1Length * arm1Length + arm2Length * arm2Length - xm * xm - ym * ym) / (2 * arm1Length * arm2Length)
             val beta: Double = acos(toBeta) //between  arms
             val toAlpha =
-                (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRaius)
+                (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRadius)
             val alpha: Double = acos(toAlpha) //between first arm and R
             val angle = gamma + alpha
             var alphaAdd: Double = Math.toDegrees(angle)
@@ -414,50 +402,50 @@ object GCodeSender {
             //attempt to interpolate
             if (totalSteps>1) for (steps in 0 until totalSteps) {
                 if (inSteps) {
-                    comand.append(L)
+                    command.append(L)
                         .append((alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
                         .append(" ").append(S)
                         .append((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
                     // -1 for direction
                     if (zm != position[2] && isRelative) {
                         //need to check if works with relative and absolute mode
-                        comand.append(" Z")
+                        command.append(" Z")
                             .append(zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1)
                     }
                 } else {
-                    comand.append("" + L).append(alphaChange / totalSteps).append(" ")
+                    command.append("" + L).append(alphaChange / totalSteps).append(" ")
                         .append(S).append(betaChange / totalSteps)
                 }
-                if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
-                comand.append("\n")
+                if (speed != null && speed != -1.0) command.append(" F").append((speed * speedrate).toLong())
+                command.append("\n")
             } else {
                 if (inSteps) {
-                    comand.append(L)
+                    command.append(L)
                         .append((alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
                         .append(" ").append(S)
                         .append((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
                     // -1 for direction
                     if (zm != position[2] && isRelative) {
                         //need to check if works with relative and absolute mode
-                        comand.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
+                        command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
                     }
                 } else {
-                    comand.append("" + L).append(alphaChange).append(" ").append(S)
+                    command.append("" + L).append(alphaChange).append(" ").append(S)
                         .append(betaChange)
                 }
-                if (speed != null && speed != -1.0) comand.append(" F").append((speed * speedrate).toLong())
-                comand.append("\n")
+                if (speed != null && speed != -1.0) command.append(" F").append((speed * speedrate).toLong())
+                command.append("\n")
             }
             if (!alphaAdd.isNaN()) angles[0] = alphaAdd
             if (!betaAdd.isNaN()) angles[1] = betaAdd
             if (xm != position[0]) position[0] = xm
             if (ym != position[1]) position[1] = ym
             if (zm != position[2]) position[2] = zm
-            return comand.toString()
+            return command.toString()
         } else if (zm != position[2] && isRelative) {
-            comand.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
-            comand.append("\n")
-            return comand.toString()
+            command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
+            command.append("\n")
+            return command.toString()
         }
         return ""
     }
@@ -477,28 +465,28 @@ object GCodeSender {
         val positionCp: DoubleArray = position.clone()
         val isRelativeCp = isRelative
         isRelative = true
-        val lines: List<String> = transition(xMove, yMove, zMove, null, true, isRightSide).split("\n")
+        val lines: List<String> = transition(xMove, yMove, zMove, null, true, isRightSide).split("\n").filter { it!="" }
         isRelative = isRelativeCp
         try {
             if (!isPortOpen) openPort()
             val iStream: InputStream = port!!.inputStream
             val bins = BufferedInputStream(iStream)
             val pw = PrintWriter(port!!.outputStream)
-            Thread.sleep(100)
             startCommunication(pw, bins)
             println("Communication ")
             for (line in lines) {
                 println(line)
                 pw.write(line)
                 pw.flush()
-                do {
-                    try {
-                        Thread.sleep(100)
-                    } catch (e:  InterruptedException) {
-                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
-                    }
-                } while (!isOKReturned(bins))
+
+                for(i in 1..3){
+                    if (isOKReturned(bins))
+                        break
+                    if(i==3)
+                        throw IOException("Arm is not responding")
+                }
             }
+            endCommunication()
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -530,30 +518,25 @@ object GCodeSender {
         val xPos: Double = arm1Length * sin(firstArmAngle) + arm2Length * sin(secondArmAngle + firstArmAngle)
         val isRelativeCp = isRelative
         isRelative = false
-        val lines: List<String> = transition(xPos, yPos, null, null, true, !isRightSide).split("\n")
+        val lines: List<String> = transition(xPos, yPos, null, null, true, !isRightSide).split("\n").filter { it!="" }
         isRelative = isRelativeCp
-        //println("PosAfter " + position[0] + " " + position[1] + "  angles " + angles[0] + " " + angles[1] + "  move " + xPos + " " + yPos)
-        //println("PosAfter " + position[0] + " " + position[1] + "  angles " + firstArmAngle + " " + secondArmAngle)
         try {
             if (!isPortOpen) openPort()
             val iStream: InputStream = port!!.inputStream
             val bins = BufferedInputStream(iStream)
             val pw = PrintWriter(port!!.outputStream)
-            Thread.sleep(100)
             startCommunication(pw, bins)
-            println("Communication ")
             for (line in lines) {
-                println(line)
                 pw.write(line)
                 pw.flush()
-                do {
-                    try {
-                        Thread.sleep(100)
-                    } catch (e:  InterruptedException) {
-                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
-                    }
-                } while (!isOKReturned(bins))
+                for(i in 1..3){
+                    if (isOKReturned(bins))
+                        break
+                    if(i==3)
+                        throw IOException("Arm is not responding")
+                }
             }
+            endCommunication()
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -570,17 +553,30 @@ object GCodeSender {
         }
     }
 
+    /**
+     * The function tries to read from the stream up to five times. Readed data is added to previous and whole read data are searched for "OK" strings.
+     *
+     */
     private fun isOKReturned(bins:BufferedInputStream):Boolean{
-        val bf = ByteArray(1024)
-        try {
-            bins.read(bf)
-            val st = String(bf, charset = Charsets.UTF_8).trim()
-            return st.contains("OK",ignoreCase = true)
-
-        } catch (e: IOException) {
-            println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
-            return false
+        var text=""
+        for(i in 1..5) {
+            val bf = ByteArray(1024)
+            try {
+                val bytesRead = bins.read(bf)
+                if (bytesRead != -1) {
+                    val st = String(bytes = bf, offset = 0, length = bytesRead, charset = Charsets.UTF_8).trim()
+                    text+=st
+                    if(text.contains("OK", ignoreCase = true))
+                        return true
+                    Thread.sleep(200)
+                }
+            } catch (e: IOException) {
+                println("Exception Line: " + e.message)
+            }catch (e:  InterruptedException) {
+                println("Exception Line: "+ e.message)
+            }
         }
+        return false
     }
 
     /**
@@ -604,9 +600,8 @@ object GCodeSender {
 
         Thread.sleep(100)
         while (!port!!.openPort()) {
-            Thread.sleep(500)
+            Thread.sleep(100)
         }
-        Thread.sleep(4000)
     }
 
     /**
