@@ -1,6 +1,6 @@
 package com.voidsamuraj.gcode
-
 import com.fazecast.jSerialComm.SerialPort
+import io.ktor.util.*
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.File
@@ -9,6 +9,7 @@ import java.io.FileWriter
 import java.io.IOException
 import java.io.InputStream
 import java.io.PrintWriter
+import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.math.*
@@ -32,6 +33,15 @@ fun main() {
 }
 object GCodeSender {
 
+    enum class Platform{
+        WINDOWS,
+        LINUX
+    }
+    enum class StepsMode(val steps:Int){
+        ONE(200),
+        HALF(400),
+        ONE_QUARTER(800)
+    }
     private var port: SerialPort? = null
     private var SERIAL_PORT = "ttyACM0" //"COM5";
     /**
@@ -42,10 +52,6 @@ object GCodeSender {
         endCommunication()
         closePort()
         SERIAL_PORT=port
-    }
-    enum class Platform{
-        WINDOWS,
-        LINUX
     }
 
     /**
@@ -117,12 +123,6 @@ object GCodeSender {
     fun setArm2Length(length:Long){
         arm2Length=length
         R = arm2Length + arm1Length
-    }
-
-    enum class StepsMode(val steps:Int){
-        ONE(200),
-        HALF(400),
-        ONE_QUARTER(800)
     }
 
     /**
@@ -511,7 +511,6 @@ object GCodeSender {
     fun moveBy(firstArmRelativeAngle: Double?, secondArmRelativeAngle: Double?) {
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-        //System.out.println("PosBefore " + position[0] + " " + position[1] + "  angles " + angles[0] + " " + angles[1] + " " + L + " " + S)
         val firstArmAngle: Double = (if (firstArmRelativeAngle != null) firstArmRelativeAngle + angles[0] else angles[0]) * Math.PI / 180
         val secondArmAngle: Double = ((if (secondArmRelativeAngle != null) secondArmRelativeAngle + angles[1] else angles[1]) - 180) * Math.PI / 180
         val yPos: Double = arm1Length * cos(firstArmAngle) + arm2Length * cos(secondArmAngle + firstArmAngle)
@@ -592,6 +591,12 @@ object GCodeSender {
     fun openPort(){
         port = SerialPort.getCommPort(SERIAL_PORT)
         port!!.setComPortParameters(9600, 8, 1, 0)
+
+        val platform =System.getProperty("os.name").lowercase(Locale.getDefault())
+        if(platform == "windows")
+            setPlatform(Platform.WINDOWS)
+        else
+            setPlatform(Platform.LINUX)
 
         if(serverPlatform==Platform.WINDOWS)
             port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0)

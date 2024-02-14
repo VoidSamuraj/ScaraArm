@@ -35,7 +35,7 @@ const rotationTextHeight=7.53;
 const heightTextHeight=4.75;
 const selectColor=0xff2222;
 
-var arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArm1Length);
+var arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArmLength);
 var arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
 var toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
 setupOptionMenu(changeArmDimens);
@@ -325,9 +325,23 @@ const toggle=document.getElementById("toggle");
 toggle.checked=rightSide;
 toggle.addEventListener("change",function() {
     //update direction
-    rightSide=toggle.checked;
-    localStorage.setItem('rightSide', rightSide);
-    location.reload();
+    var formData = new FormData();
+    formData.append("isRight", toggle.checked);
+    fetch("/arm/set/direction", {
+      method: "POST",
+      body: formData,
+    }).then((response) => {
+      if (response.ok) {
+        rightSide=toggle.checked;
+        localStorage.setItem('rightSide', rightSide);
+        location.reload();
+        return true;
+      } else {
+        console.error("Cannot change direction");
+        return false;
+      }
+    })
+  
 });
 
 /**

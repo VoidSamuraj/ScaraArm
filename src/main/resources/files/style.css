@@ -20,6 +20,9 @@ body {
     transition: color, background-color 200ms;
     transition: box-shadow 400ms;
 }
+.scroll-list .button{
+    padding: 10px 5px;
+}
 .button:hover{
     color: #f0f0f0;
     background-color: #5A5A5A;
@@ -88,12 +91,10 @@ nav{
 
 nav ul {
     list-style-type: none;
-    margin: 0;
+    margin: 5px 0px;
     padding: 0;
 
 }
-
-
 
 li{
     display: flex;
@@ -136,7 +137,7 @@ li>a{
 .toggle:focus {
     outline: transparent;
 }
-.toggle,input, #ports,#ports option{
+.toggle,input, #mode,#mode option{
     border-radius: 0.75em;
     box-shadow: 0 0 0 0.1em inset;
     cursor: pointer;
@@ -168,7 +169,7 @@ li>a{
 .toggle:checked ~ .slot .slot__label:nth-child(2) {
     transform: translateY(-100%) scaleY(1);
 }
-input, #ports, #ports option{
+input, #mode, #mode option{
     border-radius: 1.5em;
     height: 3em;
     width:100%;
@@ -193,6 +194,8 @@ select option:checked {
     white-space: nowrap;
     position: relative;
 }
+
+
 .radioItem label:after,
 .radioItem label:before{
     content: "";
@@ -251,7 +254,7 @@ nav .slot, nav a {
     letter-spacing: 0.1em;
     line-height: 1;
     overflow: hidden;
-    height: 1em;
+    height: 1.2em;
     -webkit-text-stroke: 0.05em #f0f0f0;
 }
 
@@ -310,7 +313,7 @@ li button:hover{
 table button{
     padding:5px;
 }
-input[type="number"],#ports{
+input[type="number"],#mode{
   border-radius: 0.75em;
   color: #f0f0f0;
   width: 4em;
@@ -322,6 +325,8 @@ input[type="number"],#ports{
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   margin: 0; /* Ustawić margines na 0, aby ukryć obszar strzałek */
 }
 input[type="number"]{
@@ -357,10 +362,10 @@ td>button:first-child:hover{
     top: 70px;
     opacity: 0;
 }
-.menu-button #ports,.menu-button #ports option{
+.menu-button #mode,.menu-button #mode option{
     font-size: 1.2em;
     height: 2em;
-    width: 10em;
+    width: 5em;
 }
 #optionsMenu, #portMenu{
     z-index: 3;
@@ -373,6 +378,19 @@ td>button:first-child:hover{
 }
 #loadMenu .menu-button input[type=file] {
     width: 570px;
+}
+hr{
+    margin: 0px 15px;
+}
+.scroll-list{
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height:700px;
+    margin:0px 5px;
+}
+#loadMenu .scroll-list{
+    border-top:1px solid #f0cc00;
+    border-bottom:1px solid #f0cc00;
 }
 
 .icons{
@@ -451,8 +469,7 @@ td>button{
 
 table{
     color: #f0f0f0;
-    width:98%;
-    margin:1%;
+    width: 100%;
     font-size: 90%;
     border-collapse: collapse;
 }
@@ -463,8 +480,15 @@ table th{
     text-align: center;
 }
 table td, table th {
-    border:1px solid #f0cc00;
+    border-left:1px solid #f0cc00;
+    border-right:1px solid #f0cc00;
     padding:5px;
+}
+#loadMenu th:not(:first-child){
+    border-top:1px solid #f0cc00;
+}
+#loadMenu td:not(:last-child){
+    border-top:1px solid #f0cc00;
 }
 
 #tablePorts td,#tablePorts th{
@@ -535,3 +559,19 @@ table td, table th {
         -webkit-text-stroke: 0;
     }
 }
+@media screen and (max-height: 950px){
+    .scroll-list{
+        max-height:550px;
+    }
+}
+@media screen and (max-height: 800px){
+    .scroll-list{
+        max-height:400px;
+    }
+}
+@media screen and (max-height: 650px){
+    .scroll-list{
+        max-height:300px;
+    }
+}
+

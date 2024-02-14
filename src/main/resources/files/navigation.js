@@ -22,13 +22,25 @@ var radioButtons;
 //options menu
 const direction = document.getElementById("switch");
 const checkbox = document.getElementById("toggle");
+const modeList = document.getElementById("mode");
+const speedInput = document.getElementById("speed");
 const arm1Length = document.getElementById("arm1Length");
 const arm2Length = document.getElementById("arm2Length");
 const toolDistance = document.getElementById("toolDistance");
+const arm1Ratio = document.getElementById("arm1Ratio");
+const arm2Ratio = document.getElementById("arm2Ratio");
+const armAdditionalRatio = document.getElementById("armAdditionalRatio");
+
+speedInput.value= localStorage.getItem("maxSpeed") || "20";
+arm1Ratio.value = localStorage.getItem("arm1Ratio") || "1";
+arm2Ratio.value = localStorage.getItem("arm2Ratio") || "1";
+armAdditionalRatio.value = localStorage.getItem("armAdditionalRatio") || "1";
+
 const logout = document.getElementById("logout");
 const deleteAccount = document.getElementById("deleteAccount");
 
 //setup values in options menu
+var stepperVal = localStorage.getItem("stepperVal") || "200";
 arm1Length.value = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
 arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
 //tool distance to second arm
@@ -85,7 +97,7 @@ export function getCanMoveArm() {
 }
 
 /**
- * Replaces ',' with '.', checks if number is inside range
+ * Replaces ',' with '.', checks if number is inside range and rounds it to two decimal places
  * @param {string} text string to change to float
  * @param {int} min min possible number
  * @param {int} max max possible number
@@ -93,7 +105,9 @@ export function getCanMoveArm() {
  */
 function formatFloat(text, min, max) {
   let formatted = text.replace("/,/g", ".");
+  let parsedNumber = parseFloat(formatted);
   if (
+    isNaN(parsedNumber) ||
     formatted.split(".").length - 1 > 1 ||
     formatted > max ||
     formatted < min
@@ -101,7 +115,7 @@ function formatFloat(text, min, max) {
     alert("Please insert valid number between " + min + " and " + max);
     return null;
   }
-  return parseFloat(formatted);
+  return parsedNumber.toFixed(2);
 }
 
 /**
@@ -115,6 +129,7 @@ function onEditSize(event, name, updateDrawing) {
   if (event.charCode == 13) {
     //enter pressed
     let valFormatted;
+    let ratio=false;
     switch (name) {
       case "arm1Length":
         valFormatted = formatFloat(
@@ -137,17 +152,87 @@ function onEditSize(event, name, updateDrawing) {
           maxToolLength
         );
         break;
+      case "arm1Ratio":
+        valFormatted = formatFloat(
+          arm1Ratio.value,
+          0.01,
+          Infinity
+        );
+        ratio=true;
+        break;
+      case "arm2Ratio":
+        valFormatted = formatFloat(
+          arm2Ratio.value,
+          0.01,
+          Infinity
+        );
+        ratio=true;
+        break;
+      case "armAdditionalRatio":
+        valFormatted = formatFloat(
+          armAdditionalRatio.value,
+          0.01,
+          Infinity
+        );
+        ratio=true;
+        break;
     }
     if (valFormatted != null) {
-      //save and update numbers in menu
-      localStorage.setItem(name, valFormatted / 5);
-      arm1Length.value =
-        parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
-      arm2Length.value =
-        parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
-      toolDistance.value =
-        parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
-      updateDrawing();
+      if(!ratio){
+        let temp = localStorage.getItem(name);
+        localStorage.setItem(name, valFormatted / 5);
+        let arm1L = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
+        let arm2L = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
+        let toolL =
+          parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
+
+        let formData = new FormData();
+        formData.append("arm1", arm1L);
+        formData.append("arm2", arm2L + toolL);
+
+        fetch("/arm/set/length", {
+          method: "POST",
+          body: formData,
+        }).then((response) => {
+          if (response.ok) {
+            //save and update numbers in menu
+            arm1Length.value = arm1L;
+            arm2Length.value = arm2L;
+            toolDistance.value = toolL;
+            updateDrawing();
+            return true;
+          } else {
+            console.error("Cannot change length of arm");
+            localStorage.setItem(name, temp);
+            return false;
+          }
+        });
+    }else{
+      localStorage.setItem(name, valFormatted);
+      let arm1R = localStorage.getItem("arm1Ratio") || "1";
+      let arm2R = localStorage.getItem("arm2Ratio") || "1";
+      let armAdditionalR = localStorage.getItem("armAdditionalRatio") || "1";
+      let formData = new FormData();
+      formData.append("arm1Ratio", arm1R);
+      formData.append("arm2Ratio", arm2R);
+      formData.append("armAdditionalRatio", armAdditionalR);
+
+      fetch("/arm/set/gear-ratio", {
+        method: "POST",
+        body: formData,
+      }).then((response) => {
+        if (response.ok) {
+
+          arm1Ratio.value = arm1R;
+          arm2Ratio.value = arm2R;
+          armAdditionalRatio.value = armAdditionalR;
+          return true;
+        } else {
+          console.error("Cannot change gear ratio of arm");
+          return false;
+        }
+      });
+    }
     }
   } else if (
     !(
@@ -201,12 +286,27 @@ export function setupOptionMenu(updateDrawing) {
   toolDistance.addEventListener("keypress", function (event) {
     onEditSize(event, "toolDistanceToArm", updateDrawing);
   });
+  arm1Ratio.addEventListener("keypress", function (event) {
+    onEditSize(event, "arm1Ratio", updateDrawing);
+  });
+  arm2Ratio.addEventListener("keypress", function (event) {
+    onEditSize(event, "arm2Ratio", updateDrawing);
+  });
+  armAdditionalRatio.addEventListener("keypress", function (event) {
+    onEditSize(event, "armAdditionalRatio", updateDrawing);
+  });
 }
+
 //List all files from server and display in table
 function fillFilesTable() {
   let html = "";
   fetch("/files")
-    .then((response) => response.text())
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response error for /files");
+      }
+      return response.text();
+    })
     .then((files) => {
       files
         .replace("[", "")
@@ -240,7 +340,12 @@ function fillFilesTable() {
 function fillPortsTable() {
   let html = "";
   fetch("/ports", { method: "GET" })
-    .then((response) => response.json())
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response error for /ports");
+      }
+      return response.json();
+    })
     .then((data) => {
       data.forEach((port) => {
         if (port.length > 0)
@@ -284,12 +389,42 @@ function fillPortsTable() {
     });
 }
 /**
+ * Function to load possible stepper modes from server and display in select
+ */
+function fillModeList() {
+  let html = "";
+  fetch("/modes", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      data.forEach((mode) => {
+        let text = mode.first;
+        switch (mode.first) {
+          case "ONE":
+            text = "1";
+            break;
+          case "HALF":
+            text = "1/2";
+            break;
+          case "ONE_QUARTER":
+            text = "1/4";
+            break;
+        }
+
+        html += '<option value="' + mode.second + '">' + text + "</option>";
+      });
+      modeList.innerHTML = html;
+      modeList.value = stepperVal;
+    });
+}
+
+/**
  * Function to init connection between arm, with selected port
  */
 function connectToArm() {
   fetch("/arm/start", {
     method: "POST",
-  }).then((response) => {
+  })
+    .then((response) => {
       if (response.ok) {
         canMoveArm = true;
       } else {
@@ -300,7 +435,6 @@ function connectToArm() {
       console.error("Error:", error);
     });
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                              setting up listeners
@@ -520,6 +654,40 @@ direction.addEventListener("click", function () {
 checkbox.addEventListener("click", function () {
   toggle.click();
 });
+modeList.addEventListener("change", function () {
+  var selectedOption = modeList.value;
+  var formData = new FormData();
+  formData.append("mode", selectedOption);
+  fetch("/arm/set/motor-mode", {
+    method: "POST",
+    body: formData,
+  }).then((response) => {
+    if (response.ok) {
+      localStorage.setItem("stepperVal", selectedOption);
+      return true;
+    } else {
+      console.error("Cannot change mode of motor");
+      return false;
+    }
+  });
+});
+speedInput.addEventListener("change", function () {
+   let valFormatted = formatFloat(speedInput.value, 0.01, Infinity);
+  var formData = new FormData();
+  formData.append("speed", valFormatted);
+  fetch("/arm/set/max-speed", {
+    method: "POST",
+    body: formData,
+  }).then((response) => {
+    if (response.ok) {
+      localStorage.setItem("maxSpeed", valFormatted);
+      return true;
+    } else {
+      console.error("Cannot change max speed");
+      return false;
+    }
+  });
+});
 
 logout.addEventListener("click", function () {
   if (confirm("Are you sure you want to Logout?") == true) {
@@ -556,5 +724,8 @@ deleteAccount.addEventListener("click", function () {
   }
 });
 
-document.addEventListener("DOMContentLoaded", fillFilesTable);
-document.addEventListener("DOMContentLoaded", fillPortsTable);
+document.addEventListener("DOMContentLoaded", function () {
+  fillFilesTable();
+  fillPortsTable();
+  fillModeList();
+});
