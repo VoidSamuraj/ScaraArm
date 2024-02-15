@@ -351,8 +351,8 @@ function changeArmDimens(){
     currentToolX=arm1Length+arm2TotalLength;
     currentToolY=0;
     moveToolOnSceneToPosition(true,1);
-    arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArm1Length);
-    arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArm1Length);
+    arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArmLength);
+    arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
     toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
     arm2TotalLength = arm2Length+toolDistanceToArm;
     additionalArm1Length=arm1Length-defaultArmLength

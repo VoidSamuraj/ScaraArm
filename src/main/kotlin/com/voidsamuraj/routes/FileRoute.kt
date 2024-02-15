@@ -3,17 +3,14 @@ package com.voidsamuraj.routes
 import com.voidsamuraj.dao.dao
 import com.voidsamuraj.gcode.GCodeSender
 import com.voidsamuraj.models.MyToken
-import com.voidsamuraj.plugins.checkPermission
 import com.voidsamuraj.plugins.getUserId
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
-import io.ktor.server.freemarker.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
-import io.ktor.util.pipeline.*
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -24,16 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 const val filesFolder="FILES"
-suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess:suspend ()->Unit){
-    val token=call.sessions.get("TOKEN")as MyToken?
-    checkPermission(token = token,
-        onSuccess = {
-            onSuccess()
-        },
-        onFailure = {
-            call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
-        })
-}
+
 fun Route.fileRoute(){
     route("/files"){
         get {

@@ -233,7 +233,6 @@ object GCodeSender {
     private fun startCommunication(pw: PrintWriter, bins: BufferedInputStream) {
         do {
             try {
-                pw.write("START")
                 pw.flush()
                 if (isOKReturned(bins))
                     break
@@ -473,7 +472,6 @@ object GCodeSender {
             val bins = BufferedInputStream(iStream)
             val pw = PrintWriter(port!!.outputStream)
             startCommunication(pw, bins)
-            println("Communication ")
             for (line in lines) {
                 println(line)
                 pw.write(line)

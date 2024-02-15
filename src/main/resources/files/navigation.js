@@ -30,6 +30,8 @@ const toolDistance = document.getElementById("toolDistance");
 const arm1Ratio = document.getElementById("arm1Ratio");
 const arm2Ratio = document.getElementById("arm2Ratio");
 const armAdditionalRatio = document.getElementById("armAdditionalRatio");
+const alertItem=document.getElementById("alert");
+const closeAlertButton=document.getElementById("alert-close");
 
 speedInput.value= localStorage.getItem("maxSpeed") || "20";
 arm1Ratio.value = localStorage.getItem("arm1Ratio") || "1";
@@ -53,6 +55,7 @@ const minArmLength = 15;
 const maxToolLength = 25;
 const minToolLength = 4;
 
+const defaultAlertTime=5000;
 //positions of specific menu on hide
 const optionMenuHide = "-400px";
 const portMenuHide = "-400px";
@@ -112,7 +115,7 @@ function formatFloat(text, min, max) {
     formatted > max ||
     formatted < min
   ) {
-    alert("Please insert valid number between " + min + " and " + max);
+    showDialog('i',"Please insert valid number between " + min + " and " + max,defaultAlertTime);
     return null;
   }
   return parsedNumber.toFixed(2);
@@ -203,6 +206,7 @@ function onEditSize(event, name, updateDrawing) {
             return true;
           } else {
             console.error("Cannot change length of arm");
+            showDialog('e',"Cannot change length of arm",defaultAlertTime);
             localStorage.setItem(name, temp);
             return false;
           }
@@ -229,6 +233,7 @@ function onEditSize(event, name, updateDrawing) {
           return true;
         } else {
           console.error("Cannot change gear ratio of arm");
+            showDialog('e',"Cannot change gear ratio of arm",defaultAlertTime);
           return false;
         }
       });
@@ -334,6 +339,7 @@ function fillFilesTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading files list:", error);
+            showDialog('e',"Cannot read file list",defaultAlertTime);
     });
 }
 //List all accessible ports from server and display in table
@@ -378,6 +384,7 @@ function fillPortsTable() {
                 connectToArm();
               } else {
                 console.error("Cannot connect to arm");
+                showDialog('e',"Cannot connect to arm",defaultAlertTime);
               }
             });
           }
@@ -386,6 +393,7 @@ function fillPortsTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading ports list:", error);
+      showDialog('e',"Cannot read port list",defaultAlertTime);
     });
 }
 /**
@@ -429,11 +437,44 @@ function connectToArm() {
         canMoveArm = true;
       } else {
         console.error("Cannot connect to arm");
+        showDialog('e',"Cannot connect to arm",defaultAlertTime);
       }
     })
     .catch((error) => {
       console.error("Error:", error);
+      showDialog('e',"Cannot connect to arm",defaultAlertTime);
     });
+}
+/**
+ * Function to display alert
+ * @param {char} type char to select type of alert: s-success, i-info or e-error 
+ * @param {string} message message displayed in alert
+ * @param {int} duration message display duration in ms, -1 to not hide
+ */
+function showDialog(type, message,duration){
+    document.getElementById("alert-msg").textContent=message;
+    if(type=='e' || type=='E'){
+        alertItem.classList.add("alert-error");
+        alertItem.classList.remove("alert-info");
+        alertItem.classList.remove("alert-success");
+    }else if(type=='s' || type=='S'){
+        alertItem.classList.add("alert-success");
+        alertItem.classList.remove("alert-error");
+        alertItem.classList.remove("alert-info");
+    }else{
+        alertItem.classList.add("alert-info");
+        alertItem.classList.remove("alert-error");
+        alertItem.classList.remove("alert-success");
+    }
+
+    alertItem.classList.add("show");
+    alertItem.classList.remove("hide");
+    alertItem.classList.add("showAlert");
+    if(duration>-1)
+        setTimeout(function(){
+            alertItem.classList.remove("show");
+            alertItem.classList.add("hide");
+        },duration);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -572,24 +613,29 @@ document.getElementById("myfile").addEventListener("change", function () {
   fetch("/files/" + fileName)
     .then((response) => {
       if (response.ok) {
-        alert(
-          "A file with this name already exists, please rename the uploaded file."
-        );
+            showDialog('i',"A file with this name already exists, please rename the uploaded file.",defaultAlertTime);
       } else {
         fetch("/files/upload", {
           method: "POST",
           body: formData,
         })
           .then((response) => {
-            fillFilesTable();
+           if (response.ok) {
+                fillFilesTable();
+                 showDialog('s',"File successfully uploaded",defaultAlertTime);
+           }else
+            showDialog('e',"Cannot uploaded file",defaultAlertTime);
+
           })
           .catch((error) => {
             console.error("File upload error: " + error);
+            showDialog('e',"Cannot uploaded file",defaultAlertTime);
           });
       }
     })
     .catch((error) => {
       console.log("Checking file error: ", error);
+      showDialog('e',"Cannot find file",defaultAlertTime);
     });
 });
 
@@ -602,13 +648,16 @@ window.deleteFile = function (fileName) {
       .then((response) => {
         if (response.ok) {
           console.log("File was deleted.");
+          showDialog('s',"File was deleted",defaultAlertTime);
           fillFilesTable();
         } else {
           console.error("ERROR during file deletion.");
+          showDialog('e',"Cannot delete file",defaultAlertTime);
         }
       })
       .catch((error) => {
         console.error("ERROR occurred:", error);
+        showDialog('e',"Cannot delete file",defaultAlertTime);
       });
   }
 };
@@ -667,6 +716,7 @@ modeList.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change mode of motor");
+          showDialog('e',"Cannot change mode of motor",defaultAlertTime);
       return false;
     }
   });
@@ -684,6 +734,7 @@ speedInput.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change max speed");
+          showDialog('e',"Cannot change max speed",defaultAlertTime);
       return false;
     }
   });
@@ -696,8 +747,8 @@ logout.addEventListener("click", function () {
 
     xhr.onload = function () {
       if (xhr.status === 200) {
-        alert("Logged out successfully");
-        location.reload(true);
+        showDialog('s',"Logged out successfully",defaultAlertTime);
+        setTimeout(()=>{location.reload(true);},defaultAlertTime);
       }
     };
     xhr.send();
@@ -715,15 +766,18 @@ deleteAccount.addEventListener("click", function () {
 
       xhr.onload = function () {
         if (xhr.status === 200) {
-          alert("Account deleted successfully");
-          location.reload(true);
+          showDialog('s',"Account deleted successfully",defaultAlertTime);
+          setTimeout(()=>{location.reload(true);},defaultAlertTime);
         }
       };
       xhr.send();
     }
   }
 });
-
+closeAlertButton.addEventListener("click", function () {
+    alertItem.classList.remove("show");
+    alertItem.classList.add("hide");
+});
 document.addEventListener("DOMContentLoaded", function () {
   fillFilesTable();
   fillPortsTable();

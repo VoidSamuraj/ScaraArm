@@ -31,6 +31,16 @@ suspend fun PipelineContext<Unit,ApplicationCall>.onAuthenticate(user:User){
     call.respondRedirect("/index")
 
 }
+suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess:suspend ()->Unit){
+    val token=call.sessions.get("TOKEN")as MyToken?
+    checkPermission(token = token,
+        onSuccess = {
+            onSuccess()
+        },
+        onFailure = {
+            call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
+        })
+}
 fun PipelineContext<Unit,ApplicationCall>.generateToken(user:User):MyToken{
     val token = JWT.create()
         .withClaim("id", user.id)

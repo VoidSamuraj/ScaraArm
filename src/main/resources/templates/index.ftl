@@ -4,6 +4,8 @@
       <meta charset="UTF-8">
       <title>Scara Arm</title>
       <link rel="stylesheet" href="static/style.css">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+      <link rel="stylesheet" href="static/alert.css">
    </head>
    <body>
       <div id="arm">
@@ -161,6 +163,13 @@
          <p id="positionText">X=1000 Y=1000</p>
       </div>
       <div id="overlay"></div>
+       <div class="alert hide" id="alert">
+               <img src="static/icon/circle-info-solid.svg" alt="info">
+         <span id="alert-msg">Warning: This is a warning alert!</span>
+         <div class="close-btn" id="alert-close">
+            <img src="static/icon/xmark-solid.svg" alt="close">
+         </div>
+      </div>
       <div id="popup">
          <h1>Session Expire Warning</h1>
          <p id="expireInfo">Your session will expire in 5 minutes</p>
@@ -171,11 +180,6 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
       <script type="module" src="static/navigation.js"></script>
       <script>
-         function onEditSize(event){
-                      if(event.charCode==13)
-                          alert("TEST");
-                      return (event.charCode >= 48 && event.charCode <= 57) || event.key === '.' || event.key === ','
-                  }
           const expirationText = "${expiration}";
           const lifeText = "${lifeTime}";
          
@@ -191,7 +195,6 @@
                   document.getElementById("overlay").style.display='block';
                   document.getElementById("popup").style.display='block';
               }
-         
           }
           document.getElementById("overlay").addEventListener('click', extend );
           document.getElementById("extendButton").addEventListener('click', extend );

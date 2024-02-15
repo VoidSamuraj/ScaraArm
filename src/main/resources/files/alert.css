@@ -1,0 +1,93 @@
+.alert{
+  z-index: 7;
+  padding: 5px 5px 5px 10px;
+  min-width: 420px;
+  position: absolute;
+  right: 100%;
+  top: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  display:flex;
+  flex-direction:row;
+  justify-content: space-between;
+}
+.alert.showAlert{
+  opacity: 1;
+  pointer-events: auto;
+}
+.alert.show{
+  animation: show_slide 0.5s ease forwards;
+}
+@keyframes show_slide {
+  0%{
+    right: 0%;
+    transform: translateX(100%);
+  }
+  100%{
+    right: 50%;
+    transform: translateX(50%);
+  }
+}
+.alert.hide{
+  animation: hide_slide 0.5s ease forwards;
+}
+@keyframes hide_slide {
+  0%{
+    right:50%;
+    transform: translateX(50%);
+  }
+  100%{
+    right:0%;
+    transform: translateX(100%);
+  }
+}
+#alert-msg{
+  padding: 0 20px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  color: #000;
+
+}
+.alert .close-btn{
+  padding: 10px 10px;
+  cursor: pointer;
+}
+.alert img{
+    width:30px;
+}
+
+.alert-error{
+  background: #b22f23;
+  border-left: 8px solid #771a11;
+}
+.alert-error .close-btn{
+  background: #c44b40;
+}
+.alert-error .close-btn:hover{
+  background: #b73b2f;
+}
+
+.alert-info{
+  background: #FFA31A;
+  border-left: 8px solid #c9841f;
+}
+.alert-info .close-btn{
+  background: #ffc766;
+}
+.alert-info .close-btn:hover{
+  background: #f9b848;
+}
+
+.alert-success{
+  background: #58e251;
+  border-left: 8px solid #39a533;
+}
+.alert-success .close-btn{
+  background: #79f473;
+}
+.alert-success .close-btn:hover{
+  background: #39a533;
+}
