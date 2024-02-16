@@ -1,3 +1,4 @@
+import {formatInt, formatFloat}from '/static/helpers.js'
 /**
  * File setting listeners to menu
  *
@@ -18,6 +19,10 @@ const optionsMenu = document.getElementById("optionsMenu");
 
 //manual menu
 var radioButtons;
+const precisionMoveInput=document.getElementById("precision-move");
+const precisionUnit=document.getElementById("precisionUnit");
+const precisionRotationInput=document.getElementById("precision-rotate");
+const precisionRotationUnit=document.getElementById("precisionUnitDegree");
 
 //options menu
 const direction = document.getElementById("switch");
@@ -49,13 +54,24 @@ arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
 toolDistance.value =
   parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
 
+var movePrecision=localStorage.getItem("movePrecision") || 10;
+var moveUnit=localStorage.getItem("moveUnit") || "mm";
+var rotatePrecision=localStorage.getItem("rotatePrecision") || 1;
+var rotateUnit=localStorage.getItem("rotateUnit") || 1;
+
+precisionMoveInput.value=movePrecision;
+precisionUnit.value=moveUnit;
+precisionRotationInput.value=rotatePrecision;
+precisionRotationUnit.value=rotateUnit;
+
+
 //constraints defining max sizes of arm
 const maxArmLength = 40;
 const minArmLength = 15;
 const maxToolLength = 25;
 const minToolLength = 4;
 
-const defaultAlertTime=5000;
+export const defaultAlertTime=5000;
 //positions of specific menu on hide
 const optionMenuHide = "-400px";
 const portMenuHide = "-400px";
@@ -100,25 +116,31 @@ export function getCanMoveArm() {
 }
 
 /**
- * Replaces ',' with '.', checks if number is inside range and rounds it to two decimal places
- * @param {string} text string to change to float
- * @param {int} min min possible number
- * @param {int} max max possible number
- * @returns {float|null} float or null if string is not valid number or outside range
+ * Function returns calculated units of move by single click.
+ * @returns {number}
  */
-function formatFloat(text, min, max) {
-  let formatted = text.replace("/,/g", ".");
-  let parsedNumber = parseFloat(formatted);
-  if (
-    isNaN(parsedNumber) ||
-    formatted.split(".").length - 1 > 1 ||
-    formatted > max ||
-    formatted < min
-  ) {
-    showDialog('i',"Please insert valid number between " + min + " and " + max,defaultAlertTime);
-    return null;
-  }
-  return parsedNumber.toFixed(2);
+export function getMovePrecision() {
+if(moveUnit=="mm"){
+    return movePrecision/100;
+}else if(moveUnit=="cm"){
+    return movePrecision/10;
+}
+ return 0;
+}
+
+/**
+ * Function returns calculated units of move by single click.
+ * @returns {number}
+ */
+export function getRotationPrecision() {
+if(rotateUnit=="1/10"){
+    return rotateUnit/10;
+}else if(rotateUnit=="1"){
+    return rotateUnit;
+}else if(rotateUnit=="10"){
+    return rotateUnit*10;
+}
+ return 0;
 }
 
 /**
@@ -159,7 +181,7 @@ function onEditSize(event, name, updateDrawing) {
         valFormatted = formatFloat(
           arm1Ratio.value,
           0.01,
-          Infinity
+          1000
         );
         ratio=true;
         break;
@@ -167,7 +189,7 @@ function onEditSize(event, name, updateDrawing) {
         valFormatted = formatFloat(
           arm2Ratio.value,
           0.01,
-          Infinity
+          1000
         );
         ratio=true;
         break;
@@ -175,7 +197,7 @@ function onEditSize(event, name, updateDrawing) {
         valFormatted = formatFloat(
           armAdditionalRatio.value,
           0.01,
-          Infinity
+          1000
         );
         ratio=true;
         break;
@@ -238,6 +260,11 @@ function onEditSize(event, name, updateDrawing) {
         }
       });
     }
+    }else{
+          arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
+          arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
+          toolDistance.value = parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
+
     }
   } else if (
     !(
@@ -425,6 +452,7 @@ function fillModeList() {
     });
 }
 
+
 /**
  * Function to init connection between arm, with selected port
  */
@@ -435,6 +463,7 @@ function connectToArm() {
     .then((response) => {
       if (response.ok) {
         canMoveArm = true;
+        showDialog('s',"Connected to arm",defaultAlertTime);
       } else {
         console.error("Cannot connect to arm");
         showDialog('e',"Cannot connect to arm",defaultAlertTime);
@@ -451,7 +480,7 @@ function connectToArm() {
  * @param {string} message message displayed in alert
  * @param {int} duration message display duration in ms, -1 to not hide
  */
-function showDialog(type, message,duration){
+export function showDialog(type, message,duration){
     document.getElementById("alert-msg").textContent=message;
     if(type=='e' || type=='E'){
         alertItem.classList.add("alert-error");
@@ -538,7 +567,7 @@ firstMenu.addEventListener("mouseout", function () {
 });
 
 /**
- *Switch to reactive mode, tool now can be moved by arrows and  arms by mouse scroll
+ *Switch to expand menu after selecting port reactive mode is turned on, tool now can be moved by arrows and  arms by mouse scroll
  *you have first select element to move
  */
 manual.addEventListener("click", function () {
@@ -564,6 +593,38 @@ manual.addEventListener("click", function () {
 document.getElementById("closePortIcon").addEventListener("click", function () {
   portMenu.style.left = portMenuHide;
   expanded = false;
+});
+////    Manual menu
+precisionMoveInput.addEventListener("keypress", function () {
+    let temp=formatInt(precisionMoveInput.value,1,1000)
+    if(temp==null){
+        precisionMoveInput.value=movePrecision;
+        return false;
+    }else{
+        movePrecision=temp;
+        localStorage.setItem("movePrecision",movePrecision);
+        return true;
+    }
+});
+precisionUnit.addEventListener("change", function () {
+    moveUnit=precisionUnit.value;
+    localStorage.setItem("moveUnit",moveUnit);
+});
+
+precisionRotationInput.addEventListener("keypress", function () {
+   let temp=formatInt(precisionRotationInput.value,1,1000)
+   if(temp==null){
+           precisionRotationInput.value=rotatePrecision;
+           return false;
+   }else{
+       rotatePrecision=temp;
+       localStorage.setItem("rotatePrecision",rotatePrecision);
+       return true;
+   }
+});
+precisionRotationUnit.addEventListener("change", function () {
+    rotateUnit=precisionRotationUnit.value;
+    localStorage.setItem("rotateUnit",rotateUnit);
 });
 
 document.getElementById("portButton").addEventListener("click", function () {
@@ -722,7 +783,7 @@ modeList.addEventListener("change", function () {
   });
 });
 speedInput.addEventListener("change", function () {
-   let valFormatted = formatFloat(speedInput.value, 0.01, Infinity);
+   let valFormatted = formatFloat(speedInput.value, 0.01, 1000);
   var formData = new FormData();
   formData.append("speed", valFormatted);
   fetch("/arm/set/max-speed", {

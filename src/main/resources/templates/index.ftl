@@ -47,6 +47,28 @@
                   </div>
                </table>
             </li>
+            <hr style="margin: 5px 0px;">
+            <li class="center-text">
+               Move precision
+               <div class="precision-li">
+                  <input id="precision-move" class="range precision-input" type="number" min="1">
+                  <select id="precisionUnit" class="select-menu precision-select">
+                     <option value="mm">mm</option>
+                     <option value="cm">cm</option>
+                  </select>
+               </div>
+            </li>
+            <li class="center-text">
+               Rotation precision
+               <div class="precision-li">
+                  <input id="precision-rotate" class="range precision-input" type="number" min="1">
+                  <select id="precisionUnitDegree" class="select-menu precision-select">
+                     <option value="1/10">&#8530;°</option>
+                     <option value="1">1°</option>
+                     <option value="10">10°</option>
+                  </select>
+               </div>
+            </li>
          </ul>
       </nav>
       <nav id="loadMenu">
@@ -93,7 +115,7 @@
                     </label>
                 </li>
                 <li title="Stepper motor microstepping." class="button button-no-hover menu-button menu-button-no-hover">
-                    <select id="mode" >
+                    <select id="mode" class="select-menu">
                     </select>
                     <label for="mode" class="slot">
                         <span class="slot__label">Stepper Mode</span>

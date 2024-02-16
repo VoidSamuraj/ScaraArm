@@ -4,7 +4,7 @@ import {getRectangle,updateRectanglePercent,createCircle,createRing,updateRing,a
 import {setupCanvasHelper,getRotationHelperGroup}from '/static/sceneHelper.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
-import {getCanMoveArm, setupOptionMenu} from '/static/navigation.js'
+import {getCanMoveArm, setupOptionMenu, getMovePrecision, getRotationPrecision} from '/static/navigation.js'
 
 // main file to display and manage elements of arm and related UI
 
@@ -29,7 +29,6 @@ const MAX_ARM1_ANGLE=135;
 const MAX_ARM2_ANGLE=145;
 //max angle of one side to prevent tool collision with arm base
 const MAX_ARM1_ANGLE_COLLISION=35;
-const armStep=1;
 const armColor=0xffa31a;
 const rotationTextHeight=7.53;
 const heightTextHeight=4.75;
@@ -195,7 +194,7 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
     renderer.domElement.addEventListener('wheel', function(event) {
         if (editMode && getCanMoveArm()) {
             controls.enableZoom=false;
-            const zoomChange = event.deltaY > 0 ? 1 : -1;
+            const zoomChange = (event.deltaY > 0 ? 1 : -1)*getRotationPrecision();
             let reacted=false;
             lastSelectedMesh.traverse((children)=>{
                 if(!reacted)
@@ -548,6 +547,7 @@ function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightS
 async function setupMoveListener(){
     document.addEventListener('keydown', (event) => {
         if(toolEditMode){
+            let armStep=getMovePrecision();
             switch(event.code) {
                 case 'ArrowUp':
                 case 'Numpad8':
@@ -763,18 +763,10 @@ function moveToolOnSceneToPosition(checkRotation=true,totalSteps=20) {
     let canRotate = true;
     
     if(checkRotation){
-  /*
-        if (arm1AngleNew > MAX_ARM1_ANGLE || arm1AngleNew < -MAX_ARM1_ANGLE)
-            canRotate = false;
-        if (arm2AngleNew > MAX_ARM2_ANGLE || arm2AngleNew < -MAX_ARM2_ANGLE)
-            canRotate = false;
-*/
         if(!isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION,arm1AngleNew,rightSide))
             canRotate = false;
         if(!isAngleBetween(MAX_ARM2_ANGLE, null,arm2AngleNew,rightSide))
             canRotate = false;
-
-
     }
     let steps = 0; // interpolation steps
 

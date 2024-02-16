@@ -137,7 +137,7 @@ li>a{
 .toggle:focus {
     outline: transparent;
 }
-.toggle,input, #mode,#mode option{
+.toggle,input, .select-menu,.select-menu option{
     border-radius: 0.75em;
     box-shadow: 0 0 0 0.1em inset;
     cursor: pointer;
@@ -169,7 +169,7 @@ li>a{
 .toggle:checked ~ .slot .slot__label:nth-child(2) {
     transform: translateY(-100%) scaleY(1);
 }
-input, #mode, #mode option{
+input, .select-menu, .select-menu option{
     border-radius: 1.5em;
     height: 3em;
     width:100%;
@@ -313,7 +313,7 @@ li button:hover{
 table button{
     padding:5px;
 }
-input[type="number"],#mode{
+input[type="number"],.select-menu{
   border-radius: 0.75em;
   color: #f0f0f0;
   width: 4em;
@@ -362,7 +362,7 @@ td>button:first-child:hover{
     top: 70px;
     opacity: 0;
 }
-.menu-button #mode,.menu-button #mode option{
+.menu-button .select-menu,.menu-button .select-menu option{
     font-size: 1.2em;
     height: 2em;
     width: 5em;
@@ -518,6 +518,33 @@ table td, table th {
     line-height: 1;
     overflow: hidden;
     height: 1em;
+}
+
+.center-text{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: #f0f0f0;
+}
+.precision-li{ 
+    padding: 10px 0px;
+    display: flex;
+    flex-direction: row;
+    height: 50px;
+}
+.precision-input{
+    box-sizing: border-box !important; 
+    margin-right: 0 !important;
+    height: 100% !important;
+    width: 250px !important;
+    border-radius: 0.75em 0px 0px 0.75em !important;
+}
+.precision-select{
+    margin-left: 0;
+    margin-right: 0;
+    height: 100%;
+    width: 100px;
+    border-radius: 0px 0.75em 0.75em 0px;
 }
 @media screen and (max-width: 960px) {
     #positionBox{
