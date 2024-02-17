@@ -1,4 +1,4 @@
-import {formatInt, formatFloat}from '/static/helpers.js'
+import {formatInt, formatFloat, showDialog}from '/static/helpers.js'
 /**
  * File setting listeners to menu
  *
@@ -37,6 +37,7 @@ const arm2Ratio = document.getElementById("arm2Ratio");
 const armAdditionalRatio = document.getElementById("armAdditionalRatio");
 const alertItem=document.getElementById("alert");
 const closeAlertButton=document.getElementById("alert-close");
+const alertMessage=document.getElementById("alert-msg");
 
 speedInput.value= localStorage.getItem("maxSpeed") || "20";
 arm1Ratio.value = localStorage.getItem("arm1Ratio") || "1";
@@ -57,7 +58,7 @@ toolDistance.value =
 var movePrecision=localStorage.getItem("movePrecision") || 10;
 var moveUnit=localStorage.getItem("moveUnit") || "mm";
 var rotatePrecision=localStorage.getItem("rotatePrecision") || 1;
-var rotateUnit=localStorage.getItem("rotateUnit") || 1;
+var rotateUnit=localStorage.getItem("rotateUnit") || "1";
 
 precisionMoveInput.value=movePrecision;
 precisionUnit.value=moveUnit;
@@ -71,7 +72,7 @@ const minArmLength = 15;
 const maxToolLength = 25;
 const minToolLength = 4;
 
-export const defaultAlertTime=5000;
+const defaultAlertTime=5000;
 //positions of specific menu on hide
 const optionMenuHide = "-400px";
 const portMenuHide = "-400px";
@@ -120,10 +121,12 @@ export function getCanMoveArm() {
  * @returns {number}
  */
 export function getMovePrecision() {
-if(moveUnit=="mm"){
+if(moveUnit=="0.1mm"){
     return movePrecision/100;
-}else if(moveUnit=="cm"){
-    return movePrecision/10;
+}else if(moveUnit=="mm"){
+     return movePrecision/10;
+ }else if(moveUnit=="cm"){
+    return movePrecision;
 }
  return 0;
 }
@@ -134,11 +137,11 @@ if(moveUnit=="mm"){
  */
 export function getRotationPrecision() {
 if(rotateUnit=="1/10"){
-    return rotateUnit/10;
+    return rotatePrecision/10;
 }else if(rotateUnit=="1"){
-    return rotateUnit;
+    return rotatePrecision;
 }else if(rotateUnit=="10"){
-    return rotateUnit*10;
+    return rotatePrecision*10;
 }
  return 0;
 }
@@ -158,46 +161,64 @@ function onEditSize(event, name, updateDrawing) {
     switch (name) {
       case "arm1Length":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           arm1Length.value,
           minArmLength,
-          maxArmLength
+          maxArmLength,
+          defaultAlertTime
         );
         break;
       case "arm2Length":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           arm2Length.value,
           minArmLength,
-          maxArmLength
+          maxArmLength,
+                                defaultAlertTime
         );
         break;
       case "toolDistanceToArm":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           toolDistance.value,
           minToolLength,
-          maxToolLength
+          maxToolLength,
+                                 defaultAlertTime
         );
         break;
       case "arm1Ratio":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           arm1Ratio.value,
           0.01,
-          1000
+          1000,
+                        defaultAlertTime
         );
         ratio=true;
         break;
       case "arm2Ratio":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           arm2Ratio.value,
           0.01,
-          1000
+          1000,
+                        defaultAlertTime
         );
         ratio=true;
         break;
       case "armAdditionalRatio":
         valFormatted = formatFloat(
+        alertItem,
+         alertMessage,
           armAdditionalRatio.value,
           0.01,
-          1000
+          1000,
+                        defaultAlertTime
         );
         ratio=true;
         break;
@@ -205,11 +226,11 @@ function onEditSize(event, name, updateDrawing) {
     if (valFormatted != null) {
       if(!ratio){
         let temp = localStorage.getItem(name);
-        localStorage.setItem(name, valFormatted / 5);
-        let arm1L = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
-        let arm2L = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
+        localStorage.setItem(name, valFormatted);
+        let arm1L = parseFloat(localStorage.getItem("arm1Length") || 20);
+        let arm2L = parseFloat(localStorage.getItem("arm2Length") || 16);
         let toolL =
-          parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
+          parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
 
         let formData = new FormData();
         formData.append("arm1", arm1L);
@@ -228,7 +249,7 @@ function onEditSize(event, name, updateDrawing) {
             return true;
           } else {
             console.error("Cannot change length of arm");
-            showDialog('e',"Cannot change length of arm",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'e',"Cannot change length of arm",defaultAlertTime);
             localStorage.setItem(name, temp);
             return false;
           }
@@ -255,15 +276,15 @@ function onEditSize(event, name, updateDrawing) {
           return true;
         } else {
           console.error("Cannot change gear ratio of arm");
-            showDialog('e',"Cannot change gear ratio of arm",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'e',"Cannot change gear ratio of arm",defaultAlertTime);
           return false;
         }
       });
     }
     }else{
-          arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
-          arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
-          toolDistance.value = parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
+          arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 20);
+          arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 20);
+          toolDistance.value = parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
 
     }
   } else if (
@@ -366,7 +387,7 @@ function fillFilesTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading files list:", error);
-            showDialog('e',"Cannot read file list",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'e',"Cannot read file list",defaultAlertTime);
     });
 }
 //List all accessible ports from server and display in table
@@ -411,7 +432,7 @@ function fillPortsTable() {
                 connectToArm();
               } else {
                 console.error("Cannot connect to arm");
-                showDialog('e',"Cannot connect to arm",defaultAlertTime);
+                showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm",defaultAlertTime);
               }
             });
           }
@@ -420,7 +441,7 @@ function fillPortsTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading ports list:", error);
-      showDialog('e',"Cannot read port list",defaultAlertTime);
+      showDialog(alertItem, alertMessage, 'e',"Cannot read port list",defaultAlertTime);
     });
 }
 /**
@@ -451,7 +472,25 @@ function fillModeList() {
       modeList.value = stepperVal;
     });
 }
-
+/**
+ * Function to select connected port
+ */
+function selectConnectedPort(){
+  fetch("/ports/last", { method: "GET" })
+    .then((response) => {
+        if (response.status !== 204) {
+            response.text().then((data) => {
+                let radioButtons = document.querySelectorAll('input[type="radio"][name="portList"]');
+                radioButtons.forEach(port => {
+                    if (port.value === data) {
+                        port.checked = true;
+                        canMoveArm = true;
+                    }
+                });
+            });
+        }
+    });
+}
 
 /**
  * Function to init connection between arm, with selected port
@@ -463,48 +502,18 @@ function connectToArm() {
     .then((response) => {
       if (response.ok) {
         canMoveArm = true;
-        showDialog('s',"Connected to arm",defaultAlertTime);
+        showDialog(alertItem, alertMessage, 's',"Connected to arm",defaultAlertTime);
       } else {
         console.error("Cannot connect to arm");
-        showDialog('e',"Cannot connect to arm",defaultAlertTime);
+        showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm",defaultAlertTime);
       }
     })
     .catch((error) => {
       console.error("Error:", error);
-      showDialog('e',"Cannot connect to arm",defaultAlertTime);
+      showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm",defaultAlertTime);
     });
 }
-/**
- * Function to display alert
- * @param {char} type char to select type of alert: s-success, i-info or e-error 
- * @param {string} message message displayed in alert
- * @param {int} duration message display duration in ms, -1 to not hide
- */
-export function showDialog(type, message,duration){
-    document.getElementById("alert-msg").textContent=message;
-    if(type=='e' || type=='E'){
-        alertItem.classList.add("alert-error");
-        alertItem.classList.remove("alert-info");
-        alertItem.classList.remove("alert-success");
-    }else if(type=='s' || type=='S'){
-        alertItem.classList.add("alert-success");
-        alertItem.classList.remove("alert-error");
-        alertItem.classList.remove("alert-info");
-    }else{
-        alertItem.classList.add("alert-info");
-        alertItem.classList.remove("alert-error");
-        alertItem.classList.remove("alert-success");
-    }
 
-    alertItem.classList.add("show");
-    alertItem.classList.remove("hide");
-    alertItem.classList.add("showAlert");
-    if(duration>-1)
-        setTimeout(function(){
-            alertItem.classList.remove("show");
-            alertItem.classList.add("hide");
-        },duration);
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                              setting up listeners
@@ -584,19 +593,20 @@ manual.addEventListener("click", function () {
       expanded = true;
       portMenu.style.left = barWidth;
     } else {
+      turnOffOverlay();
       expanded = false;
       portMenu.style.left = portMenuHide;
-      turnOffOverlay();
     }
   }, time);
 });
 document.getElementById("closePortIcon").addEventListener("click", function () {
   portMenu.style.left = portMenuHide;
+  turnOffOverlay();
   expanded = false;
 });
 ////    Manual menu
 precisionMoveInput.addEventListener("keypress", function () {
-    let temp=formatInt(precisionMoveInput.value,1,1000)
+    let temp=formatInt(alertItem, alertMessage, precisionMoveInput.value,1,1000, defaultAlertTime)
     if(temp==null){
         precisionMoveInput.value=movePrecision;
         return false;
@@ -612,7 +622,7 @@ precisionUnit.addEventListener("change", function () {
 });
 
 precisionRotationInput.addEventListener("keypress", function () {
-   let temp=formatInt(precisionRotationInput.value,1,1000)
+   let temp=formatInt(alertItem, alertMessage, precisionRotationInput.value,1,1000, defaultAlertTime)
    if(temp==null){
            precisionRotationInput.value=rotatePrecision;
            return false;
@@ -638,7 +648,6 @@ document.getElementById("portButton").addEventListener("click", function () {
  * Now you can execute file on arm
  */
 loadFileButton.addEventListener("click", function () {
-  turnOnOverlay();
   firstMenu.style.width = barWidth;
   var time =
     optionsMenuStyle.left === optionMenuHide &&
@@ -650,10 +659,12 @@ loadFileButton.addEventListener("click", function () {
   setTimeout(function () {
     if (loadMenuStyle.left === loadMenuHide) {
       expanded = true;
+      turnOnOverlay();
       loadMenu.style.left = barWidth;
       canMoveArm = false;
     } else {
       expanded = false;
+      turnOffOverlay();
       loadMenu.style.left = loadMenuHide;
       canMoveArm = true;
     }
@@ -662,6 +673,7 @@ loadFileButton.addEventListener("click", function () {
 
 document.getElementById("closeLoadIcon").addEventListener("click", function () {
   loadMenu.style.left = loadMenuHide;
+  turnOffOverlay();
   expanded = false;
 });
 
@@ -674,7 +686,7 @@ document.getElementById("myfile").addEventListener("change", function () {
   fetch("/files/" + fileName)
     .then((response) => {
       if (response.ok) {
-            showDialog('i',"A file with this name already exists, please rename the uploaded file.",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'i',"A file with this name already exists, please rename the uploaded file.",defaultAlertTime);
       } else {
         fetch("/files/upload", {
           method: "POST",
@@ -683,20 +695,19 @@ document.getElementById("myfile").addEventListener("change", function () {
           .then((response) => {
            if (response.ok) {
                 fillFilesTable();
-                 showDialog('s',"File successfully uploaded",defaultAlertTime);
+                 showDialog(alertItem, alertMessage, 's',"File successfully uploaded",defaultAlertTime);
            }else
-            showDialog('e',"Cannot uploaded file",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'e',"Cannot uploaded file",defaultAlertTime);
 
           })
           .catch((error) => {
             console.error("File upload error: " + error);
-            showDialog('e',"Cannot uploaded file",defaultAlertTime);
+            showDialog(alertItem, alertMessage, 'e',"Cannot uploaded file",defaultAlertTime);
           });
       }
     })
     .catch((error) => {
-      console.log("Checking file error: ", error);
-      showDialog('e',"Cannot find file",defaultAlertTime);
+      showDialog(alertItem, alertMessage, 'e',"Cannot find file",defaultAlertTime);
     });
 });
 
@@ -708,17 +719,16 @@ window.deleteFile = function (fileName) {
     })
       .then((response) => {
         if (response.ok) {
-          console.log("File was deleted.");
-          showDialog('s',"File was deleted",defaultAlertTime);
+          showDialog(alertItem, alertMessage, 's',"File was deleted",defaultAlertTime);
           fillFilesTable();
         } else {
           console.error("ERROR during file deletion.");
-          showDialog('e',"Cannot delete file",defaultAlertTime);
+          showDialog(alertItem, alertMessage, 'e',"Cannot delete file",defaultAlertTime);
         }
       })
       .catch((error) => {
         console.error("ERROR occurred:", error);
-        showDialog('e',"Cannot delete file",defaultAlertTime);
+        showDialog(alertItem, alertMessage, 'e',"Cannot delete file",defaultAlertTime);
       });
   }
 };
@@ -732,7 +742,7 @@ window.loadFile = function (fileName) {
 
 //button in first menu
 optionsButton.addEventListener("click", function () {
-  turnOnOverlay();
+
   firstMenu.style.width = barWidth;
   var time =
     loadMenuStyle.left === loadMenuHide && portMenuStyle.left === portMenuHide
@@ -743,18 +753,19 @@ optionsButton.addEventListener("click", function () {
   setTimeout(function () {
     if (optionsMenuStyle.left === optionMenuHide) {
       expanded = true;
+      turnOnOverlay();
       optionsMenu.style.left = barWidth;
     } else {
       expanded = false;
+      turnOffOverlay();
       optionsMenu.style.left = optionMenuHide;
     }
   }, time);
 });
 
-document
-  .getElementById("closeOptionsIcon")
-  .addEventListener("click", function () {
+document.getElementById("closeOptionsIcon").addEventListener("click", function () {
     optionsMenu.style.left = optionMenuHide;
+    turnOffOverlay();
     expanded = false;
   });
 //isright li and checkbox
@@ -777,13 +788,13 @@ modeList.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change mode of motor");
-          showDialog('e',"Cannot change mode of motor",defaultAlertTime);
+          showDialog(alertItem, alertMessage, 'e',"Cannot change mode of motor",defaultAlertTime);
       return false;
     }
   });
 });
 speedInput.addEventListener("change", function () {
-   let valFormatted = formatFloat(speedInput.value, 0.01, 1000);
+   let valFormatted = formatFloat(alertItem, alertMessage, speedInput.value, 0.01, 1000, defaultAlertTime, defaultAlertTime);
   var formData = new FormData();
   formData.append("speed", valFormatted);
   fetch("/arm/set/max-speed", {
@@ -795,7 +806,7 @@ speedInput.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change max speed");
-          showDialog('e',"Cannot change max speed",defaultAlertTime);
+          showDialog(alertItem, alertMessage, 'e',"Cannot change max speed",defaultAlertTime);
       return false;
     }
   });
@@ -808,7 +819,7 @@ logout.addEventListener("click", function () {
 
     xhr.onload = function () {
       if (xhr.status === 200) {
-        showDialog('s',"Logged out successfully",defaultAlertTime);
+        showDialog(alertItem, alertMessage, 's',"Logged out successfully",defaultAlertTime);
         setTimeout(()=>{location.reload(true);},defaultAlertTime);
       }
     };
@@ -827,7 +838,7 @@ deleteAccount.addEventListener("click", function () {
 
       xhr.onload = function () {
         if (xhr.status === 200) {
-          showDialog('s',"Account deleted successfully",defaultAlertTime);
+          showDialog(alertItem, alertMessage, 's',"Account deleted successfully",defaultAlertTime);
           setTimeout(()=>{location.reload(true);},defaultAlertTime);
         }
       };
@@ -843,4 +854,5 @@ document.addEventListener("DOMContentLoaded", function () {
   fillFilesTable();
   fillPortsTable();
   fillModeList();
+  selectConnectedPort();
 });

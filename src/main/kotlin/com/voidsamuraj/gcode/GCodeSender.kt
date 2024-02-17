@@ -94,16 +94,23 @@ object GCodeSender {
         speedrate = 1.0 // speed multiply
         speedNow = 0.0
         R = arm2Length + arm1Length
-        position[0]=0.0
-        position[1]=R.toDouble()
-        position[2]=0.0
-        angles[0] = 90.0
-        angles[1] =180.0
+        resetPosition()
         totalSteps = 5 // all interpolation steps, divide one command to have linear movement
         MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
         ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
         ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
         ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
+    }
+
+    /**
+     * Function to reset position to init, it not moves arm
+     */
+    fun resetPosition(){
+        position[0]=0.0
+        position[1]=R.toDouble()
+        position[2]=0.0
+        angles[0] = 90.0
+        angles[1] =180.0
     }
     fun setArmDirection(isRightSide: Boolean){
         this.isRightSide=isRightSide
@@ -174,6 +181,17 @@ object GCodeSender {
         else
             1
     }
+
+    /**
+     * Get connected port name or null
+     * @return port name if port is open, in other case null
+     */
+    fun getLastPortIfOpen():String?{
+        if(isPortOpen)
+            return SERIAL_PORT
+        return null
+    }
+
     /**
      * Function sending file to scara arm by defined port
      * @param fileToSend path of file which need to be made by [makeGCodeFile]

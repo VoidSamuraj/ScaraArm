@@ -33,10 +33,12 @@ const armColor=0xffa31a;
 const rotationTextHeight=7.53;
 const heightTextHeight=4.75;
 const selectColor=0xff2222;
+//scale units to arm size
+const scaleDisplayDivider=5;
 
-var arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArmLength);
-var arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
-var toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
+var arm1Length = parseFloat(localStorage.getItem('arm1Length')/scaleDisplayDivider || defaultArmLength);
+var arm2Length = parseFloat(localStorage.getItem('arm2Length')/scaleDisplayDivider || defaultArmLength-defaultToolDistance);
+var toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm')/scaleDisplayDivider || defaultToolDistance);
 setupOptionMenu(changeArmDimens);
 var arm1Angle=0;
 var arm2Angle=0;
@@ -194,17 +196,18 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
     renderer.domElement.addEventListener('wheel', function(event) {
         if (editMode && getCanMoveArm()) {
             controls.enableZoom=false;
-            const zoomChange = (event.deltaY > 0 ? 1 : -1)*getRotationPrecision();
+            var zoomChange = (event.deltaY > 0 ? 1 : -1);
             let reacted=false;
             lastSelectedMesh.traverse((children)=>{
                 if(!reacted)
                     switch(children.name){
-
+                //arm 1
                 case stlNames[1]:
                 case stlNames[2]:
                 case "cubeArmExtension1p1":
                 case "cubeArmExtension1p2":
-                    if(isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION, arm1Angle+zoomChange,rightSide)){
+                    if(isAngleBetween(MAX_ARM1_ANGLE, MAX_ARM1_ANGLE_COLLISION, arm1Angle+zoomChange*getRotationPrecision(),rightSide)){
+                        zoomChange*=getRotationPrecision()
                         arm1Angle+=zoomChange;
                         rotateArm1(zoomChange,rotation1,arm2Angle,rotation2,arm2RotationShift,armShift,rightSide);
                         updateTextTexture((Math.round(arm1Angle%360)).toString(),30,arm1Text,5,0,rotationTextHeight);
@@ -218,10 +221,12 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                         reacted=true;
                     }
                     break;
+                //arm 2
                 case stlNames[3]:
                 case stlNames[4]:
                 case "cubeArmExtension2":
-                    if(isAngleBetween(MAX_ARM2_ANGLE, null, arm2Angle+zoomChange,rightSide)){
+                    if(isAngleBetween(MAX_ARM2_ANGLE, null, arm2Angle+zoomChange*getRotationPrecision(),rightSide)){
+                        zoomChange*=getRotationPrecision()
                         arm2Angle+=zoomChange;
                         rotateArm2(rotation2,zoomChange,arm2RotationShift,rightSide);
                         updateTextTexture((Math.round(arm2Angle%360)).toString(),30,arm2Text,arm2RotationShift,0,rotationTextHeight);
@@ -235,11 +240,12 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                         reacted=true;
                     }
                     break;
+                //tool
                 case stlNames[5]:
                 case stlNames[6]:
                 case "cubeToolExtension1":
                 case "cubeToolExtension2":
-                    const scale=0.05;
+                    let scale=getMovePrecision()/scaleDisplayDivider;
                     let lastHeight=currentHeight;
                     if((zoomChange>0&&(currentHeight+zoomChange*scale)<maxHeight)||(zoomChange<0&&(currentHeight+zoomChange*scale)>minHeight)){
                         currentHeight+=zoomChange*scale;
@@ -262,7 +268,7 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                                 0,                  //y
                                 heightTextHeight    //z
                             );
-                        updateTextTexture((currentHeight-minHeight).toFixed(2).toString(),40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
+                        updateTextTexture(((currentHeight-minHeight)*scaleDisplayDivider).toFixed(2).toString(),40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
                         moveArmBy(null,null,currentHeight-lastHeight,rightSide);
                         toolMesh.translateY(currentHeight-lastHeight);
                     }
@@ -280,7 +286,7 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
 }
 
 addLight(scene,panelSize);
-addGrid(scene,panelSize*scaleOfPlateSize,0, 0,-1,panelSize*scaleOfGridDivisions*scaleOfPlateSize);
+addGrid(scene,panelSize*scaleOfPlateSize,0, 0,-1,panelSize*scaleOfGridDivisions*scaleOfPlateSize*scaleDisplayDivider);
 
 var armRange= drawArmRange(panelSize*2,armShift,arm1Length,arm2TotalLength,MAX_ARM1_ANGLE,MAX_ARM2_ANGLE,MAX_ARM1_ANGLE_COLLISION,rightSide);
 scene.add(armRange);
@@ -350,9 +356,9 @@ function changeArmDimens(){
     currentToolX=arm1Length+arm2TotalLength;
     currentToolY=0;
     moveToolOnSceneToPosition(true,1);
-    arm1Length = parseFloat(localStorage.getItem('arm1Length') || defaultArmLength);
-    arm2Length = parseFloat(localStorage.getItem('arm2Length') || defaultArmLength);
-    toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm') || defaultToolDistance);
+    arm1Length = parseFloat(localStorage.getItem('arm1Length')/scaleDisplayDivider || defaultArmLength);
+    arm2Length = parseFloat(localStorage.getItem('arm2Length')/scaleDisplayDivider || defaultArmLength-defaultToolDistance);
+    toolDistanceToArm = parseFloat(localStorage.getItem('toolDistanceToArm')/scaleDisplayDivider || defaultToolDistance);
     arm2TotalLength = arm2Length+toolDistanceToArm;
     additionalArm1Length=arm1Length-defaultArmLength
     additionalArm2Length=arm2Length-defaultArmLength
@@ -537,8 +543,9 @@ function animate() {
  * @returns {boolean} - is angle inside range
  */
 function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightSide){
-    return !isRightSide && armAngle>=-MAX_ARM_ANGLE && armAngle<=(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) ||
+    var ret = !isRightSide && armAngle>=-MAX_ARM_ANGLE && armAngle<=(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) ||
     isRightSide && armAngle>=-(MAX_ARM_ANGLE_COLLISION!=undefined ? MAX_ARM_ANGLE_COLLISION : MAX_ARM_ANGLE) && armAngle<=MAX_ARM_ANGLE
+    return ret;
 }
 
 /**
@@ -547,7 +554,7 @@ function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightS
 async function setupMoveListener(){
     document.addEventListener('keydown', (event) => {
         if(toolEditMode){
-            let armStep=getMovePrecision();
+            let armStep=getMovePrecision()/scaleDisplayDivider;
             switch(event.code) {
                 case 'ArrowUp':
                 case 'Numpad8':
@@ -601,7 +608,7 @@ async function setupMoveListener(){
  * Text displayed on top of screen, displaying tool coordinates
  */
 function updatePositionText(){
-    positionText.textContent="X="+(currentToolX).toFixed(2)+" Y="+(currentToolY).toFixed(2);
+    positionText.textContent="X="+(currentToolX*scaleDisplayDivider).toFixed(2)+" Y="+(currentToolY*scaleDisplayDivider).toFixed(2);
 }
 
 /**
@@ -681,7 +688,7 @@ function canMove(toolX, toolY){
  * @param {number} y - relative movement in X axis, null if no movement
  * @param {number} z - relative movement in X axis, null if no movement
  * @param {boolean} isRightSide - specifies orientation of arm  
- * @TODO verify function and integrate
+ * @TODO verify function and integrate, add blocking/ queue commands
  */
 function moveArmBy(x,y,z,isRightSide){
     const data = {
@@ -702,7 +709,6 @@ function moveArmBy(x,y,z,isRightSide){
     .catch(error => {
       console.error('Error:', error);
     });
-
 }
 
 /**
@@ -710,7 +716,7 @@ function moveArmBy(x,y,z,isRightSide){
  * @param {number} firstArmAngle - relative movement of first arm, null if no movement
  * @param {number} secondArmAngle - relative movement of second arm, null if no movement
  * @param {boolean} isRightSide - specifies orientation of arm  
- * @TODO verify function and integrate
+ * @TODO verify function and integrate, add blocking/ queue commands
  */
 function moveArmByAngle(firstArmAngle,secondArmAngle){
     const data = {

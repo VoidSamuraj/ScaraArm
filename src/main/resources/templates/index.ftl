@@ -53,8 +53,9 @@
                <div class="precision-li">
                   <input id="precision-move" class="range precision-input" type="number" min="1">
                   <select id="precisionUnit" class="select-menu precision-select">
-                     <option value="mm">mm</option>
                      <option value="cm">cm</option>
+                     <option value="mm">mm</option>
+                     <option value="0.1mm">0.1mm</option>
                   </select>
                </div>
             </li>
@@ -63,7 +64,7 @@
                <div class="precision-li">
                   <input id="precision-rotate" class="range precision-input" type="number" min="1">
                   <select id="precisionUnitDegree" class="select-menu precision-select">
-                     <option value="1/10">&#8530;°</option>
+                     <option value="0.1">&#8530;°</option>
                      <option value="1">1°</option>
                      <option value="10">10°</option>
                   </select>

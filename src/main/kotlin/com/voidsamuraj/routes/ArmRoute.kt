@@ -16,11 +16,11 @@ fun Route.armRoute() {
                 call.respond(HttpStatusCode.OK, "Success")
             }
         }
-        /*   post("/end"){
+        post("/end"){
                GCodeSender.endCommunication()
                GCodeSender.closePort()
                call.respond(HttpStatusCode.OK, "Success")
-           }*/
+           }
         route("/movement"){
             post("/angle"){
                 checkUserPermission {
@@ -122,6 +122,16 @@ fun Route.armRoute() {
         get{
             checkUserPermission {
                 call.respond(SerialPort.getCommPorts().map { it.systemPortName })
+            }
+        }
+        get("/last"){
+            checkUserPermission {
+                val port:String? = GCodeSender.getLastPortIfOpen()
+                if(port==null)
+                    call.respond(HttpStatusCode.NoContent)
+                else{
+                    call.respond(port)
+                }
             }
         }
         post("/select"){

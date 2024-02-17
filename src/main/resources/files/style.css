@@ -1,6 +1,9 @@
 
 body {
+    position: fixed;
     height: 100%;
+    width:100%;
+    overflow:hidden;
     margin: 0;
     padding: 0;
     background-color: #1b1b1b;
@@ -93,7 +96,6 @@ nav ul {
     list-style-type: none;
     margin: 5px 0px;
     padding: 0;
-
 }
 
 li{
@@ -272,6 +274,8 @@ nav .slot, nav a {
 #firstMenu{
     width: 74px;
     left: 0px;
+    margin:0px;
+    padding:0px;
     z-index: 4;
     background-color: #1C1E2A;
     transition: all 0.2s;
@@ -283,6 +287,7 @@ nav .slot, nav a {
 }
 #firstMenu > ul:first-child{
     z-index: 5;
+    margin: 0px;
 }
 #loadMenu{
     z-index: 3;
@@ -332,7 +337,9 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"]{
   -moz-appearance: textfield;
 }
-
+#menuIcon{
+    padding: 11px 13px;
+}
 
 #logout,td>button:nth-child(2){
     background-color: #990000;
