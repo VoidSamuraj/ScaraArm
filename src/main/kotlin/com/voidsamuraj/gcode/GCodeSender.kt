@@ -1,5 +1,6 @@
 package com.voidsamuraj.gcode
 import com.fazecast.jSerialComm.SerialPort
+import com.fazecast.jSerialComm.SerialPortInvalidPortException
 import io.ktor.util.*
 import java.io.BufferedInputStream
 import java.io.BufferedReader
@@ -42,7 +43,16 @@ object GCodeSender {
         HALF(400),
         ONE_QUARTER(800)
     }
+    enum class StateReturn{
+        SUCCESS,
+        FAILURE,
+        PORT_DISCONNECTED
+    }
+
     private var port: SerialPort? = null
+    private var inputStream: InputStream? = null
+    private var bufferedInputStream:BufferedInputStream? = null
+    private var printWriter:PrintWriter? = null
     private var SERIAL_PORT = "ttyACM0" //"COM5";
     /**
      * sets port and closes previous connections
@@ -195,78 +205,98 @@ object GCodeSender {
     /**
      * Function sending file to scara arm by defined port
      * @param fileToSend path of file which need to be made by [makeGCodeFile]
+     * @return [StateReturn]
      * @see makeGCodeFile
+     * @see StateReturn
+     *
      */
-    fun sendGCode(fileToSend: String) {
+    fun sendGCode(fileToSend: String):StateReturn {
         try {
-            if (!isPortOpen) openPort()
-            val iStream: InputStream = port!!.inputStream
-            val bins = BufferedInputStream(iStream)
-            val pw = PrintWriter(port!!.outputStream)
-            val fin = File(fileToSend)
-            Thread.sleep(500)
-            startCommunication(pw, bins)
-            try {
-                FileReader(fin).use { fr ->
-                    BufferedReader(fr).use { br ->
-                        val t = Thread {
-                            var line: String?
-                            while (br.readLine().also { line = it } != null) {
-                                line?.let { pw.write(it) }
-                                pw.flush()
-                                for(i in 1..3){
-                                    if (isOKReturned(bins))
-                                        break
-                                    if(i==3)
-                                        throw IOException("Arm is not responding")
-                                }
-                            }
-                            endCommunication(pw)
-                        }
-                        t.start()
-                        t.join()
-                    }
+            if (!isPortOpen)
+                if(openPort()==StateReturn.FAILURE){
+                    System.err.println("Port is not opened")
+                    return StateReturn.FAILURE
                 }
-            }  finally {
-                bins.close()
-                iStream.close()
-                pw.close()
-                port!!.closePort()
+            val fin = File(fileToSend)
+            FileReader(fin).use { fr ->
+                BufferedReader(fr).use { br ->
+                    var line: String?
+                    while (br.readLine().also { line = it } != null) {
+                        line?.let { printWriter!!.write(it) }
+                        printWriter!!.flush()
+                        for(i in 1..3){
+                            when (isOKReturned(bufferedInputStream!!)){
+                                StateReturn.SUCCESS -> break
+                                StateReturn.PORT_DISCONNECTED->{
+                                    System.err.println("Arm is disconnected")
+                                    return StateReturn.PORT_DISCONNECTED
+                                }
+                                else->{}
+                            }
+                            if(i==3){
+                                System.err.println("Arm is not responding")
+                                return StateReturn.FAILURE
+                            }
+                        }
+                    }
+                    endCommunication(printWriter!!)
+                }
             }
-        } catch (e: InterruptedException) {
-            System.err.println("INTERRUPT sendGCodeError: " + e.localizedMessage)
-        } catch (e: IOException) {
-            System.err.println("IO sendGCodeError: " + e.localizedMessage)
+        }catch (e: Exception) {
+            when(e){
+                is IOException,
+                is InterruptedException -> {
+                    System.err.println("sendGCodeError: " + e.localizedMessage)
+                    return StateReturn.FAILURE
+                }
+                else -> throw e
+            }
         }
+        return StateReturn.SUCCESS
     }
 
     /**
      *  initializes communication, sends START flag and waits for response OK, then connection is established
      *  @param pw output to write commands to arm
      *  @param bins stream to read response from arm
-     *  @throws IOException
-     *  @throws InterruptedException
+     * @return [StateReturn.SUCCESS] or [StateReturn.FAILURE]
+     * @see StateReturn
      */
-    @Throws(IOException::class, InterruptedException::class)
-    private fun startCommunication(pw: PrintWriter, bins: BufferedInputStream) {
-        do {
+    private fun startCommunication(pw: PrintWriter, bins: BufferedInputStream):StateReturn {
+        val maxAttempts=10
+        for(i in 1 until maxAttempts) {
             try {
+                pw.write("START")
                 pw.flush()
-                if (isOKReturned(bins))
+                Thread.sleep(200)
+                if (isOKReturned(bins)==StateReturn.SUCCESS)
                     break
-            } catch (e: IOException) {
-                println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+                if(i==maxAttempts-1)
+                    return StateReturn.FAILURE
+            }catch (e: Exception) {
+                when(e){
+                    is IOException,
+                    is InterruptedException -> {
+                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+                    }
+                    else -> throw e
+                }
             }
-        } while (true)
-        //clean stream
+        }
         do {
             try {
                 bins.read()
-            } catch (e: IOException) {
-                println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+            }catch (e: Exception) {
+                when(e){
+                    is IOException,
+                    is InterruptedException -> {
+                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+                    }
+                    else -> throw e
+                }
             }
         } while (bins.available() > 0)
-
+        return StateReturn.SUCCESS
     }
 
     /**
@@ -475,8 +505,10 @@ object GCodeSender {
      * @param yMove
      * @param zMove set null if no move
      * @param rightSide direction of arm
+     * @return [StateReturn]
+     * @see StateReturn
      */
-    fun moveBy(xMove: Double?, yMove: Double?, zMove: Double?, rightSide: Boolean) {
+    fun moveBy(xMove: Double?, yMove: Double?, zMove: Double?, rightSide: Boolean):StateReturn {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
@@ -485,24 +517,32 @@ object GCodeSender {
         val lines: List<String> = transition(xMove, yMove, zMove, null, true, isRightSide).split("\n").filter { it!="" }
         isRelative = isRelativeCp
         try {
-            if (!isPortOpen) openPort()
-            val iStream: InputStream = port!!.inputStream
-            val bins = BufferedInputStream(iStream)
-            val pw = PrintWriter(port!!.outputStream)
-            startCommunication(pw, bins)
+            if (!isPortOpen)
+                if(openPort()==StateReturn.FAILURE){
+                    System.err.println("Port is not opened")
+                    return StateReturn.FAILURE
+                }
             for (line in lines) {
                 println(line)
-                pw.write(line)
-                pw.flush()
+                printWriter!!.write(line)
+                printWriter!!.flush()
 
-                for(i in 1..3){
-                    if (isOKReturned(bins))
-                        break
-                    if(i==3)
-                        throw IOException("Arm is not responding")
+                for (i in 1..3) {
+                    when (isOKReturned(bufferedInputStream!!)){
+                        StateReturn.SUCCESS -> break
+                        StateReturn.PORT_DISCONNECTED->{
+                            System.err.println("Arm is disconnected")
+                            return StateReturn.PORT_DISCONNECTED
+                        }
+                        else->{}
+                    }
+                    if (i == 3){
+                        System.err.println("Arm is not responding")
+                        return StateReturn.FAILURE
+                    }
                 }
             }
-            endCommunication()
+            endCommunication(printWriter!!)
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -513,18 +553,22 @@ object GCodeSender {
                     position[1] = positionCp[1]
                     position[2] = positionCp[2]
                     Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+                    return StateReturn.FAILURE
                 }
                 else -> throw ex
             }
         }
+        return StateReturn.SUCCESS
     }
     /**
      * function to move arm by rotation. Function creates connection to communicate
      * TODO needed testing
      * @param firstArmRelativeAngle rotation in degrees relative to current position
      * @param secondArmRelativeAngle rotation in degrees relative to current position
+     * @return [StateReturn]
+     * @see StateReturn
      */
-    fun moveBy(firstArmRelativeAngle: Double?, secondArmRelativeAngle: Double?) {
+    fun moveBy(firstArmRelativeAngle: Double?, secondArmRelativeAngle: Double?):StateReturn {
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
         val firstArmAngle: Double = (if (firstArmRelativeAngle != null) firstArmRelativeAngle + angles[0] else angles[0]) * Math.PI / 180
@@ -536,22 +580,30 @@ object GCodeSender {
         val lines: List<String> = transition(xPos, yPos, null, null, true, !isRightSide).split("\n").filter { it!="" }
         isRelative = isRelativeCp
         try {
-            if (!isPortOpen) openPort()
-            val iStream: InputStream = port!!.inputStream
-            val bins = BufferedInputStream(iStream)
-            val pw = PrintWriter(port!!.outputStream)
-            startCommunication(pw, bins)
+            if (!isPortOpen)
+                if(openPort()==StateReturn.FAILURE){
+                    System.err.println("Port is not opened")
+                    return StateReturn.FAILURE
+                }
             for (line in lines) {
-                pw.write(line)
-                pw.flush()
+                printWriter!!.write(line)
+                printWriter!!.flush()
                 for(i in 1..3){
-                    if (isOKReturned(bins))
-                        break
-                    if(i==3)
-                        throw IOException("Arm is not responding")
+                    when (isOKReturned(bufferedInputStream!!)){
+                        StateReturn.SUCCESS -> break
+                        StateReturn.PORT_DISCONNECTED->{
+                            System.err.println("Arm is disconnected")
+                            return StateReturn.PORT_DISCONNECTED
+                        }
+                        else->{}
+                    }
+                    if (i == 3){
+                        System.err.println("Arm is not responding")
+                        return StateReturn.FAILURE
+                    }
                 }
             }
-            endCommunication()
+            endCommunication(printWriter!!)
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -562,67 +614,97 @@ object GCodeSender {
                     position[1] = positionCp[1]
                     position[2] = positionCp[2]
                     Logger.getLogger(GCodeSender::class.java.getName()).log(Level.SEVERE, null, ex)
+                    return StateReturn.FAILURE
                 }
                 else -> throw ex
             }
         }
+        return StateReturn.SUCCESS
     }
 
     /**
      * The function tries to read from the stream up to five times. Readed data is added to previous and whole read data are searched for "OK" strings.
-     *
+     *  @return [StateReturn]
+     *  @see StateReturn
+     *  @throws IOException
+     *  @throws InterruptedException
      */
-    private fun isOKReturned(bins:BufferedInputStream):Boolean{
+    @Throws(IOException::class, InterruptedException::class)
+    private fun isOKReturned(bins:BufferedInputStream):StateReturn{
         var text=""
-        for(i in 1..5) {
+        //2000 ms limit
+        for(i in 1 until 20) {
             val bf = ByteArray(1024)
             try {
-                val bytesRead = bins.read(bf)
-                if (bytesRead != -1) {
-                    val st = String(bytes = bf, offset = 0, length = bytesRead, charset = Charsets.UTF_8).trim()
-                    text+=st
-                    if(text.contains("OK", ignoreCase = true))
-                        return true
-                    Thread.sleep(200)
+                if (bins.available()>0) {
+                    val bytesRead = bins.read(bf)
+                    if(getPort()==null)
+                        return StateReturn.PORT_DISCONNECTED
+                    if(bytesRead!=-1){
+                        val st = String(bytes = bf, offset = 0, length = min(bytesRead,bf.size), charset = Charsets.UTF_8).trim()
+                        text += st
+                        if (text.contains("OK", ignoreCase = true))
+                            return StateReturn.SUCCESS
+                    }
                 }
-            } catch (e: IOException) {
-                println("Exception Line: " + e.message)
-            }catch (e:  InterruptedException) {
-                println("Exception Line: "+ e.message)
+
+                Thread.sleep(100)
+            }catch (e: Exception) {
+                when(e){
+                    is IOException,
+                    is InterruptedException -> {
+                        System.err.println("isOKReturned: " + e.localizedMessage)
+                    }
+                    else -> throw e
+                }
             }
         }
-        return false
+        return StateReturn.FAILURE
     }
 
     /**
      * Function to establish communication with arm using port specified by[setPort] default is for Linux
      * It blocks current thread until connection is established
      * You also have to specify which system are you using [setPlatform] select one of [Platform]
+     * @return [StateReturn.SUCCESS] or [StateReturn.FAILURE]
      * @see setPort
      * @see setPlatform
      * @see Platform
+     * @see StateReturn
      * @throws InterruptedException
      */
     @Throws(InterruptedException::class)
-    fun openPort(){
-        port = SerialPort.getCommPort(SERIAL_PORT)
-        port!!.setComPortParameters(9600, 8, 1, 0)
+    fun openPort():StateReturn{
+        port = getPort()
+        if(port!=null) {
+            port!!.setComPortParameters(9600, 8, 1, 0)
+            val platform = System.getProperty("os.name").lowercase(Locale.getDefault())
+            if (platform == "windows")
+                setPlatform(Platform.WINDOWS)
+            else
+                setPlatform(Platform.LINUX)
 
-        val platform =System.getProperty("os.name").lowercase(Locale.getDefault())
-        if(platform == "windows")
-            setPlatform(Platform.WINDOWS)
-        else
-            setPlatform(Platform.LINUX)
+            if (serverPlatform == Platform.WINDOWS)
+                port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0)
+            else if (serverPlatform == Platform.LINUX)
+                port!!.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0)
 
-        if(serverPlatform==Platform.WINDOWS)
-            port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0)
-        else if(serverPlatform==Platform.LINUX)
-            port!!.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0)
-
-        Thread.sleep(100)
-        while (!port!!.openPort()) {
             Thread.sleep(100)
+
+            //max 5000 ms
+            for (i in 1 until 50) {
+                if (port!!.openPort())
+                    break
+                Thread.sleep(100)
+            }
+            if (port?.isOpen == true) {
+                inputStream = port!!.inputStream
+                bufferedInputStream = BufferedInputStream(inputStream!!)
+                printWriter = PrintWriter(port!!.outputStream)
+                return startCommunication(printWriter!!, bufferedInputStream!!)
+            }
         }
+        return StateReturn.FAILURE
     }
 
     /**
@@ -642,6 +724,16 @@ object GCodeSender {
             pw.flush()
             pw.close()
         }
+    }
+
+    private fun getPort():SerialPort?{
+        try{
+            return  SerialPort.getCommPort(SERIAL_PORT)
+        }catch(ex: SerialPortInvalidPortException){
+            System.err.println("openPort: " + ex.localizedMessage)
+            return null
+        }
+
     }
     fun closePort() {
         port?.closePort()

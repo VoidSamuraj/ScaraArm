@@ -505,6 +505,7 @@ function connectToArm() {
         showDialog(alertItem, alertMessage, 's',"Connected to arm",defaultAlertTime);
       } else {
         console.error("Cannot connect to arm");
+        canMoveArm = false;
         showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm",defaultAlertTime);
       }
     })

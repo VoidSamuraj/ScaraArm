@@ -705,8 +705,13 @@ function moveArmBy(x,y,z,isRightSide){
     fetch('/arm/movement/cartesian', {
       method: 'POST',
       body: params
-    })
-    .catch(error => {
+    }).then(response=>{
+              if(response.status == 500){
+                  console.error("move fail");
+              }else if(response.status == 503){
+                  console.error("Connection lost");
+              }
+    }).catch(error => {
       console.error('Error:', error);
     });
 }
@@ -731,9 +736,14 @@ function moveArmByAngle(firstArmAngle,secondArmAngle){
     fetch('/arm/movement/angle', {
       method: 'POST',
       body: params
-    })
-    .catch(error => {
-      console.error('Error:', error);
+    }).then(response=>{
+        if(response.status == 500){
+            console.error("move fail");
+        }else if(response.status == 503){
+            console.error("Connection lost");
+        }
+    }).catch(error => {
+        console.error('Error:',  error.message); // Odczytujemy treść odpowiedzi błędu
     });
 }
 

@@ -12,31 +12,43 @@ fun Route.armRoute() {
     route("/arm"){
         post("/start"){
             checkUserPermission {
-                GCodeSender.openPort()
-                call.respond(HttpStatusCode.OK, "Success")
+                if(GCodeSender.openPort()==GCodeSender.StateReturn.SUCCESS)
+                    call.respond(HttpStatusCode.OK, "Success")
+                else
+                    call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
             }
         }
         post("/end"){
-               GCodeSender.endCommunication()
-               GCodeSender.closePort()
-               call.respond(HttpStatusCode.OK, "Success")
-           }
+            GCodeSender.endCommunication()
+            GCodeSender.closePort()
+            call.respond(HttpStatusCode.OK, "Success")
+        }
         route("/movement"){
             post("/angle"){
                 checkUserPermission {
                     if (!GCodeSender.isPortOpen)
-                        GCodeSender.openPort()
+                        if(GCodeSender.openPort()==GCodeSender.StateReturn.FAILURE){
+                            call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                            return@checkUserPermission
+                        }
                     val formParameters = call.receiveParameters()
                     val L = formParameters.getOrFail("L").toDoubleOrNull()
                     val S = formParameters.getOrFail("S").toDoubleOrNull()
-                    GCodeSender.moveBy(L, S)
-                    call.respond(HttpStatusCode.OK, "Success")
+                    val ret=GCodeSender.moveBy(L, S)
+                    when(ret){
+                        GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
+                        GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
+                        GCodeSender.StateReturn.PORT_DISCONNECTED->call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                    }
                 }
             }
             post("/cartesian"){
                 checkUserPermission {
                     if (!GCodeSender.isPortOpen)
-                        GCodeSender.openPort()
+                        if(GCodeSender.openPort()==GCodeSender.StateReturn.FAILURE){
+                            call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                            return@checkUserPermission
+                        }
                     val formParameters = call.receiveParameters()
                     var x = formParameters.getOrFail("x").toDoubleOrNull()
                     var y = formParameters.getOrFail("y").toDoubleOrNull()
@@ -48,8 +60,13 @@ fun Route.armRoute() {
                         y *= 10
                     if (z != null)
                         z *= 10
-                    GCodeSender.moveBy(x, y, z, isRightSide!!)
-                    call.respond(HttpStatusCode.OK, "Success")
+
+                    val ret=GCodeSender.moveBy(x, y, z, isRightSide!!)
+                    when(ret){
+                        GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
+                        GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
+                        GCodeSender.StateReturn.PORT_DISCONNECTED->call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                    }
                 }
             }
         }
@@ -74,7 +91,6 @@ fun Route.armRoute() {
                     val formParameters = call.receiveParameters()
                     val dir = formParameters.getOrFail("isRight").toBoolean()
                     GCodeSender.setArmDirection(dir)
-                    println("\nCHANGED dir \n")
                     call.respond(HttpStatusCode.OK, "Success")
                 }
             }
@@ -84,7 +100,6 @@ fun Route.armRoute() {
                     val arm1Ratio = formParameters["arm1Ratio"]?.toDoubleOrNull()
                     val arm2Ratio = formParameters["arm2Ratio"]?.toDoubleOrNull()
                     val armAdditionalRatio = formParameters["armAdditionalRatio"]?.toDoubleOrNull()
-                    println("\nLENGTH $arm1Ratio $arm2Ratio \n")
                     if (arm1Ratio != null)
                         GCodeSender.setArm1GearRatio(arm1Ratio)
                     if (arm2Ratio != null)
