@@ -9,7 +9,7 @@
  * @param {int} time millis to display message if number invalid
  * @returns {float|null} float or null if string is not valid number or outside range
  */
-export function formatFloat(alertItem, messageItem, text, min, max, time) {
+export function formatFloat(alertItem, messageItem, text, min, max, time=5000) {
   let formatted = text.replace("/,/g", ".");
   let parsedNumber = parseFloat(formatted);
   if (
@@ -33,7 +33,7 @@ export function formatFloat(alertItem, messageItem, text, min, max, time) {
  * @param {int} time millis to display message if number invalid
  * @returns {float|null} float or null if string is not valid number or outside range
  */
-export function formatInt(alertItem, messageItem, text, min, max, time) {
+export function formatInt(alertItem, messageItem, text, min, max, time=5000) {
   let formatted = text.replace(",", ".");
   let parsedNumber = parseInt(formatted, 10);
   if (
@@ -55,7 +55,7 @@ export function formatInt(alertItem, messageItem, text, min, max, time) {
  * @param {string} message message displayed in alert
  * @param {int} duration message display duration in ms, -1 to not hide
  */
-export function showDialog(alertItem, messageItem, type, message, duration){
+export function showDialog(alertItem, messageItem, type, message, duration=5000){
     messageItem.textContent=message;
     if(type=='e' || type=='E'){
         alertItem.classList.add("alert-error");

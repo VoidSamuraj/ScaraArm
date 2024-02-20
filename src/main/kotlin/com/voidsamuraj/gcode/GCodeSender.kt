@@ -499,7 +499,6 @@ object GCodeSender {
 
     /**
      * function to move arm in cartesian space. Function creates connection to communicate
-     * TODO change code to have established connection and connect only when necessary
      * TODO needed testing
      * @param xMove
      * @param yMove
@@ -531,6 +530,7 @@ object GCodeSender {
                     when (isOKReturned(bufferedInputStream!!)){
                         StateReturn.SUCCESS -> break
                         StateReturn.PORT_DISCONNECTED->{
+                            port=null
                             System.err.println("Arm is disconnected")
                             return StateReturn.PORT_DISCONNECTED
                         }

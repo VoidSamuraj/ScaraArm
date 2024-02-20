@@ -2,9 +2,10 @@ import * as THREE from '/static/three/build/three.module.js'
 import {loadSTL,changeSTLColor}from '/static/stl.js'
 import {getRectangle,updateRectanglePercent,createCircle,createRing,updateRing,addGrid,addLight,drawCartesianLines,updateTextTexture,drawArmRange,getMinDistance,drawFile}from '/static/elements.js'
 import {setupCanvasHelper,getRotationHelperGroup}from '/static/sceneHelper.js'
+import {showDialog}from '/static/helpers.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
-import {getCanMoveArm, setupOptionMenu, getMovePrecision, getRotationPrecision} from '/static/navigation.js'
+import {getCanMoveArm, setupOptionMenu, getMovePrecision, getRotationPrecision, refreshPorts} from '/static/navigation.js'
 
 // main file to display and manage elements of arm and related UI
 
@@ -710,6 +711,10 @@ function moveArmBy(x,y,z,isRightSide){
                   console.error("move fail");
               }else if(response.status == 503){
                   console.error("Connection lost");
+                  showDialog(document.getElementById("alert"), document.getElementById("alert-msg"), 'e',"Arm connection lost");
+                  changeSTLColor(lastSelectedMesh,armColor);
+                  lastSelectedMesh=null;
+                  refreshPorts();
               }
     }).catch(error => {
       console.error('Error:', error);
@@ -741,6 +746,10 @@ function moveArmByAngle(firstArmAngle,secondArmAngle){
             console.error("move fail");
         }else if(response.status == 503){
             console.error("Connection lost");
+            showDialog(document.getElementById("alert"), document.getElementById("alert-msg"), 'e',"Arm connection lost");
+            changeSTLColor(lastSelectedMesh,armColor);
+            lastSelectedMesh=null;
+            refreshPorts();
         }
     }).catch(error => {
         console.error('Error:',  error.message); // Odczytujemy treść odpowiedzi błędu

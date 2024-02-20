@@ -38,7 +38,10 @@ fun Route.armRoute() {
                     when(ret){
                         GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
                         GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
-                        GCodeSender.StateReturn.PORT_DISCONNECTED->call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                        GCodeSender.StateReturn.PORT_DISCONNECTED->{
+                            GCodeSender.closePort()
+                            call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                        }
                     }
                 }
             }
@@ -65,7 +68,10 @@ fun Route.armRoute() {
                     when(ret){
                         GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
                         GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
-                        GCodeSender.StateReturn.PORT_DISCONNECTED->call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                        GCodeSender.StateReturn.PORT_DISCONNECTED->{
+                            GCodeSender.closePort()
+                            call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                        }
                     }
                 }
             }
