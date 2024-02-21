@@ -357,8 +357,15 @@ input[type="number"]{
 td>button:first-child{
     background-color: #218838;
 }
+td>button:first-child:disabled{
+    background-color: #638e6d;
+}
 td>button:first-child:hover{
     background-color: #28a745;
+}
+
+td>button:first-child:hover:disabled {
+    background-color: #638e6d;
 }
 .menu-button input[type=file] {
     font-size: 100px;

@@ -463,7 +463,8 @@ object GCodeSender {
                     command.append("" + L).append(alphaChange / totalSteps).append(" ")
                         .append(S).append(betaChange / totalSteps)
                 }
-                if (speed != null && speed != -1.0) command.append(" F").append((speed * speedrate).toLong())
+                if (speed != null && speed != -1.0)
+                    command.append(" F").append((speed * speedrate).toLong())
                 command.append("\n")
             } else {
                 if (inSteps) {

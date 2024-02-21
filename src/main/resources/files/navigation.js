@@ -94,6 +94,7 @@ var buttons = document.querySelectorAll(".first");
 var expanded = false;
 var menuDisplayed = false;
 var canMoveArm = false;
+export var demoMode = false;
 
 portMenu.style.minHeight = firstMenuStyle.height;
 loadMenu.style.minHeight = firstMenuStyle.height;
@@ -114,7 +115,19 @@ firstMenuUl[1].style.transform = "translateY(" + optionMenuHide + ")";
 export function getCanMoveArm() {
   return canMoveArm;
 }
-
+/**
+* Function to disable or activate loading buttons when arm is not connected.
+* @param state boolean
+*/
+function blockLoadButtons(state){
+    let loadFileButtons = document.querySelectorAll('.loadFileButtons');
+     loadFileButtons.forEach(button => {
+     if(state)
+        button.setAttribute('disabled',"");
+     else
+        button.removeAttribute('disabled');
+     });
+}
 /**
  * Function returns calculated units of move by single click.
  * @returns {number}
@@ -369,7 +382,7 @@ function fillFilesTable() {
               fileData[1] +
               "</td><td>" +
               fileData[2] +
-              "</td><td><button onClick=\"window.loadFile('" +
+              "</td><td><button class=\"loadFileButtons\" onClick=\"window.loadFile('" +
               fileData[0] +
               "')\">Load</button><button onClick=\"window.deleteFile('" +
               fileData[0] +
@@ -394,6 +407,8 @@ function fillPortsTable() {
       return response.json();
     })
     .then((data) => {
+      html +=
+        '<tr><td class="radioItem"><input type="radio" name="portList" id="demo" value="demo" ><label for="demo">DEMO MODE</label></td></tr>';
       data.forEach((port) => {
         if (port.length > 0)
           html +=
@@ -415,19 +430,26 @@ function fillPortsTable() {
       radioButtons.forEach((radioButton) => {
         radioButton.addEventListener("change", function () {
           if (this.checked) {
-            var formData = new FormData();
-            formData.append("port", this.value);
-            fetch("/ports/select", {
-              method: "POST",
-              body: formData,
-            }).then((response) => {
-              if (response.ok) {
-                connectToArm();
-              } else {
-                console.error("Cannot connect to arm");
-                showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm");
-              }
-            });
+            if(this.value== "demo"){
+                canMoveArm = true;
+                demoMode = true;
+                showDialog(alertItem, alertMessage, 's',"DEMO MODE");
+            }else{
+                var formData = new FormData();
+                formData.append("port", this.value);
+                fetch("/ports/select", {
+                  method: "POST",
+                  body: formData,
+                }).then((response) => {
+                  if (response.ok) {
+                    demoMode = false;
+                    connectToArm();
+                  } else {
+                    console.error("Cannot connect to arm");
+                    showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm");
+                  }
+                });
+            }
           }
         });
       });
@@ -661,12 +683,11 @@ loadFileButton.addEventListener("click", function () {
       expanded = true;
       turnOnOverlay();
       loadMenu.style.left = barWidth;
-      canMoveArm = false;
+      blockLoadButtons(!canMoveArm);
     } else {
       expanded = false;
       turnOffOverlay();
       loadMenu.style.left = loadMenuHide;
-      canMoveArm = true;
     }
   }, time);
 });

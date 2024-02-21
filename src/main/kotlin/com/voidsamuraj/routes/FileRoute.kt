@@ -80,7 +80,15 @@ fun Route.fileRoute(){
                 checkUserPermission(){
                     val fileName = call.parameters["fileName"]
                     if(fileName!=null){
-                        GCodeSender.sendGCode(filesFolder+"/"+fileName)
+                        val ret=GCodeSender.sendGCode(filesFolder+"/"+fileName)
+                        when(ret){
+                            GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
+                            GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to draw file")
+                            GCodeSender.StateReturn.PORT_DISCONNECTED->{
+                                GCodeSender.closePort()
+                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                            }
+                        }
                         call.respond(HttpStatusCode.OK, "File is processing")
                     }else
                         call.respond(HttpStatusCode.NotFound,"File not found")

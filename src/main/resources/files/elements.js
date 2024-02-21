@@ -1,4 +1,5 @@
 import * as THREE from '/static/three/build/three.module.js'
+import {onArmDisconnect} from '/static/display.js'
 
 // Functions to draw elements on scene
 
@@ -452,9 +453,7 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm  
- * @TODO 1.display message in UI on file loading error
- *  2.Check if sending code to arm blocks UI/Server
- *  3.Synchronize arm code execution and Drawing state
+ * @TODO Synchronize arm code execution and Drawing state
  */
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     const data = {isRightSide: ''+isRightSide};
@@ -462,9 +461,16 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
 
         //sending code to arm 
          fetch("/files/"+fileName+"/draw", {method: "POST",body: params}).then(response => {
+
                   if (response.ok) {
                     console.log("File is processing.");
-                  } else {
+                  }else if(response.status == 500){
+                                     console.error("Failed to draw file");
+                                 }else if(response.status == 503){
+                                    onArmDisconnect();
+                                 }
+
+                   else {
                     console.error("ERROR during file process. "+response);
                   }
                 })

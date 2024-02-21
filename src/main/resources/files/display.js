@@ -5,7 +5,7 @@ import {setupCanvasHelper,getRotationHelperGroup}from '/static/sceneHelper.js'
 import {showDialog}from '/static/helpers.js'
 import {rotateArm1,rotateArm2}from '/static/movement.js'
 import { OrbitControls } from '/static/three/examples/jsm/controls/OrbitControls.js';
-import {getCanMoveArm, setupOptionMenu, getMovePrecision, getRotationPrecision, refreshPorts} from '/static/navigation.js'
+import {getCanMoveArm, setupOptionMenu, getMovePrecision, getRotationPrecision, refreshPorts, demoMode} from '/static/navigation.js'
 
 // main file to display and manage elements of arm and related UI
 
@@ -217,7 +217,8 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                             arm2Text.rotation.z += zoomChange * Math.PI / 180;
                         else
                             arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                        moveArmByAngle((rightSide?zoomChange:-zoomChange),null);
+                        if(!demoMode)
+                            moveArmByAngle((rightSide?zoomChange:-zoomChange),null);
                         updateToolPos();
                         reacted=true;
                     }
@@ -236,7 +237,8 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                             arm2Text.rotation.z += zoomChange * Math.PI / 180;
                         else
                             arm2Text.rotation.z -= zoomChange * Math.PI / 180;
-                        moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
+                        if(!demoMode)
+                            moveArmByAngle(null,(rightSide?zoomChange:-zoomChange));
                         updateToolPos();
                         reacted=true;
                     }
@@ -270,7 +272,8 @@ if(! /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navig
                                 heightTextHeight    //z
                             );
                         updateTextTexture(((currentHeight-minHeight)*scaleDisplayDivider).toFixed(2).toString(),40,heightText,-3.501+(defaultArmLength*2-arm1Length-arm2Length),0,heightTextHeight);
-                        moveArmBy(null,null,currentHeight-lastHeight,rightSide);
+                        if(!demoMode)
+                            moveArmBy(null,null,currentHeight-lastHeight,rightSide);
                         toolMesh.translateY(currentHeight-lastHeight);
                     }
                     reacted=true;
@@ -563,7 +566,8 @@ async function setupMoveListener(){
                     if(canMove(currentToolX+armStep,currentToolY)){
                         currentToolX+=armStep;
                         moveToolOnSceneToPosition();
-                        moveArmBy(armStep,null,null,rightSide);
+                        if(!demoMode)
+                            moveArmBy(armStep,null,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -573,7 +577,8 @@ async function setupMoveListener(){
                     if(canMove(currentToolX-armStep,currentToolY)){
                         currentToolX-=armStep;
                         moveToolOnSceneToPosition();
-                        moveArmBy(-armStep,null,null,rightSide);
+                        if(!demoMode)
+                            moveArmBy(-armStep,null,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -583,7 +588,8 @@ async function setupMoveListener(){
                     if(canMove(currentToolX,currentToolY+armStep)){
                         currentToolY+=armStep;
                         moveToolOnSceneToPosition();
-                        moveArmBy(null,armStep,null,rightSide);
+                        if(!demoMode)
+                            moveArmBy(null,armStep,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -593,7 +599,8 @@ async function setupMoveListener(){
                     if(canMove(currentToolX,currentToolY-armStep)){
                         currentToolY-=armStep;
                         moveToolOnSceneToPosition();
-                        moveArmBy(null,-armStep,null,rightSide);
+                        if(!demoMode)
+                            moveArmBy(null,-armStep,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -710,16 +717,24 @@ function moveArmBy(x,y,z,isRightSide){
               if(response.status == 500){
                   console.error("move fail");
               }else if(response.status == 503){
-                  console.error("Connection lost");
-                  showDialog(document.getElementById("alert"), document.getElementById("alert-msg"), 'e',"Arm connection lost");
-                  changeSTLColor(lastSelectedMesh,armColor);
-                  lastSelectedMesh=null;
-                  refreshPorts();
+                 onArmDisconnect();
               }
     }).catch(error => {
       console.error('Error:', error);
     });
 }
+
+/**
+* Function to block move, deselect arm part, display notification
+*/
+export function onArmDisconnect(){
+                  console.error("Connection lost");
+                  showDialog(document.getElementById("alert"), document.getElementById("alert-msg"), 'e',"Arm connection lost");
+                  changeSTLColor(lastSelectedMesh,armColor);
+                  lastSelectedMesh=null;
+                  refreshPorts();
+}
+
 
 /**
  * Function to move physical arm by angle
