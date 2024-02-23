@@ -84,7 +84,7 @@ object GCodeSender {
     private var R = arm2Length + arm1Length
     private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
     private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
-    private var totalSteps = 5 // all interpolation steps, divide one command to have linear movement
+    private var maxMovement = 10 // all interpolation steps, divide one command to have linear movement
     private var MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
     private var ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
         get() = field * MOTOR_STEPS_PRER_ROTATION
@@ -105,7 +105,7 @@ object GCodeSender {
         speedNow = 0.0
         R = arm2Length + arm1Length
         resetPosition()
-        totalSteps = 5 // all interpolation steps, divide one command to have linear movement
+        maxMovement = 10 // all interpolation steps, divide one command to have linear movement
         MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE_QUARTER.steps
         ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
         ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
@@ -182,15 +182,16 @@ object GCodeSender {
     }
 
     /**
-     * set totatSteps - the number of divisions of single command.
-     * Instead, moving straight to point it creates [totalSteps] points to make movement smoother.
+     * set maxMovement - the max length of oce command movement to make it smother.
+     * Instead, moving straight to point it creates distance/[maxMovement] points to make movement smoother.
      */
-    fun setTotalSteps(steps:Int){
-        totalSteps = if(steps>1)
-            steps
+    fun setMaxMovement(movement:Int){
+        maxMovement = if(movement>1)
+            movement
         else
             1
     }
+
 
     /**
      * Get connected port name or null
@@ -310,6 +311,7 @@ object GCodeSender {
         try {
             val fin = File(src)
             val fout = File(out)
+            //represents amount of commands which come in
             var commandNumber = 0
             if (!fout.exists()) fout.createNewFile()
             FileWriter(fout).use { fw ->
@@ -330,7 +332,7 @@ object GCodeSender {
                             line!!.substring(nr + 1).toDouble()
                         if (newSpeed > maxSpeed) maxSpeed = newSpeed
                     }
-                    if (line!!.contains("X") || line!!.contains("Y") || line!!.contains("Z")) commandNumber += totalSteps
+                    if (line!!.contains("X") || line!!.contains("Y") || line!!.contains("Z")) ++commandNumber
                 }
                 //reduce speed multiplier based on max speed in file
                 if (RAPID_SPEED < maxSpeed) speedrate = maxSpeed / RAPID_SPEED
@@ -397,9 +399,9 @@ object GCodeSender {
     /**
      * All magic happens here
      * calculates global transition and updates current location and angles
-     * It splits command to number of points specified in [totalSteps]
-     * when totalSteps<=1 there will be one command. You can edit [totalSteps] by [setTotalSteps]
-     * @see totalSteps
+     * It splits command to for max movement  [maxMovement]
+     * when totalSteps<=1 there will be one command. You can edit [maxMovement] by [setMaxMovement]
+     * @see setMaxMovement
      * @param xMove
      * @param yMove
      * @param zMove movement in specific axis, null if no changes
@@ -447,6 +449,9 @@ object GCodeSender {
             val alphaChange: Double = if (alphaAdd == 0.0) 0.0 else angles[0] - alphaAdd
             val betaChange: Double = if (betaAdd == 0.0) 0.0 else angles[1] - betaAdd
             //attempt to interpolate
+            val deltaX = xm - position[0]
+            val deltaY = ym - position[1]
+            val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovement).toInt()
             if (totalSteps>1) for (steps in 0 until totalSteps) {
                 if (inSteps) {
                     command.append(L)
@@ -627,14 +632,11 @@ object GCodeSender {
      * The function tries to read from the stream up to five times. Readed data is added to previous and whole read data are searched for "OK" strings.
      *  @return [StateReturn]
      *  @see StateReturn
-     *  @throws IOException
-     *  @throws InterruptedException
      */
-    @Throws(IOException::class, InterruptedException::class)
     private fun isOKReturned(bins:BufferedInputStream):StateReturn{
         var text=""
         //2000 ms limit
-        for(i in 1 until 20) {
+        for(i in 1 until 200) {
             val bf = ByteArray(1024)
             try {
                 if (bins.available()>0) {
@@ -649,7 +651,7 @@ object GCodeSender {
                     }
                 }
 
-                Thread.sleep(100)
+                Thread.sleep(50)
             }catch (e: Exception) {
                 when(e){
                     is IOException,
@@ -678,7 +680,7 @@ object GCodeSender {
     fun openPort():StateReturn{
         port = getPort()
         if(port!=null) {
-            port!!.setComPortParameters(9600, 8, 1, 0)
+            port!!.setComPortParameters(115200, 8, 1, 0)
             val platform = System.getProperty("os.name").lowercase(Locale.getDefault())
             if (platform == "windows")
                 setPlatform(Platform.WINDOWS)
@@ -686,9 +688,9 @@ object GCodeSender {
                 setPlatform(Platform.LINUX)
 
             if (serverPlatform == Platform.WINDOWS)
-                port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0)
+                port!!.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 50, 0)
             else if (serverPlatform == Platform.LINUX)
-                port!!.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 0)
+                port!!.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 50, 0)
 
             Thread.sleep(100)
 

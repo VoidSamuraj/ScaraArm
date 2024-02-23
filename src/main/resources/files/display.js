@@ -558,6 +558,7 @@ function isAngleBetween(MAX_ARM_ANGLE, MAX_ARM_ANGLE_COLLISION,armAngle,isRightS
 async function setupMoveListener(){
     document.addEventListener('keydown', (event) => {
         if(toolEditMode){
+            let armStepToSend=getMovePrecision()*10;
             let armStep=getMovePrecision()/scaleDisplayDivider;
             switch(event.code) {
                 case 'ArrowUp':
@@ -567,7 +568,7 @@ async function setupMoveListener(){
                         currentToolX+=armStep;
                         moveToolOnSceneToPosition();
                         if(!demoMode)
-                            moveArmBy(armStep,null,null,rightSide);
+                            moveArmBy(armStepToSend,null,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -578,7 +579,7 @@ async function setupMoveListener(){
                         currentToolX-=armStep;
                         moveToolOnSceneToPosition();
                         if(!demoMode)
-                            moveArmBy(-armStep,null,null,rightSide);
+                            moveArmBy(-armStepToSend,null,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -589,7 +590,7 @@ async function setupMoveListener(){
                         currentToolY+=armStep;
                         moveToolOnSceneToPosition();
                         if(!demoMode)
-                            moveArmBy(null,armStep,null,rightSide);
+                            moveArmBy(null,armStepToSend,null,rightSide);
                         updatePositionText();
                     }
                 break;
@@ -600,7 +601,7 @@ async function setupMoveListener(){
                         currentToolY-=armStep;
                         moveToolOnSceneToPosition();
                         if(!demoMode)
-                            moveArmBy(null,-armStep,null,rightSide);
+                            moveArmBy(null,-armStepToSend,null,rightSide);
                         updatePositionText();
                     }
                 break;

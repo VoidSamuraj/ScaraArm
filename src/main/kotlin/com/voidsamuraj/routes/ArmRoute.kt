@@ -53,16 +53,10 @@ fun Route.armRoute() {
                             return@checkUserPermission
                         }
                     val formParameters = call.receiveParameters()
-                    var x = formParameters.getOrFail("x").toDoubleOrNull()
-                    var y = formParameters.getOrFail("y").toDoubleOrNull()
-                    var z = formParameters.getOrFail("z").toDoubleOrNull()
+                    val x = formParameters.getOrFail("x").toDoubleOrNull()
+                    val y = formParameters.getOrFail("y").toDoubleOrNull()
+                    val z = formParameters.getOrFail("z").toDoubleOrNull()
                     val isRightSide = formParameters.getOrFail("isRightSide").toBooleanStrictOrNull()
-                    if (x != null)
-                        x *= 10
-                    if (y != null)
-                        y *= 10
-                    if (z != null)
-                        z *= 10
 
                     val ret=GCodeSender.moveBy(x, y, z, isRightSide!!)
                     when(ret){
