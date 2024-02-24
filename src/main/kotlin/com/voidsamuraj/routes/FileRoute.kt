@@ -11,7 +11,9 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
+import io.ktor.server.util.*
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
@@ -92,7 +94,6 @@ fun Route.fileRoute(){
                         call.respond(HttpStatusCode.OK, "File is processing")
                     }else
                         call.respond(HttpStatusCode.NotFound,"File not found")
-
                 }
             }
             delete{
@@ -131,7 +132,57 @@ fun Route.fileRoute(){
                 }
             }
         }
+        route("/options"){
+            get{
+                val token=call.sessions.get("TOKEN")as MyToken?
+                val fileName = "${getUserId(token)}_settings.txt"
+                val file = File(filesFolder + "/settings/" + fileName)
 
+                try {
+                    if (!file.exists())
+                        call.respond(HttpStatusCode.NoContent, "file not found")
+                    else
+                        call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, "file reading error")
+                }
+            }
+            post{
+                checkUserPermission{
+                    try {
+                        val token=call.sessions.get("TOKEN")as MyToken?
+                        val fileName = "${getUserId(token)}_settings.txt"
+                        val file = File(filesFolder + "/settings/" + fileName)
+                        file.getParentFile().mkdirs()
+                        if(!file.exists())
+                            file.createNewFile()
+
+                        val formParameters = call.receiveParameters()
+                        val sb = StringBuilder()
+
+                        formParameters.getOrFail("right").toBooleanStrictOrNull().let { sb.append("right: $it\n") }
+                        formParameters.getOrFail("speed").toDoubleOrNull().let { sb.append("speed: $it\n") }
+                        formParameters.getOrFail("arm1Length").toDoubleOrNull().let { sb.append("arm1Length: $it\n") }
+                        formParameters.getOrFail("arm2Length").toDoubleOrNull().let { sb.append("arm2Length: $it\n") }
+                        formParameters.getOrFail("toolDistance").toDoubleOrNull().let { sb.append("toolDistance: $it\n") }
+                        formParameters.getOrFail("arm1Ratio").toDoubleOrNull().let { sb.append("arm1Ratio: $it\n") }
+                        formParameters.getOrFail("arm2Ratio").toDoubleOrNull().let { sb.append("arm2Ratio: $it\n") }
+                        formParameters.getOrFail("extraRatio").toDoubleOrNull().let { sb.append("extraRatio: $it\n") }
+
+                        val writer = file.bufferedWriter()
+                        writer.write(sb.toString())
+                        writer.flush()
+                        writer.close()
+
+                        call.respond(HttpStatusCode.OK,"Settings saved.")
+                    }catch (ex:IOException){
+                        System.err.println(ex)
+                        call.respond(HttpStatusCode.InternalServerError,"Error saving file.")
+                    }
+                }
+            }
+
+        }
 
         post ("/upload"){
             checkUserPermission(){

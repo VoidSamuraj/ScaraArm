@@ -1,4 +1,4 @@
-import {formatInt, formatFloat, showDialog}from '/static/helpers.js'
+import { formatInt, formatFloat, showDialog } from "/static/helpers.js";
 /**
  * File setting listeners to menu
  *
@@ -19,10 +19,10 @@ const optionsMenu = document.getElementById("optionsMenu");
 
 //manual menu
 var radioButtons;
-const precisionMoveInput=document.getElementById("precision-move");
-const precisionUnit=document.getElementById("precisionUnit");
-const precisionRotationInput=document.getElementById("precision-rotate");
-const precisionRotationUnit=document.getElementById("precisionUnitDegree");
+const precisionMoveInput = document.getElementById("precision-move");
+const precisionUnit = document.getElementById("precisionUnit");
+const precisionRotationInput = document.getElementById("precision-rotate");
+const precisionRotationUnit = document.getElementById("precisionUnitDegree");
 
 //options menu
 const direction = document.getElementById("switch");
@@ -35,11 +35,11 @@ const toolDistance = document.getElementById("toolDistance");
 const arm1Ratio = document.getElementById("arm1Ratio");
 const arm2Ratio = document.getElementById("arm2Ratio");
 const armAdditionalRatio = document.getElementById("armAdditionalRatio");
-const alertItem=document.getElementById("alert");
-const closeAlertButton=document.getElementById("alert-close");
-const alertMessage=document.getElementById("alert-msg");
+const alertItem = document.getElementById("alert");
+const closeAlertButton = document.getElementById("alert-close");
+const alertMessage = document.getElementById("alert-msg");
 
-speedInput.value= localStorage.getItem("maxSpeed") || "20";
+speedInput.value = localStorage.getItem("maxSpeed") || "20";
 arm1Ratio.value = localStorage.getItem("arm1Ratio") || "1";
 arm2Ratio.value = localStorage.getItem("arm2Ratio") || "1";
 armAdditionalRatio.value = localStorage.getItem("armAdditionalRatio") || "1";
@@ -55,16 +55,15 @@ arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
 toolDistance.value =
   parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
 
-var movePrecision=localStorage.getItem("movePrecision") || 10;
-var moveUnit=localStorage.getItem("moveUnit") || "mm";
-var rotatePrecision=localStorage.getItem("rotatePrecision") || 1;
-var rotateUnit=localStorage.getItem("rotateUnit") || "1";
+var movePrecision = localStorage.getItem("movePrecision") || 10;
+var moveUnit = localStorage.getItem("moveUnit") || "mm";
+var rotatePrecision = localStorage.getItem("rotatePrecision") || 1;
+var rotateUnit = localStorage.getItem("rotateUnit") || "1";
 
-precisionMoveInput.value=movePrecision;
-precisionUnit.value=moveUnit;
-precisionRotationInput.value=rotatePrecision;
-precisionRotationUnit.value=rotateUnit;
-
+precisionMoveInput.value = movePrecision;
+precisionUnit.value = moveUnit;
+precisionRotationInput.value = rotatePrecision;
+precisionRotationUnit.value = rotateUnit;
 
 //constraints defining max sizes of arm
 const maxArmLength = 40;
@@ -116,31 +115,29 @@ export function getCanMoveArm() {
   return canMoveArm;
 }
 /**
-* Function to disable or activate loading buttons when arm is not connected.
-* @param state boolean
-*/
-function blockLoadButtons(state){
-    let loadFileButtons = document.querySelectorAll('.loadFileButtons');
-     loadFileButtons.forEach(button => {
-     if(state)
-        button.setAttribute('disabled',"");
-     else
-        button.removeAttribute('disabled');
-     });
+ * Function to disable or activate loading buttons when arm is not connected.
+ * @param state boolean
+ */
+function blockLoadButtons(state) {
+  let loadFileButtons = document.querySelectorAll(".loadFileButtons");
+  loadFileButtons.forEach((button) => {
+    if (state) button.setAttribute("disabled", "");
+    else button.removeAttribute("disabled");
+  });
 }
 /**
  * Function returns calculated units of move by single click.
  * @returns {number}
  */
 export function getMovePrecision() {
-if(moveUnit=="0.1mm"){
-    return movePrecision/100;
-}else if(moveUnit=="mm"){
-     return movePrecision/10;
- }else if(moveUnit=="cm"){
+  if (moveUnit == "0.1mm") {
+    return movePrecision / 100;
+  } else if (moveUnit == "mm") {
+    return movePrecision / 10;
+  } else if (moveUnit == "cm") {
     return movePrecision;
-}
- return 0;
+  }
+  return 0;
 }
 
 /**
@@ -148,14 +145,14 @@ if(moveUnit=="0.1mm"){
  * @returns {number}
  */
 export function getRotationPrecision() {
-if(rotateUnit=="1/10"){
-    return rotatePrecision/10;
-}else if(rotateUnit=="1"){
+  if (rotateUnit == "1/10") {
+    return rotatePrecision / 10;
+  } else if (rotateUnit == "1") {
     return rotatePrecision;
-}else if(rotateUnit=="10"){
-    return rotatePrecision*10;
-}
- return 0;
+  } else if (rotateUnit == "10") {
+    return rotatePrecision * 10;
+  }
+  return 0;
 }
 
 /**
@@ -169,12 +166,12 @@ function onEditSize(event, name, updateDrawing) {
   if (event.charCode == 13) {
     //enter pressed
     let valFormatted;
-    let ratio=false;
+    let ratio = false;
     switch (name) {
       case "arm1Length":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           arm1Length.value,
           minArmLength,
           maxArmLength
@@ -182,8 +179,8 @@ function onEditSize(event, name, updateDrawing) {
         break;
       case "arm2Length":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           arm2Length.value,
           minArmLength,
           maxArmLength
@@ -191,8 +188,8 @@ function onEditSize(event, name, updateDrawing) {
         break;
       case "toolDistanceToArm":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           toolDistance.value,
           minToolLength,
           maxToolLength
@@ -200,43 +197,42 @@ function onEditSize(event, name, updateDrawing) {
         break;
       case "arm1Ratio":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           arm1Ratio.value,
           0.01,
           1000
         );
-        ratio=true;
+        ratio = true;
         break;
       case "arm2Ratio":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           arm2Ratio.value,
           0.01,
           1000
         );
-        ratio=true;
+        ratio = true;
         break;
       case "armAdditionalRatio":
         valFormatted = formatFloat(
-        alertItem,
-         alertMessage,
+          alertItem,
+          alertMessage,
           armAdditionalRatio.value,
           0.01,
           1000
         );
-        ratio=true;
+        ratio = true;
         break;
     }
     if (valFormatted != null) {
-      if(!ratio){
+      if (!ratio) {
         let temp = localStorage.getItem(name);
         localStorage.setItem(name, valFormatted);
         let arm1L = parseFloat(localStorage.getItem("arm1Length") || 20);
         let arm2L = parseFloat(localStorage.getItem("arm2Length") || 16);
-        let toolL =
-          parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
+        let toolL = parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
 
         let formData = new FormData();
         formData.append("arm1", arm1L);
@@ -255,43 +251,53 @@ function onEditSize(event, name, updateDrawing) {
             return true;
           } else {
             console.error("Cannot change length of arm");
-            showDialog(alertItem, alertMessage, 'e',"Cannot change length of arm");
+            showDialog(
+              alertItem,
+              alertMessage,
+              "e",
+              "Cannot change length of arm"
+            );
             localStorage.setItem(name, temp);
             return false;
           }
         });
-    }else{
-      localStorage.setItem(name, valFormatted);
-      let arm1R = localStorage.getItem("arm1Ratio") || "1";
-      let arm2R = localStorage.getItem("arm2Ratio") || "1";
-      let armAdditionalR = localStorage.getItem("armAdditionalRatio") || "1";
-      let formData = new FormData();
-      formData.append("arm1Ratio", arm1R);
-      formData.append("arm2Ratio", arm2R);
-      formData.append("armAdditionalRatio", armAdditionalR);
+      } else {
+        localStorage.setItem(name, valFormatted);
+        let arm1R = localStorage.getItem("arm1Ratio") || "1";
+        let arm2R = localStorage.getItem("arm2Ratio") || "1";
+        let armAdditionalR = localStorage.getItem("armAdditionalRatio") || "1";
+        let formData = new FormData();
+        formData.append("arm1Ratio", arm1R);
+        formData.append("arm2Ratio", arm2R);
+        formData.append("armAdditionalRatio", armAdditionalR);
 
-      fetch("/arm/set/gear-ratio", {
-        method: "POST",
-        body: formData,
-      }).then((response) => {
-        if (response.ok) {
-
-          arm1Ratio.value = arm1R;
-          arm2Ratio.value = arm2R;
-          armAdditionalRatio.value = armAdditionalR;
-          return true;
-        } else {
-          console.error("Cannot change gear ratio of arm");
-            showDialog(alertItem, alertMessage, 'e',"Cannot change gear ratio of arm");
-          return false;
-        }
-      });
-    }
-    }else{
-          arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 20);
-          arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 20);
-          toolDistance.value = parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
-
+        fetch("/arm/set/gear-ratio", {
+          method: "POST",
+          body: formData,
+        }).then((response) => {
+          if (response.ok) {
+            arm1Ratio.value = arm1R;
+            arm2Ratio.value = arm2R;
+            armAdditionalRatio.value = armAdditionalR;
+            return true;
+          } else {
+            console.error("Cannot change gear ratio of arm");
+            showDialog(
+              alertItem,
+              alertMessage,
+              "e",
+              "Cannot change gear ratio of arm"
+            );
+            return false;
+          }
+        });
+      }
+    } else {
+      arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 20);
+      arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 20);
+      toolDistance.value = parseFloat(
+        localStorage.getItem("toolDistanceToArm") || 4
+      );
     }
   } else if (
     !(
@@ -382,7 +388,7 @@ function fillFilesTable() {
               fileData[1] +
               "</td><td>" +
               fileData[2] +
-              "</td><td><button class=\"loadFileButtons\" onClick=\"window.loadFile('" +
+              '</td><td><button class="loadFileButtons" onClick="window.loadFile(\'' +
               fileData[0] +
               "')\">Load</button><button onClick=\"window.deleteFile('" +
               fileData[0] +
@@ -393,7 +399,7 @@ function fillFilesTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading files list:", error);
-            showDialog(alertItem, alertMessage, 'e',"Cannot read file list");
+      showDialog(alertItem, alertMessage, "e", "Cannot read file list");
     });
 }
 //List all accessible ports from server and display in table
@@ -430,25 +436,30 @@ function fillPortsTable() {
       radioButtons.forEach((radioButton) => {
         radioButton.addEventListener("change", function () {
           if (this.checked) {
-            if(this.value== "demo"){
-                canMoveArm = true;
-                demoMode = true;
-                showDialog(alertItem, alertMessage, 's',"DEMO MODE");
-            }else{
-                var formData = new FormData();
-                formData.append("port", this.value);
-                fetch("/ports/select", {
-                  method: "POST",
-                  body: formData,
-                }).then((response) => {
-                  if (response.ok) {
-                    demoMode = false;
-                    connectToArm();
-                  } else {
-                    console.error("Cannot connect to arm");
-                    showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm");
-                  }
-                });
+            if (this.value == "demo") {
+              canMoveArm = true;
+              demoMode = true;
+              showDialog(alertItem, alertMessage, "s", "DEMO MODE");
+            } else {
+              var formData = new FormData();
+              formData.append("port", this.value);
+              fetch("/ports/select", {
+                method: "POST",
+                body: formData,
+              }).then((response) => {
+                if (response.ok) {
+                  demoMode = false;
+                  connectToArm();
+                } else {
+                  console.error("Cannot connect to arm");
+                  showDialog(
+                    alertItem,
+                    alertMessage,
+                    "e",
+                    "Cannot connect to arm"
+                  );
+                }
+              });
             }
           }
         });
@@ -456,7 +467,7 @@ function fillPortsTable() {
     })
     .catch((error) => {
       console.error("ERROR during reading ports list:", error);
-      showDialog(alertItem, alertMessage, 'e',"Cannot read port list");
+      showDialog(alertItem, alertMessage, "e", "Cannot read port list");
     });
 }
 /**
@@ -490,22 +501,23 @@ function fillModeList() {
 /**
  * Function to select connected port
  */
-function selectConnectedPort(){
+function selectConnectedPort() {
   canMoveArm = false;
-  fetch("/ports/last", { method: "GET" })
-    .then((response) => {
-        if (response.status !== 204) {
-            response.text().then((data) => {
-                let radioButtons = document.querySelectorAll('input[type="radio"][name="portList"]');
-                radioButtons.forEach(port => {
-                    if (port.value === data) {
-                        port.checked = true;
-                        canMoveArm = true;
-                    }
-                });
-            });
-        }
-    });
+  fetch("/ports/last", { method: "GET" }).then((response) => {
+    if (response.status !== 204) {
+      response.text().then((data) => {
+        let radioButtons = document.querySelectorAll(
+          'input[type="radio"][name="portList"]'
+        );
+        radioButtons.forEach((port) => {
+          if (port.value === data) {
+            port.checked = true;
+            canMoveArm = true;
+          }
+        });
+      });
+    }
+  });
 }
 
 /**
@@ -518,24 +530,95 @@ function connectToArm() {
     .then((response) => {
       if (response.ok) {
         canMoveArm = true;
-        showDialog(alertItem, alertMessage, 's',"Connected to arm");
+        showDialog(alertItem, alertMessage, "s", "Connected to arm");
       } else {
         console.error("Cannot connect to arm");
         canMoveArm = false;
-        showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm");
+        showDialog(alertItem, alertMessage, "e", "Cannot connect to arm");
       }
     })
     .catch((error) => {
       console.error("Error:", error);
-      showDialog(alertItem, alertMessage, 'e',"Cannot connect to arm");
+      showDialog(alertItem, alertMessage, "e", "Cannot connect to arm");
     });
 }
 
-export function refreshPorts(){
-    fillPortsTable();
-    selectConnectedPort();
+function saveSettings() {
+  const formData = new FormData();
+  formData.append("right", checkbox.checked);
+  formData.append("speed", speedInput.value);
+  formData.append("arm1Length", arm1Length.value);
+  formData.append("arm2Length", arm2Length.value);
+  formData.append("toolDistance", toolDistance.value);
+  formData.append("arm1Ratio", arm1Ratio.value);
+  formData.append("arm2Ratio", arm2Ratio.value);
+  formData.append("extraRatio", armAdditionalRatio.value);
+
+  fetch("/files/options", {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => {
+      if (!response.ok) console.error("Options saving error");
+    })
+    .catch((error) => {
+      showDialog(alertItem, alertMessage, "e", "Cannot load options file");
+    });
 }
 
+function loadSavedOptions() {
+  fetch("/files/options", { method: "GET" })
+    .then((response) => response.blob())
+    .then((blob) => {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var fileData = reader.result;
+        var lines = fileData.split("\n");
+        //push vector to array if position changed
+        lines.forEach((line) => {
+          let values = line.split(": ");
+          switch (values[0].trim()) {
+            case "right":
+              checkbox.checked = Boolean(values[1].trim());
+              break;
+            case "speed":
+              speedInput.value = parseFloat(values[1].trim());
+              break;
+            case "arm1Length":
+              arm1Length.value = parseFloat(values[1].trim());
+              break;
+            case "arm2Length":
+              arm2Length.value = parseFloat(values[1].trim());
+              break;
+            case "toolDistance":
+              toolDistance.value = parseFloat(values[1].trim());
+              break;
+            case "arm1Ratio":
+              arm1Ratio.value = parseFloat(values[1].trim());
+              break;
+            case "arm2Ratio":
+              arm2Ratio.value = parseFloat(values[1].trim());
+              break;
+            case "extraRatio":
+              armAdditionalRatio.value = parseFloat(values[1].trim());
+              break;
+            default:
+              console.log("Value unsupported" + values[0].trim());
+              break;
+          }
+        });
+      };
+      reader.readAsText(blob);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
+}
+
+export function refreshPorts() {
+  fillPortsTable();
+  selectConnectedPort();
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                              setting up listeners
@@ -628,35 +711,47 @@ document.getElementById("closePortIcon").addEventListener("click", function () {
 });
 ////    Manual menu
 precisionMoveInput.addEventListener("keypress", function () {
-    let temp=formatInt(alertItem, alertMessage, precisionMoveInput.value,1,1000)
-    if(temp==null){
-        precisionMoveInput.value=movePrecision;
-        return false;
-    }else{
-        movePrecision=temp;
-        localStorage.setItem("movePrecision",movePrecision);
-        return true;
-    }
+  let temp = formatInt(
+    alertItem,
+    alertMessage,
+    precisionMoveInput.value,
+    1,
+    1000
+  );
+  if (temp == null) {
+    precisionMoveInput.value = movePrecision;
+    return false;
+  } else {
+    movePrecision = temp;
+    localStorage.setItem("movePrecision", movePrecision);
+    return true;
+  }
 });
 precisionUnit.addEventListener("change", function () {
-    moveUnit=precisionUnit.value;
-    localStorage.setItem("moveUnit",moveUnit);
+  moveUnit = precisionUnit.value;
+  localStorage.setItem("moveUnit", moveUnit);
 });
 
 precisionRotationInput.addEventListener("keypress", function () {
-   let temp=formatInt(alertItem, alertMessage, precisionRotationInput.value,1,1000)
-   if(temp==null){
-           precisionRotationInput.value=rotatePrecision;
-           return false;
-   }else{
-       rotatePrecision=temp;
-       localStorage.setItem("rotatePrecision",rotatePrecision);
-       return true;
-   }
+  let temp = formatInt(
+    alertItem,
+    alertMessage,
+    precisionRotationInput.value,
+    1,
+    1000
+  );
+  if (temp == null) {
+    precisionRotationInput.value = rotatePrecision;
+    return false;
+  } else {
+    rotatePrecision = temp;
+    localStorage.setItem("rotatePrecision", rotatePrecision);
+    return true;
+  }
 });
 precisionRotationUnit.addEventListener("change", function () {
-    rotateUnit=precisionRotationUnit.value;
-    localStorage.setItem("rotateUnit",rotateUnit);
+  rotateUnit = precisionRotationUnit.value;
+  localStorage.setItem("rotateUnit", rotateUnit);
 });
 
 document.getElementById("portButton").addEventListener("click", function () {
@@ -707,28 +802,37 @@ document.getElementById("myfile").addEventListener("change", function () {
   fetch("/files/" + fileName)
     .then((response) => {
       if (response.ok) {
-            showDialog(alertItem, alertMessage, 'i',"A file with this name already exists, please rename the uploaded file.");
+        showDialog(
+          alertItem,
+          alertMessage,
+          "i",
+          "A file with this name already exists, please rename the uploaded file."
+        );
       } else {
         fetch("/files/upload", {
           method: "POST",
           body: formData,
         })
           .then((response) => {
-           if (response.ok) {
-                fillFilesTable();
-                 showDialog(alertItem, alertMessage, 's',"File successfully uploaded");
-           }else
-            showDialog(alertItem, alertMessage, 'e',"Cannot uploaded file");
-
+            if (response.ok) {
+              fillFilesTable();
+              showDialog(
+                alertItem,
+                alertMessage,
+                "s",
+                "File successfully uploaded"
+              );
+            } else
+              showDialog(alertItem, alertMessage, "e", "Cannot uploaded file");
           })
           .catch((error) => {
             console.error("File upload error: " + error);
-            showDialog(alertItem, alertMessage, 'e',"Cannot uploaded file");
+            showDialog(alertItem, alertMessage, "e", "Cannot uploaded file");
           });
       }
     })
     .catch((error) => {
-      showDialog(alertItem, alertMessage, 'e',"Cannot find file");
+      showDialog(alertItem, alertMessage, "e", "Cannot find file");
     });
 });
 
@@ -740,16 +844,16 @@ window.deleteFile = function (fileName) {
     })
       .then((response) => {
         if (response.ok) {
-          showDialog(alertItem, alertMessage, 's',"File was deleted");
+          showDialog(alertItem, alertMessage, "s", "File was deleted");
           fillFilesTable();
         } else {
           console.error("ERROR during file deletion.");
-          showDialog(alertItem, alertMessage, 'e',"Cannot delete file");
+          showDialog(alertItem, alertMessage, "e", "Cannot delete file");
         }
       })
       .catch((error) => {
         console.error("ERROR occurred:", error);
-        showDialog(alertItem, alertMessage, 'e',"Cannot delete file");
+        showDialog(alertItem, alertMessage, "e", "Cannot delete file");
       });
   }
 };
@@ -763,7 +867,6 @@ window.loadFile = function (fileName) {
 
 //button in first menu
 optionsButton.addEventListener("click", function () {
-
   firstMenu.style.width = barWidth;
   var time =
     loadMenuStyle.left === loadMenuHide && portMenuStyle.left === portMenuHide
@@ -784,7 +887,9 @@ optionsButton.addEventListener("click", function () {
   }, time);
 });
 
-document.getElementById("closeOptionsIcon").addEventListener("click", function () {
+document
+  .getElementById("closeOptionsIcon")
+  .addEventListener("click", function () {
     optionsMenu.style.left = optionMenuHide;
     turnOffOverlay();
     expanded = false;
@@ -809,13 +914,19 @@ modeList.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change mode of motor");
-          showDialog(alertItem, alertMessage, 'e',"Cannot change mode of motor");
+      showDialog(alertItem, alertMessage, "e", "Cannot change mode of motor");
       return false;
     }
   });
 });
 speedInput.addEventListener("change", function () {
-   let valFormatted = formatFloat(alertItem, alertMessage, speedInput.value, 0.01, 1000);
+  let valFormatted = formatFloat(
+    alertItem,
+    alertMessage,
+    speedInput.value,
+    0.01,
+    1000
+  );
   var formData = new FormData();
   formData.append("speed", valFormatted);
   fetch("/arm/set/max-speed", {
@@ -827,7 +938,7 @@ speedInput.addEventListener("change", function () {
       return true;
     } else {
       console.error("Cannot change max speed");
-          showDialog(alertItem, alertMessage, 'e',"Cannot change max speed");
+      showDialog(alertItem, alertMessage, "e", "Cannot change max speed");
       return false;
     }
   });
@@ -840,8 +951,10 @@ logout.addEventListener("click", function () {
 
     xhr.onload = function () {
       if (xhr.status === 200) {
-        showDialog(alertItem, alertMessage, 's',"Logged out successfully");
-        setTimeout(()=>{location.reload(true);},5000);
+        showDialog(alertItem, alertMessage, "s", "Logged out successfully");
+        setTimeout(() => {
+          location.reload(true);
+        }, 5000);
       }
     };
     xhr.send();
@@ -859,8 +972,16 @@ deleteAccount.addEventListener("click", function () {
 
       xhr.onload = function () {
         if (xhr.status === 200) {
-          showDialog(alertItem, alertMessage, 's',"Account deleted successfully",defaultAlertTime);
-          setTimeout(()=>{location.reload(true);},defaultAlertTime);
+          showDialog(
+            alertItem,
+            alertMessage,
+            "s",
+            "Account deleted successfully",
+            defaultAlertTime
+          );
+          setTimeout(() => {
+            location.reload(true);
+          }, defaultAlertTime);
         }
       };
       xhr.send();
@@ -868,8 +989,8 @@ deleteAccount.addEventListener("click", function () {
   }
 });
 closeAlertButton.addEventListener("click", function () {
-    alertItem.classList.remove("show");
-    alertItem.classList.add("hide");
+  alertItem.classList.remove("show");
+  alertItem.classList.add("hide");
 });
 document.addEventListener("DOMContentLoaded", function () {
   fillFilesTable();
