@@ -169,6 +169,12 @@
             </div>
             <hr>
             <div id="actions">
+            <li class="button menu-button button-no-hover menu-button-no-hover">
+                  <div class="upload-btn-wrapper" id="save-load-options">
+                     <button id="save">Save</button>
+                     <button id="load">Load</button>
+                  </div>
+               </li>
                <li class="button menu-button">
                   <div class="upload-btn-wrapper">
                      <button id="logout">Logout</button>

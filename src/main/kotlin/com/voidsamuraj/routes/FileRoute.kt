@@ -141,8 +141,31 @@ fun Route.fileRoute(){
                 try {
                     if (!file.exists())
                         call.respond(HttpStatusCode.NoContent, "file not found")
-                    else
+                    else {
+                        val bufferedReader = file.bufferedReader()
+                        var arm2Length = 0.0
+                        bufferedReader.useLines { lines ->
+                            lines.forEach { line ->
+                                val param= line.split(": ")
+                                if(param.size>1){
+                                    when(param[0]){
+                                        "right" ->param[1].toBooleanStrictOrNull()?.let{GCodeSender.setArmDirection(it)}
+                                        "speed" ->param[1].toIntOrNull()?.let{GCodeSender.setMaxSpeed(it)}
+                                        "arm1Length" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm1Length((it * 10).toLong())}
+                                        "arm2Length" ->param[1].toDoubleOrNull()?.let{arm2Length+=it}
+                                        "toolDistance" ->param[1].toDoubleOrNull()?.let{arm2Length+=it}
+                                        "arm1Ratio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm1GearRatio(it)}
+                                        "arm2Ratio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm2GearRatio(it)}
+                                        "extraRatio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArmAdditionalGearRatio(it)}
+                                    }
+                                }
+                            }
+                            if(arm2Length>0)
+                                GCodeSender.setArm2Length((arm2Length * 10).toLong())
+                        }
+                        bufferedReader.close()
                         call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+                    }
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, "file reading error")
                 }

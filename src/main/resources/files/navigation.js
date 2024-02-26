@@ -39,21 +39,32 @@ const alertItem = document.getElementById("alert");
 const closeAlertButton = document.getElementById("alert-close");
 const alertMessage = document.getElementById("alert-msg");
 
-speedInput.value = localStorage.getItem("maxSpeed") || "20";
-arm1Ratio.value = localStorage.getItem("arm1Ratio") || "1";
-arm2Ratio.value = localStorage.getItem("arm2Ratio") || "1";
-armAdditionalRatio.value = localStorage.getItem("armAdditionalRatio") || "1";
+speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
+arm1Ratio.value = parseFloat(localStorage.getItem("arm1Ratio") || "1").toFixed(
+  2
+);
+arm2Ratio.value = parseFloat(localStorage.getItem("arm2Ratio") || "1").toFixed(
+  2
+);
+armAdditionalRatio.value = parseFloat(
+  localStorage.getItem("armAdditionalRatio") || "1"
+).toFixed(2);
 
 const logout = document.getElementById("logout");
 const deleteAccount = document.getElementById("deleteAccount");
 
 //setup values in options menu
 var stepperVal = localStorage.getItem("stepperVal") || "200";
-arm1Length.value = parseFloat(localStorage.getItem("arm1Length") || 4) * 5;
-arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4) * 5;
+arm1Length.value = parseFloat(localStorage.getItem("arm1Length") || 4).toFixed(
+  2
+);
+arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4).toFixed(
+  2
+);
 //tool distance to second arm
-toolDistance.value =
-  parseFloat(localStorage.getItem("toolDistanceToArm") || 0.8) * 5;
+toolDistance.value = parseFloat(
+  localStorage.getItem("toolDistanceToArm") || 0.8
+).toFixed(2);
 
 var movePrecision = localStorage.getItem("movePrecision") || 10;
 var moveUnit = localStorage.getItem("moveUnit") || "mm";
@@ -230,9 +241,15 @@ function onEditSize(event, name, updateDrawing) {
       if (!ratio) {
         let temp = localStorage.getItem(name);
         localStorage.setItem(name, valFormatted);
-        let arm1L = parseFloat(localStorage.getItem("arm1Length") || 20);
-        let arm2L = parseFloat(localStorage.getItem("arm2Length") || 16);
-        let toolL = parseFloat(localStorage.getItem("toolDistanceToArm") || 4);
+        let arm1L = parseFloat(
+          localStorage.getItem("arm1Length") || 20
+        ).toFixed(2);
+        let arm2L = parseFloat(
+          localStorage.getItem("arm2Length") || 16
+        ).toFixed(2);
+        let toolL = parseFloat(
+          localStorage.getItem("toolDistanceToArm") || 4
+        ).toFixed(2);
 
         let formData = new FormData();
         formData.append("arm1", arm1L);
@@ -293,11 +310,15 @@ function onEditSize(event, name, updateDrawing) {
         });
       }
     } else {
-      arm1Ratio.value = parseFloat(localStorage.getItem("arm1Length") || 20);
-      arm2Ratio.value = parseFloat(localStorage.getItem("arm2Length") || 20);
+      arm1Ratio.value = parseFloat(
+        localStorage.getItem("arm1Length") || 20
+      ).toFixed(2);
+      arm2Ratio.value = parseFloat(
+        localStorage.getItem("arm2Length") || 20
+      ).toFixed(2);
       toolDistance.value = parseFloat(
         localStorage.getItem("toolDistanceToArm") || 4
-      );
+      ).toFixed(2);
     }
   } else if (
     !(
@@ -342,23 +363,67 @@ function turnOffOverlay() {
  * @param {callback} updateDrawing function to show arm length changes on the screen
  */
 export function setupOptionMenu(updateDrawing) {
+
   arm1Length.addEventListener("keypress", function (event) {
     onEditSize(event, "arm1Length", updateDrawing);
   });
+
   arm2Length.addEventListener("keypress", function (event) {
     onEditSize(event, "arm2Length", updateDrawing);
   });
+
   toolDistance.addEventListener("keypress", function (event) {
     onEditSize(event, "toolDistanceToArm", updateDrawing);
   });
+
   arm1Ratio.addEventListener("keypress", function (event) {
     onEditSize(event, "arm1Ratio", updateDrawing);
   });
+
   arm2Ratio.addEventListener("keypress", function (event) {
     onEditSize(event, "arm2Ratio", updateDrawing);
   });
+
   armAdditionalRatio.addEventListener("keypress", function (event) {
     onEditSize(event, "armAdditionalRatio", updateDrawing);
+  });
+
+
+  arm1Length.addEventListener("blur", function () {
+    arm1Length.value = parseFloat(
+      localStorage.getItem("arm1Length") || 4
+    ).toFixed(2);
+  });
+
+  //edited but not saved data
+  arm2Length.addEventListener("blur", function () {
+    arm2Length.value = parseFloat(
+      localStorage.getItem("arm2Length") || 4
+    ).toFixed(2);
+  });
+
+  toolDistance.addEventListener("blur", function () {
+    toolDistance.value = parseFloat(
+      localStorage.getItem("toolDistanceToArm") || 0.8
+    ).toFixed(2);
+  });
+
+  armAdditionalRatio.addEventListener("blur", function () {
+    armAdditionalRatio.value = parseFloat(
+      localStorage.getItem("armAdditionalRatio") || "1"
+    ).toFixed(2);
+  });
+
+  arm2Ratio.addEventListener("blur", function () {
+    arm2Ratio.value = parseFloat(
+      localStorage.getItem("arm2Ratio") || "1"
+    ).toFixed(2);
+  });
+
+  arm1Ratio.addEventListener("blur", function () {
+    arm1Ratio.value = parseFloat(
+      localStorage.getItem("arm1Ratio") || "1"
+    ).toFixed(2);
   });
 }
 
@@ -566,7 +631,7 @@ function saveSettings() {
     });
 }
 
-function loadSavedOptions() {
+function loadSavedSettings() {
   fetch("/files/options", { method: "GET" })
     .then((response) => response.blob())
     .then((blob) => {
@@ -585,22 +650,24 @@ function loadSavedOptions() {
               speedInput.value = parseFloat(values[1].trim());
               break;
             case "arm1Length":
-              arm1Length.value = parseFloat(values[1].trim());
+              arm1Length.value = parseFloat(values[1].trim()).toFixed(2);
               break;
             case "arm2Length":
-              arm2Length.value = parseFloat(values[1].trim());
+              arm2Length.value = parseFloat(values[1].trim()).toFixed(2);
               break;
             case "toolDistance":
-              toolDistance.value = parseFloat(values[1].trim());
+              toolDistance.value = parseFloat(values[1].trim()).toFixed(2);
               break;
             case "arm1Ratio":
-              arm1Ratio.value = parseFloat(values[1].trim());
+              arm1Ratio.value = parseFloat(values[1].trim()).toFixed(2);
               break;
             case "arm2Ratio":
-              arm2Ratio.value = parseFloat(values[1].trim());
+              arm2Ratio.value = parseFloat(values[1].trim()).toFixed(2);
               break;
             case "extraRatio":
-              armAdditionalRatio.value = parseFloat(values[1].trim());
+              armAdditionalRatio.value = parseFloat(values[1].trim()).toFixed(
+                2
+              );
               break;
             default:
               console.log("Value unsupported" + values[0].trim());
@@ -919,6 +986,7 @@ modeList.addEventListener("change", function () {
     }
   });
 });
+
 speedInput.addEventListener("change", function () {
   let valFormatted = formatFloat(
     alertItem,
@@ -943,7 +1011,16 @@ speedInput.addEventListener("change", function () {
     }
   });
 });
+speedInput.addEventListener("blur", function () {
+  speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
+});
 
+document.getElementById("save").addEventListener("click", function () {
+  saveSettings();
+});
+document.getElementById("load").addEventListener("click", function () {
+  loadSavedSettings();
+});
 logout.addEventListener("click", function () {
   if (confirm("Are you sure you want to Logout?") == true) {
     let xhr = new XMLHttpRequest();

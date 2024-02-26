@@ -393,6 +393,17 @@ td>button:first-child:hover:disabled {
 #loadMenu .menu-button input[type=file] {
     width: 570px;
 }
+#save-load-options{
+    display:flex;
+    flex-direction:row;
+}
+#save-load-options > :nth-child(1) {
+    margin-right:5px;
+}
+
+#save-load-options > :nth-child(2) {
+    margin-left:5px;
+}
 hr{
     margin: 0px 15px;
 }
