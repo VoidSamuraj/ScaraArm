@@ -133,7 +133,7 @@ fun Route.fileRoute(){
             }
         }
         route("/options"){
-            get{
+            get("/read"){
                 val token=call.sessions.get("TOKEN")as MyToken?
                 val fileName = "${getUserId(token)}_settings.txt"
                 val file = File(filesFolder + "/settings/" + fileName)
@@ -149,14 +149,14 @@ fun Route.fileRoute(){
                                 val param= line.split(": ")
                                 if(param.size>1){
                                     when(param[0]){
-                                        "right" ->param[1].toBooleanStrictOrNull()?.let{GCodeSender.setArmDirection(it)}
-                                        "speed" ->param[1].toIntOrNull()?.let{GCodeSender.setMaxSpeed(it)}
-                                        "arm1Length" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm1Length((it * 10).toLong())}
-                                        "arm2Length" ->param[1].toDoubleOrNull()?.let{arm2Length+=it}
-                                        "toolDistance" ->param[1].toDoubleOrNull()?.let{arm2Length+=it}
-                                        "arm1Ratio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm1GearRatio(it)}
-                                        "arm2Ratio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArm2GearRatio(it)}
-                                        "extraRatio" ->param[1].toDoubleOrNull()?.let{GCodeSender.setArmAdditionalGearRatio(it)}
+                                        "right" ->param[1].toBooleanStrict().let{GCodeSender.setArmDirection(it)}
+                                        "speed" ->param[1].toInt().let{GCodeSender.setMaxSpeed(it)}
+                                        "arm1Length" ->param[1].toDouble().let{GCodeSender.setArm1Length((it * 10).toLong())}
+                                        "arm2Length" ->param[1].toDouble().let{arm2Length+=it}
+                                        "toolDistance" ->param[1].toDouble().let{arm2Length+=it}
+                                        "arm1Ratio" ->param[1].toDouble().let{GCodeSender.setArm1GearRatio(it)}
+                                        "arm2Ratio" ->param[1].toDouble().let{GCodeSender.setArm2GearRatio(it)}
+                                        "extraRatio" ->param[1].toDouble().let{GCodeSender.setArmAdditionalGearRatio(it)}
                                     }
                                 }
                             }
@@ -170,7 +170,18 @@ fun Route.fileRoute(){
                     call.respond(HttpStatusCode.InternalServerError, "file reading error")
                 }
             }
-            post{
+            post("/set"){
+                val formParameters = call.receiveParameters()
+                formParameters.getOrFail("right").toBooleanStrict().let{ GCodeSender.setArmDirection(it) }
+                formParameters.getOrFail("speed").toInt().let {GCodeSender.setMaxSpeed(it)}
+                formParameters.getOrFail("arm1Length").toDouble().let {GCodeSender.setArm1Length((it * 10).toLong())}
+                formParameters.getOrFail("arm2Length").toDouble().let {GCodeSender.setArm2Length((it * 10).toLong())}
+                formParameters.getOrFail("arm1Ratio").toDouble().let {GCodeSender.setArm1GearRatio(it)}
+                formParameters.getOrFail("arm2Ratio").toDouble().let {GCodeSender.setArm2GearRatio(it)}
+                formParameters.getOrFail("extraRatio").toDouble().let {GCodeSender.setArmAdditionalGearRatio(it) }
+                call.respond(HttpStatusCode.OK,"Settings saved.")
+            }
+            post("/save"){
                 checkUserPermission{
                     try {
                         val token=call.sessions.get("TOKEN")as MyToken?
@@ -183,14 +194,14 @@ fun Route.fileRoute(){
                         val formParameters = call.receiveParameters()
                         val sb = StringBuilder()
 
-                        formParameters.getOrFail("right").toBooleanStrictOrNull().let { sb.append("right: $it\n") }
-                        formParameters.getOrFail("speed").toDoubleOrNull().let { sb.append("speed: $it\n") }
-                        formParameters.getOrFail("arm1Length").toDoubleOrNull().let { sb.append("arm1Length: $it\n") }
-                        formParameters.getOrFail("arm2Length").toDoubleOrNull().let { sb.append("arm2Length: $it\n") }
-                        formParameters.getOrFail("toolDistance").toDoubleOrNull().let { sb.append("toolDistance: $it\n") }
-                        formParameters.getOrFail("arm1Ratio").toDoubleOrNull().let { sb.append("arm1Ratio: $it\n") }
-                        formParameters.getOrFail("arm2Ratio").toDoubleOrNull().let { sb.append("arm2Ratio: $it\n") }
-                        formParameters.getOrFail("extraRatio").toDoubleOrNull().let { sb.append("extraRatio: $it\n") }
+                        formParameters.getOrFail("right").toBooleanStrict().let { sb.append("right: $it\n") }
+                        formParameters.getOrFail("speed").toInt().let { sb.append("speed: $it\n") }
+                        formParameters.getOrFail("arm1Length").toDouble().let { sb.append("arm1Length: $it\n") }
+                        formParameters.getOrFail("arm2Length").toDouble().let { sb.append("arm2Length: $it\n") }
+                        formParameters.getOrFail("toolDistance").toDouble().let { sb.append("toolDistance: $it\n") }
+                        formParameters.getOrFail("arm1Ratio").toDouble().let { sb.append("arm1Ratio: $it\n") }
+                        formParameters.getOrFail("arm2Ratio").toDouble().let { sb.append("arm2Ratio: $it\n") }
+                        formParameters.getOrFail("extraRatio").toDouble().let { sb.append("extraRatio: $it\n") }
 
                         val writer = file.bufferedWriter()
                         writer.write(sb.toString())

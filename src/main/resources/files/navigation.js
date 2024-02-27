@@ -55,12 +55,8 @@ const deleteAccount = document.getElementById("deleteAccount");
 
 //setup values in options menu
 var stepperVal = localStorage.getItem("stepperVal") || "200";
-arm1Length.value = parseFloat(localStorage.getItem("arm1Length") || 4).toFixed(
-  2
-);
-arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4).toFixed(
-  2
-);
+arm1Length.value = parseFloat(localStorage.getItem("arm1Length") || 4).toFixed(2);
+arm2Length.value = parseFloat(localStorage.getItem("arm2Length") || 4).toFixed(2);
 //tool distance to second arm
 toolDistance.value = parseFloat(
   localStorage.getItem("toolDistanceToArm") || 0.8
@@ -425,6 +421,10 @@ export function setupOptionMenu(updateDrawing) {
       localStorage.getItem("arm1Ratio") || "1"
     ).toFixed(2);
   });
+    document.getElementById("load").addEventListener("click", function () {
+      loadSavedSettings(updateDrawing);
+    });
+      setSettings();
 }
 
 //List all files from server and display in table
@@ -619,7 +619,7 @@ function saveSettings() {
   formData.append("arm2Ratio", arm2Ratio.value);
   formData.append("extraRatio", armAdditionalRatio.value);
 
-  fetch("/files/options", {
+  fetch("/files/options/save", {
     method: "POST",
     body: formData,
   })
@@ -627,12 +627,32 @@ function saveSettings() {
       if (!response.ok) console.error("Options saving error");
     })
     .catch((error) => {
-      showDialog(alertItem, alertMessage, "e", "Cannot load options file");
+      showDialog(alertItem, alertMessage, "e", "Cannot save options file");
     });
 }
+function setSettings() {
+  const formData = new FormData();
+  formData.append("right", checkbox.checked);
+  formData.append("speed", speedInput.value);
+  formData.append("arm1Length", arm1Length.value);
+  formData.append("arm2Length", parseFloat(arm2Length.value)+parseFloat(toolDistance.value));
+  formData.append("arm1Ratio", arm1Ratio.value);
+  formData.append("arm2Ratio", arm2Ratio.value);
+  formData.append("extraRatio", armAdditionalRatio.value);
 
-function loadSavedSettings() {
-  fetch("/files/options", { method: "GET" })
+  fetch("/files/options/set", {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => {
+      if (!response.ok) console.error("Options setting error");
+    })
+    .catch((error) => {
+      showDialog(alertItem, alertMessage, "e", "Cannot set options");
+    });
+}
+function loadSavedSettings(onLoad) {
+  fetch("/files/options/read", { method: "GET" })
     .then((response) => response.blob())
     .then((blob) => {
       var reader = new FileReader();
@@ -642,38 +662,46 @@ function loadSavedSettings() {
         //push vector to array if position changed
         lines.forEach((line) => {
           let values = line.split(": ");
-          switch (values[0].trim()) {
-            case "right":
-              checkbox.checked = Boolean(values[1].trim());
-              break;
-            case "speed":
-              speedInput.value = parseFloat(values[1].trim());
-              break;
-            case "arm1Length":
-              arm1Length.value = parseFloat(values[1].trim()).toFixed(2);
-              break;
-            case "arm2Length":
-              arm2Length.value = parseFloat(values[1].trim()).toFixed(2);
-              break;
-            case "toolDistance":
-              toolDistance.value = parseFloat(values[1].trim()).toFixed(2);
-              break;
-            case "arm1Ratio":
-              arm1Ratio.value = parseFloat(values[1].trim()).toFixed(2);
-              break;
-            case "arm2Ratio":
-              arm2Ratio.value = parseFloat(values[1].trim()).toFixed(2);
-              break;
-            case "extraRatio":
-              armAdditionalRatio.value = parseFloat(values[1].trim()).toFixed(
-                2
-              );
-              break;
-            default:
-              console.log("Value unsupported" + values[0].trim());
-              break;
+          if(values.length == 2){
+              switch (values[0].trim()) {
+                case "right":
+                  checkbox.checked = Boolean(values[1].trim());
+                  localStorage.setItem("rightSide", checkbox.checked);
+                  break;
+                case "speed":
+                  speedInput.value = parseFloat(values[1].trim());
+                  localStorage.setItem("maxSpeed", speedInput.value);
+                  break;
+                case "arm1Length":
+                  arm1Length.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("arm1Length", arm1Length.value);
+                  break;
+                case "arm2Length":
+                  arm2Length.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("arm2Length", arm2Length.value);
+                  break;
+                case "toolDistance":
+                  toolDistance.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("toolDistance", toolDistance.value);
+                  break;
+                case "arm1Ratio":
+                  arm1Ratio.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("arm1Ratio", arm1Ratio.value);
+                  break;
+                case "arm2Ratio":
+                  arm2Ratio.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("arm2Ratio", arm2Ratio.value);
+                  break;
+                case "extraRatio":
+                  armAdditionalRatio.value = parseFloat(values[1].trim()).toFixed(2);
+                  localStorage.setItem("armAdditionalRatio", armAdditionalRatio.value);
+                  break;
+                default:
+                  break;
+              }
           }
         });
+        onLoad();
       };
       reader.readAsText(blob);
     })
@@ -1018,9 +1046,7 @@ speedInput.addEventListener("blur", function () {
 document.getElementById("save").addEventListener("click", function () {
   saveSettings();
 });
-document.getElementById("load").addEventListener("click", function () {
-  loadSavedSettings();
-});
+
 logout.addEventListener("click", function () {
   if (confirm("Are you sure you want to Logout?") == true) {
     let xhr = new XMLHttpRequest();
