@@ -170,6 +170,22 @@ fun Route.fileRoute(){
                     call.respond(HttpStatusCode.InternalServerError, "file reading error")
                 }
             }
+            get("/file-list"){
+                checkUserPermission {
+                    val folder = File(filesFolder + "/settings")
+                    if (folder.exists() && folder.isDirectory) {
+                        val token=call.sessions.get("TOKEN")as MyToken?
+                        val files = folder.listFiles()?.filter {it.name.startsWith("${getUserId(token)}")}?.map{it.name}
+                        if(!files.isNullOrEmpty()){
+                            call.respond(files)
+                        }else{
+                            call.respond(HttpStatusCode.NoContent, "There is no files for this user")
+                        }
+                    } else {
+                        call.respond(HttpStatusCode.NoContent, "There is no files for this user")
+                    }
+                }
+            }
             post("/set"){
                 val formParameters = call.receiveParameters()
                 formParameters.getOrFail("right").toBooleanStrict().let{ GCodeSender.setArmDirection(it) }

@@ -188,6 +188,26 @@
             </div>
          </ul>
       </nav>
+      <nav id="saveMenu">
+         <ul>
+            <li class="button menu-button" id="closeSavedIcon">
+               <img class="icons" src="static/icon/back.svg" alt="back">
+            </li>
+            <li id="tableSavedOptions">
+               <table>
+                  <thead>
+                     <tr>
+                        <th>Load</th>
+                     </tr>
+                  </thead>
+                
+                  <div class="scroll-list"><hr>
+                    <tbody class="radioList"></tbody>
+                  </div>
+               </table>
+            </li>
+         </ul>
+      </nav>
       <div id="positionBox">
          <p id="positionText">X=1000 Y=1000</p>
       </div>
@@ -212,6 +232,7 @@
           const expirationText = "${expiration}";
           const lifeText = "${lifeTime}";
          
+          var byInterval=false;
           var expirationTime=parseInt(expirationText.replace(/\s+/g, "").replace(/,/g, ""));
           const lifeTime=parseInt(lifeText.replace(/\s+/g, "").replace(/,/g, ""))*1000;
          
@@ -223,6 +244,7 @@
                   document.getElementById("expireInfo").innerHTML="Your session will expire in "+Math.ceil((expirationTime-currentTime) / 60000)+" minutes";
                   document.getElementById("overlay").style.display='block';
                   document.getElementById("popup").style.display='block';
+                  byInterval = true;
               }
           }
           document.getElementById("overlay").addEventListener('click', extend );
@@ -235,7 +257,10 @@
                   if (xhr.status === 200) {
                       expirationTime=Date.now()+lifeTime;
                   }
-                  document.getElementById("overlay").style.display='none';
+                  if(byInterval){
+                     document.getElementById("overlay").style.display='none';
+                     byInterval=false;
+                  }
                   document.getElementById("popup").style.display='none';
               };
               xhr.send();

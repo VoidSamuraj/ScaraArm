@@ -16,6 +16,7 @@ const firstMenuUl = document.querySelectorAll("#firstMenu ul");
 const portMenu = document.getElementById("portMenu");
 const loadMenu = document.getElementById("loadMenu");
 const optionsMenu = document.getElementById("optionsMenu");
+const saveMenu = document.getElementById("saveMenu");
 
 //manual menu
 var radioButtons;
@@ -105,6 +106,7 @@ export var demoMode = false;
 portMenu.style.minHeight = firstMenuStyle.height;
 loadMenu.style.minHeight = firstMenuStyle.height;
 optionsMenu.style.minHeight = firstMenuStyle.height;
+saveMenu.style.minHeight = firstMenuStyle.height;
 
 firstMenuUl[1].style.display = "none";
 firstMenu.style.height = "74px";
@@ -338,7 +340,6 @@ function turnOnOverlay() {
   overlay.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
   overlay.style.zIndex = "2";
   overlay.style.display = "block";
-  overlay.addEventListener("click", turnOffOverlay);
 }
 
 /**
@@ -346,12 +347,13 @@ function turnOnOverlay() {
  */
 function turnOffOverlay() {
   var overlay = document.getElementById("overlay");
-  overlay.style.backgroundColor = "rgba(255, 163, 26, 0.2)";
-  overlay.style.zIndex = "6";
-  optionsMenu.style.left = optionMenuHide;
-  portMenu.style.left = portMenuHide;
-  loadMenu.style.left = loadMenuHide;
-  overlay.style.display = "none";
+    overlay.style.backgroundColor = "rgba(255, 163, 26, 0.2)";
+    overlay.style.zIndex = "6";
+    optionsMenu.style.left = optionMenuHide;
+    saveMenu.style.left = optionMenuHide;
+    portMenu.style.left = portMenuHide;
+    loadMenu.style.left = loadMenuHide;
+    overlay.style.display = "none";
 }
 
 /**
@@ -422,7 +424,11 @@ export function setupOptionMenu(updateDrawing) {
     ).toFixed(2);
   });
     document.getElementById("load").addEventListener("click", function () {
-      loadSavedSettings(updateDrawing);
+             setTimeout(function () {
+               saveMenu.style.left = "474px";
+              }, 200);
+                loadSavedSettings(updateDrawing);
+
     });
       setSettings();
 }
@@ -562,6 +568,34 @@ function fillModeList() {
       modeList.innerHTML = html;
       modeList.value = stepperVal;
     });
+}
+
+/**
+* Function to load options files names for this user
+*/
+function fillSavedOptionsList(){
+      let html = "";
+      let options = document.querySelector('#tableSavedOptions tbody');
+      fetch("/files/options/file-list", { method: "GET" })
+        .then((response) => response.json())
+        .then((data) => {
+         var counter=0;
+          data.forEach((file) => {
+              if(counter<4){
+                ++counter;
+                html +=
+                    '<tr><td><input type="text" class="saveItem" id="' +file +'" value="' +file +'" ></td></tr>';
+              }
+          });
+          for(var i =counter+1; i<5; i++){
+          html +=
+                             '<tr><td><input type="text" class="saveItem" id="SAVE_'+i +'" value="SAVE_' +i +
+                             '" ></td></tr>';
+          }
+          options.innerHTML = html;
+        }).catch((error) => {
+                 console.error("Error:", error);
+        });
 }
 /**
  * Function to select connected port
@@ -722,9 +756,12 @@ export function refreshPorts() {
 //button opening first menu
 document.getElementById("menuIcon").addEventListener("click", function () {
   if (menuDisplayed) {
+
+  if(saveMenu.style.left == barWidth || saveMenu.style.left == optionMenuHide){
     portMenu.style.left = portMenuHide;
     loadMenu.style.left = loadMenuHide;
     optionsMenu.style.left = optionMenuHide;
+    saveMenu.style.left = optionMenuHide;
     setTimeout(function () {
       firstMenuUl[1].style.transform = "translateY(" + optionMenuHide + ")";
       firstMenu.style.height = barWidth;
@@ -734,6 +771,9 @@ document.getElementById("menuIcon").addEventListener("click", function () {
         expanded = false;
       }, 100);
     }, 200);
+    }else{
+    saveMenu.style.left = barWidth;
+    }
   } else {
     menuDisplayed = true;
     firstMenuUl[1].style.display = "block";
@@ -744,6 +784,7 @@ document.getElementById("menuIcon").addEventListener("click", function () {
         portMenu.style.left = portMenuHide;
         loadMenu.style.left = loadMenuHide;
         optionsMenu.style.left = optionMenuHide;
+        saveMenu.style.left = optionMenuHide;
       }, 200);
     }, 100);
   }
@@ -786,6 +827,7 @@ manual.addEventListener("click", function () {
       ? 0
       : 200;
   optionsMenu.style.left = optionMenuHide;
+  saveMenu.style.left = optionMenuHide;
   loadMenu.style.left = loadMenuHide;
   setTimeout(function () {
     if (portMenuStyle.left === portMenuHide) {
@@ -867,6 +909,7 @@ loadFileButton.addEventListener("click", function () {
       ? 0
       : 200;
   optionsMenu.style.left = optionMenuHide;
+  saveMenu.style.left = optionMenuHide;
   portMenu.style.left = portMenuHide;
   setTimeout(function () {
     if (loadMenuStyle.left === loadMenuHide) {
@@ -974,10 +1017,17 @@ optionsButton.addEventListener("click", function () {
       expanded = true;
       turnOnOverlay();
       optionsMenu.style.left = barWidth;
+      saveMenu.style.left = barWidth;
     } else {
-      expanded = false;
-      turnOffOverlay();
-      optionsMenu.style.left = optionMenuHide;
+       if(saveMenu.style.left == barWidth || saveMenu.style.left == optionMenuHide){
+          expanded = false;
+          turnOffOverlay();
+          optionsMenu.style.left = optionMenuHide;
+          saveMenu.style.left = optionMenuHide;
+       }else{
+          saveMenu.style.left = barWidth;
+       }
+
     }
   }, time);
 });
@@ -985,9 +1035,19 @@ optionsButton.addEventListener("click", function () {
 document
   .getElementById("closeOptionsIcon")
   .addEventListener("click", function () {
-    optionsMenu.style.left = optionMenuHide;
-    turnOffOverlay();
-    expanded = false;
+      if(saveMenu.style.left == barWidth || saveMenu.style.left == optionMenuHide){
+        optionsMenu.style.left = optionMenuHide;
+        saveMenu.style.left = optionMenuHide;
+        turnOffOverlay();
+        expanded = false;
+      }else{
+        saveMenu.style.left = barWidth;
+      }
+  });
+document
+  .getElementById("closeSavedIcon")
+  .addEventListener("click", function () {
+    saveMenu.style.left = barWidth;
   });
 //isright li and checkbox
 direction.addEventListener("click", function () {
@@ -1044,7 +1104,9 @@ speedInput.addEventListener("blur", function () {
 });
 
 document.getElementById("save").addEventListener("click", function () {
-  saveSettings();
+     setTimeout(function () {
+       saveMenu.style.left = "474px";
+      }, 200);
 });
 
 logout.addEventListener("click", function () {
@@ -1095,9 +1157,20 @@ closeAlertButton.addEventListener("click", function () {
   alertItem.classList.remove("show");
   alertItem.classList.add("hide");
 });
+
+  overlay.addEventListener("click",  function () {
+  if(saveMenu.style.left == barWidth || saveMenu.style.left == optionMenuHide)
+    turnOffOverlay();
+    else
+      saveMenu.style.left = barWidth;
+  });
+
+
 document.addEventListener("DOMContentLoaded", function () {
   fillFilesTable();
   fillPortsTable();
   fillModeList();
   selectConnectedPort();
+  saveMenu.style.top = ""+(parseInt(window.getComputedStyle(optionsMenu).height) - parseInt(window.getComputedStyle(saveMenu).height))+"px";
+  fillSavedOptionsList();
 });
