@@ -423,14 +423,31 @@ export function setupOptionMenu(updateDrawing) {
       localStorage.getItem("arm1Ratio") || "1"
     ).toFixed(2);
   });
-    document.getElementById("load").addEventListener("click", function () {
-             setTimeout(function () {
-               saveMenu.style.left = "474px";
-              }, 200);
-                loadSavedSettings(updateDrawing);
+  fillSavedOptionsList(function (){
+                  var inputs = document.querySelectorAll('.saveItem');
+                  inputs.forEach(function(input) {
+                          input.addEventListener('keydown', function(event) {
+                            if (event.keyCode === 13) {
+                              let name = event.target.value;
+                              let id=event.target.id;
+                              document.getElementById("b"+id.substring(1, id.length)).innerText=name;
+                                    saveSettings(name, id.split('_')[1]);
+                              }
+                          });
+                      });
+                  var buttons = document.querySelectorAll('.saveItemButton');
+                  buttons.forEach(function(button) {
+                          button.addEventListener('click', function(event) {
+                              let name = event.target.innerText;
+                              let id= event.target.id.split('_')[1];
+                              console.log("ID ", id);
+                                loadSavedSettings(updateDrawing,name, id);
+                          });
+                      });
 
-    });
+  });
       setSettings();
+
 }
 
 //List all files from server and display in table
@@ -573,28 +590,57 @@ function fillModeList() {
 /**
 * Function to load options files names for this user
 */
-function fillSavedOptionsList(){
-      let html = "";
+function fillSavedOptionsList(onLoad){
+      let htmlInput = "";
+      let htmlButtons = "";
+      var counter=0;
+
       let options = document.querySelector('#tableSavedOptions tbody');
       fetch("/files/options/file-list", { method: "GET" })
-        .then((response) => response.json())
+        .then((response) => {
+            if(response.ok && response.status !== 204){
+                return response.json();
+            }
+            else{
+              for(var i =1; i<5; i++){
+                  htmlInput +=
+                    '<tr><td><input type="text" class="saveItem" id="i_'+i+'_SAVE_'+i +'" value="SAVE_' +i +'" ></td></tr>';
+                  htmlButtons +=
+                    '<tr><td><button class="saveItemButton" id="b_'+i+'_SAVE_'+i +'" disabled>SAVE_' +i+ '</button></td></tr>';
+              }
+              options.innerHTML = htmlInput+htmlButtons;
+              onLoad();
+              throw new Error("empty response");
+            }
+            if(!response.ok){
+              throw new Error("response error");
+            }
+        })
         .then((data) => {
-         var counter=0;
+
           data.forEach((file) => {
               if(counter<4){
                 ++counter;
-                html +=
-                    '<tr><td><input type="text" class="saveItem" id="' +file +'" value="' +file +'" ></td></tr>';
+                htmlInput +=
+                    '<tr><td><input type="text" class="saveItem" id="i_'+counter+'_' +file +'" value="' +file +'" ></td></tr>';
+                htmlButtons +=
+                    '<tr><td><button class="saveItemButton" id="b_'+counter+'_' +file +'">' +file +'</td></tr>';
               }
           });
           for(var i =counter+1; i<5; i++){
-          html +=
-                             '<tr><td><input type="text" class="saveItem" id="SAVE_'+i +'" value="SAVE_' +i +
-                             '" ></td></tr>';
+          htmlInput +=
+            '<tr><td><input type="text" class="saveItem" id="i_'+i+'_SAVE_'+i +'" value="SAVE_' +i +'" ></td></tr>';
+          htmlButtons +=
+            '<tr><td><button class="saveItemButton" id="b_'+i+'_SAVE_'+i +'" disabled>SAVE_' +i+ '</button></td></tr>';
           }
-          options.innerHTML = html;
+          options.innerHTML = htmlInput+htmlButtons;
+          onLoad();
         }).catch((error) => {
-                 console.error("Error:", error);
+            if(error.message === "empty response"){
+
+            }else{
+                console.error("Error:", error);
+            }
         });
 }
 /**
@@ -642,7 +688,7 @@ function connectToArm() {
     });
 }
 
-function saveSettings() {
+function saveSettings(name,id) {
   const formData = new FormData();
   formData.append("right", checkbox.checked);
   formData.append("speed", speedInput.value);
@@ -652,6 +698,8 @@ function saveSettings() {
   formData.append("arm1Ratio", arm1Ratio.value);
   formData.append("arm2Ratio", arm2Ratio.value);
   formData.append("extraRatio", armAdditionalRatio.value);
+  formData.append("name", name);
+  formData.append("id", id);
 
   fetch("/files/options/save", {
     method: "POST",
@@ -685,8 +733,8 @@ function setSettings() {
       showDialog(alertItem, alertMessage, "e", "Cannot set options");
     });
 }
-function loadSavedSettings(onLoad) {
-  fetch("/files/options/read", { method: "GET" })
+function loadSavedSettings(onLoad, name, id) {
+  fetch("/files/options/read?name="+name+'&id='+id, { method: "GET" })
     .then((response) => response.blob())
     .then((blob) => {
       var reader = new FileReader();
@@ -1104,11 +1152,41 @@ speedInput.addEventListener("blur", function () {
 });
 
 document.getElementById("save").addEventListener("click", function () {
+                    var inputs = document.querySelectorAll('.saveItem');
+                    var buttons = document.querySelectorAll('.saveItemButton');
+                    var th = document.querySelector('#tableSavedOptions th');
+                    th.innerText="Save";
+
+                    inputs.forEach(function(input) {
+                        input.style.display = 'block'
+                        input.parentNode.style.padding="5px";
+                    });
+                    buttons.forEach(function(button) {
+                        button.style.display = 'none'
+                        button.parentNode.style.padding="0";
+                    });
      setTimeout(function () {
        saveMenu.style.left = "474px";
       }, 200);
 });
+    document.getElementById("load").addEventListener("click", function () {
+                    var inputs = document.querySelectorAll('.saveItem');
+                    var buttons = document.querySelectorAll('.saveItemButton');
+                    var th = document.querySelector('#tableSavedOptions th');
+                    th.innerText="Load";
 
+                    inputs.forEach(function(input) {
+                        input.style.display = 'none'
+                        input.parentNode.style.padding="0";
+                    });
+                    buttons.forEach(function(button) {
+                        button.style.display = 'block'
+                        button.parentNode.style.padding="5px";
+                    });
+             setTimeout(function () {
+               saveMenu.style.left = "474px";
+              }, 200);
+    });
 logout.addEventListener("click", function () {
   if (confirm("Are you sure you want to Logout?") == true) {
     let xhr = new XMLHttpRequest();
@@ -1172,5 +1250,4 @@ document.addEventListener("DOMContentLoaded", function () {
   fillModeList();
   selectConnectedPort();
   saveMenu.style.top = ""+(parseInt(window.getComputedStyle(optionsMenu).height) - parseInt(window.getComputedStyle(saveMenu).height))+"px";
-  fillSavedOptionsList();
 });

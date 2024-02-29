@@ -135,9 +135,12 @@ fun Route.fileRoute(){
         route("/options"){
             get("/read"){
                 val token=call.sessions.get("TOKEN")as MyToken?
-                val fileName = "${getUserId(token)}_settings.txt"
+                val name=call.parameters["name"]
+                val id=call.parameters["id"]
+                if(name==null || id == null)
+                    call.respond(HttpStatusCode.NoContent, "Name not specified")
+                val fileName = "${getUserId(token)}_${id}_${name}.txt"
                 val file = File(filesFolder + "/settings/" + fileName)
-
                 try {
                     if (!file.exists())
                         call.respond(HttpStatusCode.NoContent, "file not found")
@@ -175,7 +178,7 @@ fun Route.fileRoute(){
                     val folder = File(filesFolder + "/settings")
                     if (folder.exists() && folder.isDirectory) {
                         val token=call.sessions.get("TOKEN")as MyToken?
-                        val files = folder.listFiles()?.filter {it.name.startsWith("${getUserId(token)}")}?.map{it.name}
+                        val files = folder.listFiles()?.filter {it.name.startsWith("${getUserId(token)}")}?.map{it.nameWithoutExtension.replaceFirst("^[0-9]+_".toRegex(), "")}
                         if(!files.isNullOrEmpty()){
                             call.respond(files)
                         }else{
@@ -200,14 +203,16 @@ fun Route.fileRoute(){
             post("/save"){
                 checkUserPermission{
                     try {
+                        val formParameters = call.receiveParameters()
                         val token=call.sessions.get("TOKEN")as MyToken?
-                        val fileName = "${getUserId(token)}_settings.txt"
+                        val name= formParameters.getOrFail("name")
+                        val id= formParameters.getOrFail("id")
+                        val fileName = "${getUserId(token)}_${id}_${name}.txt"
                         val file = File(filesFolder + "/settings/" + fileName)
                         file.getParentFile().mkdirs()
                         if(!file.exists())
                             file.createNewFile()
 
-                        val formParameters = call.receiveParameters()
                         val sb = StringBuilder()
 
                         formParameters.getOrFail("right").toBooleanStrict().let { sb.append("right: $it\n") }

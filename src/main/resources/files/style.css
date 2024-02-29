@@ -578,7 +578,7 @@ table td, table th {
     border-radius: 0px 0.75em 0.75em 0px;
 }
 
-.saveItem{
+.saveItem, .saveItemButton{
   border: 2px solid rgba(255,255,255,0.1);
   background-color: rgba(0,0,0,0) !important;
   width:370px;
@@ -588,7 +588,18 @@ table td, table th {
 .radioItem label:hover{
   box-shadow: 0 0 10px rgba(255,255,255,0.5);
 }
-.saveItem:hover {
+.saveItemButton{
+    display: none;
+    border-color: white;
+}
+.saveItem{
+    font-weight: bold;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    margin-right:0px;
+    border-radius: 8px;
+}
+.saveItem:hover, .saveItemButton:hover {
   background-color: rgba(255,255,255,0.1) !important;
 }
 #saveMenu input[type=text]{
