@@ -428,10 +428,13 @@ export function setupOptionMenu(updateDrawing) {
                   inputs.forEach(function(input) {
                           input.addEventListener('keydown', function(event) {
                             if (event.keyCode === 13) {
-                              let name = event.target.value;
-                              let id=event.target.id;
-                              document.getElementById("b"+id.substring(1, id.length)).innerText=name;
-                                    saveSettings(name, id.split('_')[1]);
+                                  let name = event.target.value;
+                                  let id=event.target.id;
+                                  let button = document.getElementById("b"+id.substring(1, id.length));
+                                  button.innerText=name;
+                                  button.removeAttribute("disabled");
+                                  button.classList.remove("saveItemButtonHide")
+                                  saveSettings(name, id.split('_')[1]);
                               }
                           });
                       });
@@ -440,13 +443,12 @@ export function setupOptionMenu(updateDrawing) {
                           button.addEventListener('click', function(event) {
                               let name = event.target.innerText;
                               let id= event.target.id.split('_')[1];
-                              console.log("ID ", id);
                                 loadSavedSettings(updateDrawing,name, id);
                           });
                       });
 
   });
-      setSettings();
+      fillModeList();
 
 }
 
@@ -584,6 +586,7 @@ function fillModeList() {
       });
       modeList.innerHTML = html;
       modeList.value = stepperVal;
+      setSettings();
     });
 }
 
@@ -594,7 +597,13 @@ function fillSavedOptionsList(onLoad){
       let htmlInput = "";
       let htmlButtons = "";
       var counter=0;
-
+          var mapa ={
+            1: "SAVE_1",
+            2: "SAVE_2",
+            3: "SAVE_3",
+            4: "SAVE_4"
+          }
+          var disabled=[true,true,true,true];
       let options = document.querySelector('#tableSavedOptions tbody');
       fetch("/files/options/file-list", { method: "GET" })
         .then((response) => {
@@ -606,7 +615,7 @@ function fillSavedOptionsList(onLoad){
                   htmlInput +=
                     '<tr><td><input type="text" class="saveItem" id="i_'+i+'_SAVE_'+i +'" value="SAVE_' +i +'" ></td></tr>';
                   htmlButtons +=
-                    '<tr><td><button class="saveItemButton" id="b_'+i+'_SAVE_'+i +'" disabled>SAVE_' +i+ '</button></td></tr>';
+                    '<tr><td><button class="saveItemButton saveItemButtonHide" id="b_'+i+'_SAVE_'+i +'" disabled>SAVE_' +i+ '</button></td></tr>';
               }
               options.innerHTML = htmlInput+htmlButtons;
               onLoad();
@@ -619,19 +628,14 @@ function fillSavedOptionsList(onLoad){
         .then((data) => {
 
           data.forEach((file) => {
-              if(counter<4){
-                ++counter;
-                htmlInput +=
-                    '<tr><td><input type="text" class="saveItem" id="i_'+counter+'_' +file +'" value="' +file +'" ></td></tr>';
-                htmlButtons +=
-                    '<tr><td><button class="saveItemButton" id="b_'+counter+'_' +file +'">' +file +'</td></tr>';
-              }
+                mapa[file.first]=file.second;
+                disabled[file.first-1]=false;
           });
-          for(var i =counter+1; i<5; i++){
-          htmlInput +=
-            '<tr><td><input type="text" class="saveItem" id="i_'+i+'_SAVE_'+i +'" value="SAVE_' +i +'" ></td></tr>';
-          htmlButtons +=
-            '<tr><td><button class="saveItemButton" id="b_'+i+'_SAVE_'+i +'" disabled>SAVE_' +i+ '</button></td></tr>';
+          for(var key in mapa){
+                 htmlInput +=
+                              '<tr><td><input type="text" class="saveItem" id="i_'+key+'_' +mapa[key] +'" value="' +mapa[key] +'" ></td></tr>';
+                          htmlButtons +=
+                              '<tr><td><button class="saveItemButton '+(disabled[key-1]?'saveItemButtonHide':'')+'" id="b_'+key+'_' +mapa[key]+'" '+(disabled[key-1]?'disabled':'')+'>' +mapa[key]+'</td></tr>';
           }
           options.innerHTML = htmlInput+htmlButtons;
           onLoad();
@@ -692,6 +696,7 @@ function saveSettings(name,id) {
   const formData = new FormData();
   formData.append("right", checkbox.checked);
   formData.append("speed", speedInput.value);
+  formData.append("mode", modeList.value);
   formData.append("arm1Length", arm1Length.value);
   formData.append("arm2Length", arm2Length.value);
   formData.append("toolDistance", toolDistance.value);
@@ -716,12 +721,12 @@ function setSettings() {
   const formData = new FormData();
   formData.append("right", checkbox.checked);
   formData.append("speed", speedInput.value);
+  formData.append("mode", modeList.value);
   formData.append("arm1Length", arm1Length.value);
   formData.append("arm2Length", parseFloat(arm2Length.value)+parseFloat(toolDistance.value));
   formData.append("arm1Ratio", arm1Ratio.value);
   formData.append("arm2Ratio", arm2Ratio.value);
   formData.append("extraRatio", armAdditionalRatio.value);
-
   fetch("/files/options/set", {
     method: "POST",
     body: formData,
@@ -754,6 +759,10 @@ function loadSavedSettings(onLoad, name, id) {
                   speedInput.value = parseFloat(values[1].trim());
                   localStorage.setItem("maxSpeed", speedInput.value);
                   break;
+                case "mode":
+                 modeList.value = values[1].trim();
+                 localStorage.setItem("stepperVal", values[1].trim());
+                 break;
                 case "arm1Length":
                   arm1Length.value = parseFloat(values[1].trim()).toFixed(2);
                   localStorage.setItem("arm1Length", arm1Length.value);
@@ -1247,7 +1256,6 @@ closeAlertButton.addEventListener("click", function () {
 document.addEventListener("DOMContentLoaded", function () {
   fillFilesTable();
   fillPortsTable();
-  fillModeList();
   selectConnectedPort();
   saveMenu.style.top = ""+(parseInt(window.getComputedStyle(optionsMenu).height) - parseInt(window.getComputedStyle(saveMenu).height))+"px";
 });

@@ -389,7 +389,7 @@ td>button:first-child:hover:disabled {
     width: 400px;
 }
 #saveMenu{
-    height:330px;
+    height:360px;
     z-index: 3;
     background-color: #262835;
 }
@@ -601,6 +601,9 @@ table td, table th {
 }
 .saveItem:hover, .saveItemButton:hover {
   background-color: rgba(255,255,255,0.1) !important;
+}
+.saveItemButtonHide:hover{
+  background-color: rgba(0,0,0,0) !important;
 }
 #saveMenu input[type=text]{
     color: #f0f0f0;

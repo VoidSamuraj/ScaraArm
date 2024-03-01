@@ -63,7 +63,6 @@ fun Route.fileRoute(){
                     it.name +";"+formatFileSize(it.length())+";"+formattedDate
 
                 } ?: emptyList()
-                println("ALLFILESS"+files)
                 call.respond(files)
             }
         }
@@ -154,6 +153,7 @@ fun Route.fileRoute(){
                                     when(param[0]){
                                         "right" ->param[1].toBooleanStrict().let{GCodeSender.setArmDirection(it)}
                                         "speed" ->param[1].toInt().let{GCodeSender.setMaxSpeed(it)}
+                                        "mode"  ->param[1].toInt().let{mode -> GCodeSender.StepsMode.values().find { it.steps == mode }?.let {GCodeSender.setMotorStepMode(it)}}
                                         "arm1Length" ->param[1].toDouble().let{GCodeSender.setArm1Length((it * 10).toLong())}
                                         "arm2Length" ->param[1].toDouble().let{arm2Length+=it}
                                         "toolDistance" ->param[1].toDouble().let{arm2Length+=it}
@@ -180,7 +180,7 @@ fun Route.fileRoute(){
                         val token=call.sessions.get("TOKEN")as MyToken?
                         val files = folder.listFiles()?.filter {it.name.startsWith("${getUserId(token)}")}?.map{it.nameWithoutExtension.replaceFirst("^[0-9]+_".toRegex(), "")}
                         if(!files.isNullOrEmpty()){
-                            call.respond(files)
+                            call.respond(files.map { Pair(it.substringBefore("_").toInt(), it.replaceFirst("^[0-9]+_".toRegex(), "")) })
                         }else{
                             call.respond(HttpStatusCode.NoContent, "There is no files for this user")
                         }
@@ -193,6 +193,7 @@ fun Route.fileRoute(){
                 val formParameters = call.receiveParameters()
                 formParameters.getOrFail("right").toBooleanStrict().let{ GCodeSender.setArmDirection(it) }
                 formParameters.getOrFail("speed").toInt().let {GCodeSender.setMaxSpeed(it)}
+                formParameters.getOrFail("mode").toInt().let {mode -> GCodeSender.StepsMode.values().find { it.steps == mode }?.let {GCodeSender.setMotorStepMode(it)}}
                 formParameters.getOrFail("arm1Length").toDouble().let {GCodeSender.setArm1Length((it * 10).toLong())}
                 formParameters.getOrFail("arm2Length").toDouble().let {GCodeSender.setArm2Length((it * 10).toLong())}
                 formParameters.getOrFail("arm1Ratio").toDouble().let {GCodeSender.setArm1GearRatio(it)}
@@ -207,6 +208,13 @@ fun Route.fileRoute(){
                         val token=call.sessions.get("TOKEN")as MyToken?
                         val name= formParameters.getOrFail("name")
                         val id= formParameters.getOrFail("id")
+                        val folder = File(filesFolder + "/settings")
+                        if (folder.exists() && folder.isDirectory) {
+                            val list=folder.listFiles()?.filter { it.name.startsWith("${getUserId(token)}_${id}_") }
+                            list?.forEach {
+                                it.delete()
+                            }
+                        }
                         val fileName = "${getUserId(token)}_${id}_${name}.txt"
                         val file = File(filesFolder + "/settings/" + fileName)
                         file.getParentFile().mkdirs()
@@ -217,13 +225,13 @@ fun Route.fileRoute(){
 
                         formParameters.getOrFail("right").toBooleanStrict().let { sb.append("right: $it\n") }
                         formParameters.getOrFail("speed").toInt().let { sb.append("speed: $it\n") }
+                        formParameters.getOrFail("mode").toInt().let {sb.append("mode: $it\n")}
                         formParameters.getOrFail("arm1Length").toDouble().let { sb.append("arm1Length: $it\n") }
                         formParameters.getOrFail("arm2Length").toDouble().let { sb.append("arm2Length: $it\n") }
                         formParameters.getOrFail("toolDistance").toDouble().let { sb.append("toolDistance: $it\n") }
                         formParameters.getOrFail("arm1Ratio").toDouble().let { sb.append("arm1Ratio: $it\n") }
                         formParameters.getOrFail("arm2Ratio").toDouble().let { sb.append("arm2Ratio: $it\n") }
                         formParameters.getOrFail("extraRatio").toDouble().let { sb.append("extraRatio: $it\n") }
-
                         val writer = file.bufferedWriter()
                         writer.write(sb.toString())
                         writer.flush()
