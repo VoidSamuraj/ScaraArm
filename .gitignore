@@ -39,4 +39,4 @@ out/
 /src/main/resources/templates/index.css
 
 ### KEYS ###
-/src/main/kotlin/com/voidsamuraj/Keys.kt
+src/main/kotlin/com/voidsamuraj/Keys.kt
