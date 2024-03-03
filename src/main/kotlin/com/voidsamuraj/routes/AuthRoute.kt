@@ -20,6 +20,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.server.util.*
+import io.ktor.server.websocket.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
 import java.io.File
@@ -32,6 +33,16 @@ suspend fun PipelineContext<Unit,ApplicationCall>.onAuthenticate(user:User){
 
 }
 suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess:suspend ()->Unit){
+    val token=call.sessions.get("TOKEN")as MyToken?
+    checkPermission(token = token,
+        onSuccess = {
+            onSuccess()
+        },
+        onFailure = {
+            call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
+        })
+}
+suspend fun  DefaultWebSocketServerSession.checkUserPermission(onSuccess:suspend ()->Unit){
     val token=call.sessions.get("TOKEN")as MyToken?
     checkPermission(token = token,
         onSuccess = {

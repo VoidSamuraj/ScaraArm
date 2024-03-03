@@ -8,7 +8,7 @@ val h2_version: String by project
 
 plugins {
     kotlin("jvm") version "1.8.10"
-    id("io.ktor.plugin") version "2.2.4"
+    id("io.ktor.plugin") version "2.3.8"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.8.10"
     id("com.github.johnrengelman.shadow") version "6.0.0"
 }
@@ -68,6 +68,8 @@ dependencies {
     implementation("io.ktor:ktor-server-cors:$ktor_version")
     implementation("org.mindrot:jbcrypt:0.4")
 
+    //WebSockets
+    implementation("io.ktor:ktor-server-websockets:$ktor_version")
 
     // https://mvnrepository.com/artifact/com.fazecast/jSerialComm
     implementation("com.fazecast:jSerialComm:2.10.2")

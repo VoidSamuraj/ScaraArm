@@ -2,14 +2,9 @@ package com.voidsamuraj.gcode
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortInvalidPortException
 import io.ktor.util.*
-import java.io.BufferedInputStream
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileReader
-import java.io.FileWriter
-import java.io.IOException
-import java.io.InputStream
-import java.io.PrintWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.*
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -211,7 +206,7 @@ object GCodeSender {
      * @see StateReturn
      *
      */
-    fun sendGCode(fileToSend: String):StateReturn {
+     suspend fun sendGCode(fileToSend: String, onLineRead:suspend (line:String)->Unit):StateReturn {
         try {
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -219,28 +214,36 @@ object GCodeSender {
                     return StateReturn.FAILURE
                 }
             val fin = File(fileToSend)
-            FileReader(fin).use { fr ->
-                BufferedReader(fr).use { br ->
-                    var line: String?
-                    while (br.readLine().also { line = it } != null) {
-                        line?.let { printWriter!!.write(it) }
-                        printWriter!!.flush()
-                        for(i in 1..3){
-                            when (isOKReturned(bufferedInputStream!!)){
-                                StateReturn.SUCCESS -> break
-                                StateReturn.PORT_DISCONNECTED->{
-                                    System.err.println("Arm is disconnected")
-                                    return StateReturn.PORT_DISCONNECTED
-                                }
-                                else->{}
+            resetPosition()
+            withContext(Dispatchers.IO) {
+                FileReader(fin).use { fr ->
+                    BufferedReader(fr).use { br ->
+                        var line: String?
+                        while (br.readLine().also { line = it } != null) {
+                            line?.let {
+                                printWriter!!.write(it)
+                                onLineRead("CX${position[0]} CY${position[1]} $it")
                             }
-                            if(i==3){
-                                System.err.println("Arm is not responding")
-                                return StateReturn.FAILURE
+                            printWriter!!.flush()
+                            for (i in 1..3) {
+                                when (isOKReturned(bufferedInputStream!!)) {
+                                    StateReturn.SUCCESS -> break
+                                    StateReturn.PORT_DISCONNECTED -> {
+                                        System.err.println("Arm is disconnected")
+                                        return@withContext StateReturn.PORT_DISCONNECTED
+                                    }
+
+                                    else -> {}
+                                }
+                                if (i == 3) {
+                                    System.err.println("Arm is not responding")
+                                    return@withContext StateReturn.FAILURE
+                                }
                             }
                         }
+                        endCommunication(printWriter!!)
+                        return@withContext StateReturn.SUCCESS
                     }
-                    endCommunication(printWriter!!)
                 }
             }
         }catch (e: Exception) {

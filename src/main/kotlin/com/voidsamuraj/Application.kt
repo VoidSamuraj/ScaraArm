@@ -19,5 +19,6 @@ fun Application.module() {
     configureMonitoring()
     configureAuthentication()
     configureSession()
+    configureWebSockets()
     configureRouting()
 }

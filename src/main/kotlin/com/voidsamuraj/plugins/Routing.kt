@@ -12,6 +12,7 @@ fun Application.configureRouting() {
         fileRoute()
         mainRoutes()
         armRoute()
+
     }
 }
 
