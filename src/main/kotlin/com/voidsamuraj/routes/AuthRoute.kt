@@ -42,8 +42,7 @@ suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess
             call.respondTemplate(template="login.ftl",model = mapOf("message" to ""))
         })
 }
-suspend fun  DefaultWebSocketServerSession.checkUserPermission(onSuccess:suspend ()->Unit){
-    val token=call.sessions.get("TOKEN")as MyToken?
+suspend fun  DefaultWebSocketServerSession.checkUserPermission(token:MyToken, onSuccess:suspend ()->Unit){
     checkPermission(token = token,
         onSuccess = {
             onSuccess()

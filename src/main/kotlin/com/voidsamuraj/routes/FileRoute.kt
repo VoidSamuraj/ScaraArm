@@ -69,11 +69,40 @@ fun Route.fileRoute(){
             }
         }
         webSocket("/draw"){
-            checkUserPermission(){
+            println("SOCKET")
+            //TODO remove MyToken
+            val token = call.parameters["token"] as MyToken?
+            val fileName = call.parameters["fileName"]
+            println("TOKEN: "+token)
+            if(token!=null)
+            checkUserPermission(token){
+                println("SOCKET2")
+/*
+                try {
+                    for (frame in incoming) {
+                        when (frame) {
+                            is Frame.Text -> {
+                                val receivedText = frame.readText()
+                                println("SOCKET Received message: $receivedText")
+
+                                // Tutaj możesz przetwarzać otrzymane dane, np. wysłać odpowiedź lub wywołać inną funkcję
+                            }
+                            else->{
+                                println("SOCKET ELSE")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                println("WebSocket connection error: ${e.message}")
+            } finally {
+                println("WebSocket connection closed")
+            }*/
 
                 for (frame in incoming) {
+                    println("FRAAME "+frame)
                     if (frame is Frame.Text) {
                         val fileName = frame.readText()
+                        println("FNAME "+fileName)
                         val ret = GCodeSender.sendGCode(filesFolder + "/" + fileName) { line ->
                             send(line)
                         }
@@ -89,6 +118,7 @@ fun Route.fileRoute(){
                     }else
                         send("File not found")
                 }
+
             }
         }
         route("/{fileName}"){

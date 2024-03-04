@@ -446,6 +446,13 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
     return mesh;
 }
 
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+
 /**
  * Function to draw file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
@@ -487,11 +494,12 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     var zPos=0;
     var changedSomething=false;
     const scale=0.1;
-    const socket = new WebSocket('ws://localhost:8080/files/draw');
+    const socket = new WebSocket('ws://localhost:8080/files/draw?token=' + getCookie("TOKEN"));
         //sending code to arm
     socket.onopen = function(event) {
         const message = JSON.stringify({ fileName: fileName });
         socket.send(message);
+        console.log("Started websocket connection")
     };
     socket.onmessage = function(event) {
         // Obsługa otrzymanej wiadomości

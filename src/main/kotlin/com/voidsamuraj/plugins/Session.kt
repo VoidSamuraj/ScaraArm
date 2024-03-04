@@ -11,10 +11,11 @@ fun Application.configureSession() {
     install(Sessions) {
         cookie<MyToken>("TOKEN", directorySessionStorage(File("build/.sessions"))) {
             transform(SessionTransportTransformerEncrypt(Keys.EncryptKey, Keys.SignKey))
+            //to enable using cookies by js
+            cookie.httpOnly=false
             cookie.maxAgeInSeconds =jwtExpirationSeconds
         }
     }
-
 }
 
 
