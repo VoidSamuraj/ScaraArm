@@ -14,6 +14,10 @@ import io.ktor.server.sessions.*
 import io.ktor.server.util.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -25,7 +29,6 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 const val filesFolder="FILES"
-
 fun Route.fileRoute(){
     route("/files"){
         get {
@@ -69,40 +72,12 @@ fun Route.fileRoute(){
             }
         }
         webSocket("/draw"){
-            println("SOCKET")
-            //TODO remove MyToken
-            val token = call.parameters["token"] as MyToken?
-            val fileName = call.parameters["fileName"]
-            println("TOKEN: "+token)
-            if(token!=null)
-            checkUserPermission(token){
-                println("SOCKET2")
-/*
-                try {
-                    for (frame in incoming) {
-                        when (frame) {
-                            is Frame.Text -> {
-                                val receivedText = frame.readText()
-                                println("SOCKET Received message: $receivedText")
-
-                                // Tutaj możesz przetwarzać otrzymane dane, np. wysłać odpowiedź lub wywołać inną funkcję
-                            }
-                            else->{
-                                println("SOCKET ELSE")
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                println("WebSocket connection error: ${e.message}")
-            } finally {
-                println("WebSocket connection closed")
-            }*/
-
+            if(mToken!=null)
+            checkUserPermission(mToken!!){
                 for (frame in incoming) {
-                    println("FRAAME "+frame)
                     if (frame is Frame.Text) {
-                        val fileName = frame.readText()
-                        println("FNAME "+fileName)
+                        val json = Json.parseToJsonElement(frame.readText())
+                        val fileName = json.jsonObject["fileName"]?.jsonPrimitive?.contentOrNull
                         val ret = GCodeSender.sendGCode(filesFolder + "/" + fileName) { line ->
                             send(line)
                         }
@@ -114,7 +89,7 @@ fun Route.fileRoute(){
                                 call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
                             }
                         }
-                        send("File is processing")
+                        send("File processed")
                     }else
                         send("File not found")
                 }

@@ -4,6 +4,7 @@ import com.fazecast.jSerialComm.SerialPortInvalidPortException
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
 import java.io.*
 import java.util.*
 import java.util.logging.Level
@@ -215,6 +216,7 @@ object GCodeSender {
                 }
             val fin = File(fileToSend)
             resetPosition()
+            var lineNumber=1
             withContext(Dispatchers.IO) {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
@@ -222,7 +224,16 @@ object GCodeSender {
                         while (br.readLine().also { line = it } != null) {
                             line?.let {
                                 printWriter!!.write(it)
-                                onLineRead("CX${position[0]} CY${position[1]} $it")
+                                var map:Map<String,String> = mapOf(Pair("line","$lineNumber"), Pair("CX","${position[0]}"), Pair("CY","${position[1]}"))
+                                val parts = it.split(" ").filter {it!="G1"}
+                                map=map.plus (parts.associate {
+                                    val key = it.substring(0, 1)
+                                    val value = it.substring(1)
+                                    key to value
+                                })
+                                val jsonObject= JsonObject(map.mapValues { JsonPrimitive(it.value) });
+                                onLineRead(jsonObject.toString())
+                                ++lineNumber
                             }
                             printWriter!!.flush()
                             for (i in 1..3) {

@@ -446,13 +446,6 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
     return mesh;
 }
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
-
-
 /**
  * Function to draw file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
@@ -494,7 +487,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     var zPos=0;
     var changedSomething=false;
     const scale=0.1;
-    const socket = new WebSocket('ws://localhost:8080/files/draw?token=' + getCookie("TOKEN"));
+    const socket = new WebSocket('ws://localhost:8080/files/draw');
         //sending code to arm
     socket.onopen = function(event) {
         const message = JSON.stringify({ fileName: fileName });
@@ -504,27 +497,14 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     socket.onmessage = function(event) {
         // Obsługa otrzymanej wiadomości
         console.log('Received message from server:', event.data);
+        if(event.data == "File processed"){
+        socket.close();
+        }
     };
-/*
-         fetch("/files/"+fileName+"/draw", {method: "POST",body: params}).then(response => {
+    socket.onclose = function(event) {
+        console.log("WebSocket connection closed:", event);
+    };
 
-                  if (response.ok) {
-                    console.log("File is processing.");
-                  }else if(response.status == 500){
-                                     console.error("Failed to draw file");
-                                 }else if(response.status == 503){
-                                    onArmDisconnect();
-                                 }
-
-                   else {
-                    console.error("ERROR during file process. "+response);
-                  }
-                })
-                .catch(error => {
-                  console.error("ERROR occurred:", error);
-                });*/
-
-    
     //draw file on the screen
     if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
         fetch('/files/'+fileName, { method: 'GET' })
@@ -589,7 +569,6 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
                                         lastHeight=currentHeight;
                                     }
                                     currentHeight=points[index + 1].z;
-                                    console.log("POS "+points[index + 1].x+" "+points[index + 1].y+" "+points[index + 1].z);
                                     draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
                                 }, 500 * index);
                             })(i);

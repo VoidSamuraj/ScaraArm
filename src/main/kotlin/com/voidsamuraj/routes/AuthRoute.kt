@@ -26,6 +26,8 @@ import io.ktor.util.pipeline.*
 import java.io.File
 import java.util.Date
 
+//system will allow only one user to control arm and that will quick fix web socket auth problem
+var mToken:MyToken?=null
 var errorMessage:String=""
 suspend fun PipelineContext<Unit,ApplicationCall>.onAuthenticate(user:User){
     generateToken(user)
@@ -36,6 +38,7 @@ suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess
     val token=call.sessions.get("TOKEN")as MyToken?
     checkPermission(token = token,
         onSuccess = {
+            mToken=token
             onSuccess()
         },
         onFailure = {
@@ -45,6 +48,7 @@ suspend fun PipelineContext<Unit, ApplicationCall>.checkUserPermission(onSuccess
 suspend fun  DefaultWebSocketServerSession.checkUserPermission(token:MyToken, onSuccess:suspend ()->Unit){
     checkPermission(token = token,
         onSuccess = {
+            mToken=token
             onSuccess()
         },
         onFailure = {
@@ -59,9 +63,9 @@ fun PipelineContext<Unit,ApplicationCall>.generateToken(user:User):MyToken{
         .withClaim("filesId", user.filesId)
         .withExpiresAt(Date(System.currentTimeMillis() + jwtExpirationSeconds* 1000))
         .sign(Algorithm.HMAC256(Keys.JWTSecret))
-    val myToken=MyToken(token)
-    call.sessions.set(myToken)
-    return myToken
+    mToken= MyToken(token)
+    call.sessions.set(mToken)
+    return mToken!!
 }
 
 suspend fun PipelineContext<Unit,ApplicationCall>.onAuthError(){
