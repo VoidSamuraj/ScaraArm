@@ -2,7 +2,7 @@ import * as THREE from '/static/three/build/three.module.js'
 import {onArmDisconnect} from '/static/display.js'
 
 // Functions to draw elements on scene
-
+var socket;
 var stlGroup = new THREE.Group();
 
 /**
@@ -487,25 +487,65 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     var zPos=0;
     var changedSomething=false;
     const scale=0.1;
-    const socket = new WebSocket('ws://localhost:8080/files/draw');
+
+    socket = new WebSocket('ws://localhost:8080/files/draw');
         //sending code to arm
     socket.onopen = function(event) {
         const message = JSON.stringify({ fileName: fileName });
         socket.send(message);
-        console.log("Started websocket connection")
     };
     socket.onmessage = function(event) {
         // Obsługa otrzymanej wiadomości
         console.log('Received message from server:', event.data);
-        if(event.data == "File processed"){
-        socket.close();
+        if(event.data == "File processed" || event.data == "Failed to draw file" || event.data == "Connection lost"){
+            socket.close();
+            return;
         }
+        changedSomething=false;
+
+        let data = JSON.parse(event.data);
+        if ('X' in data){
+            changedSomething=true;
+            xPos=parseFloat(data.X)*scale;
+        }
+        if ('Y' in data){
+            changedSomething=true;
+            yPos=parseFloat(data.Y)*scale;
+        }
+        if ('Z' in data){
+            changedSomething=true;
+            if(!firstHeightSet){
+                currentHeight=zPos;
+                firstHeightSet=true;
+            }
+            if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                currentHeight=currentHeight-(zPos*0.5);
+                secondHeightSet=true;
+            }
+            zPos=parseFloat(data.Z)*scale;
+        }
+        if(changedSomething)
+        points.push(new THREE.Vector3(xPos, yPos, zPos));
+
+        if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
+            currentHeight=points[0].z- 0.1;
+        setTimeout(function() {
+            //update arm angles for UI
+            onLineRead(points[points.length-1],isRightSide);
+            if(currentHeight!=points[points.length-1].z){
+                lastHeight=currentHeight;
+            }
+            currentHeight=points[points.length-1].z;
+            if(points.length >=2)
+                draw3DLine(stlGroup,points[points.length-2],points[points.length-1],currentHeight-lastHeight);
+        }, 500);
     };
     socket.onclose = function(event) {
         console.log("WebSocket connection closed:", event);
     };
 
     //draw file on the screen
+    /*
     if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
         fetch('/files/'+fileName, { method: 'GET' })
                 .then(response => response.blob())
@@ -582,7 +622,14 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
                     console.error('Error:', error);
         });
     }
+    */
 }
+
+function restoreDrawing(){
+
+}
+
+
 /**
  * Function to draw line of model from the code, being drawed on the screen and add it to group specified as argument.
  * @param {THREE.Group} group - group of object being drawn

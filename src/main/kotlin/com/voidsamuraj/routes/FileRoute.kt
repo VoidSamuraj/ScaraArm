@@ -1,9 +1,11 @@
 package com.voidsamuraj.routes
 
 import com.voidsamuraj.dao.dao
+import com.voidsamuraj.gCodeService
 import com.voidsamuraj.gcode.GCodeSender
 import com.voidsamuraj.models.MyToken
 import com.voidsamuraj.plugins.getUserId
+import com.voidsamuraj.webSocketHandler
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
@@ -13,11 +15,10 @@ import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.server.util.*
 import io.ktor.server.websocket.*
-import io.ktor.websocket.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -26,9 +27,10 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.*
 
 const val filesFolder="FILES"
+var isCurrentDrawing=false
 fun Route.fileRoute(){
     route("/files"){
         get {
@@ -71,31 +73,19 @@ fun Route.fileRoute(){
                 call.respond(files)
             }
         }
+
         webSocket("/draw"){
             if(mToken!=null)
             checkUserPermission(mToken!!){
-                for (frame in incoming) {
-                    if (frame is Frame.Text) {
-                        val json = Json.parseToJsonElement(frame.readText())
-                        val fileName = json.jsonObject["fileName"]?.jsonPrimitive?.contentOrNull
-                        val ret = GCodeSender.sendGCode(filesFolder + "/" + fileName) { line ->
-                            send(line)
-                        }
-                        when(ret){
-                            GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
-                            GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to draw file")
-                            GCodeSender.StateReturn.PORT_DISCONNECTED->{
-                                GCodeSender.closePort()
-                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
-                            }
-                        }
-                        send("File processed")
-                    }else
-                        send("File not found")
+                if(!isCurrentDrawing)
+                CoroutineScope(Dispatchers.Default).launch {
+                    webSocketHandler.handleWebSocket(this@webSocket)
                 }
-
+                    gCodeService.startSendingData()
             }
+            awaitCancellation()
         }
+
         route("/{fileName}"){
             get{
                 checkUserPermission(){

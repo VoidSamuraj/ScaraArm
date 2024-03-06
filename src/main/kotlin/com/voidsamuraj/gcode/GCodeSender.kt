@@ -2,7 +2,9 @@ package com.voidsamuraj.gcode
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortInvalidPortException
 import io.ktor.util.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import java.io.*
@@ -207,7 +209,7 @@ object GCodeSender {
      * @see StateReturn
      *
      */
-     suspend fun sendGCode(fileToSend: String, onLineRead:suspend (line:String)->Unit):StateReturn {
+     suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
         try {
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -221,7 +223,7 @@ object GCodeSender {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         var line: String?
-                        while (br.readLine().also { line = it } != null) {
+                        while (br.readLine().also { line = it } != null && scope.isActive) {
                             line?.let {
                                 printWriter!!.write(it)
                                 var map:Map<String,String> = mapOf(Pair("line","$lineNumber"), Pair("CX","${position[0]}"), Pair("CY","${position[1]}"))
@@ -231,7 +233,7 @@ object GCodeSender {
                                     val value = it.substring(1)
                                     key to value
                                 })
-                                val jsonObject= JsonObject(map.mapValues { JsonPrimitive(it.value) });
+                                val jsonObject= JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                 onLineRead(jsonObject.toString())
                                 ++lineNumber
                             }
