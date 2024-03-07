@@ -30,7 +30,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 const val filesFolder="FILES"
-var isCurrentDrawing=false
 fun Route.fileRoute(){
     route("/files"){
         get {
@@ -77,11 +76,14 @@ fun Route.fileRoute(){
         webSocket("/draw"){
             if(mToken!=null)
             checkUserPermission(mToken!!){
-                if(!isCurrentDrawing)
+                if(!webSocketHandler.isCurrentDrawing){
                 CoroutineScope(Dispatchers.Default).launch {
                     webSocketHandler.handleWebSocket(this@webSocket)
                 }
                     gCodeService.startSendingData()
+                }else{
+                    webSocketHandler.addClient(this@webSocket)
+                }
             }
             awaitCancellation()
         }

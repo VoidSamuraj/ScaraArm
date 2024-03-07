@@ -4,7 +4,7 @@ import {onArmDisconnect} from '/static/display.js'
 // Functions to draw elements on scene
 var socket;
 var stlGroup = new THREE.Group();
-
+var firstDrawnLine=0;
 /**
  * Create circle and adds it to scene.
  * @param {number} size - circle size.
@@ -488,144 +488,206 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     var changedSomething=false;
     const scale=0.1;
 
-    socket = new WebSocket('ws://localhost:8080/files/draw');
-        //sending code to arm
-    socket.onopen = function(event) {
-        const message = JSON.stringify({ fileName: fileName });
-        socket.send(message);
-    };
-    socket.onmessage = function(event) {
-        // Obsługa otrzymanej wiadomości
-        console.log('Received message from server:', event.data);
-        if(event.data == "File processed" || event.data == "Failed to draw file" || event.data == "Connection lost"){
-            socket.close();
-            return;
-        }
-        changedSomething=false;
-
-        let data = JSON.parse(event.data);
-        if ('X' in data){
-            changedSomething=true;
-            xPos=parseFloat(data.X)*scale;
-        }
-        if ('Y' in data){
-            changedSomething=true;
-            yPos=parseFloat(data.Y)*scale;
-        }
-        if ('Z' in data){
-            changedSomething=true;
-            if(!firstHeightSet){
-                currentHeight=zPos;
-                firstHeightSet=true;
+   if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
+        socket = new WebSocket('ws://localhost:8080/files/draw');
+            //sending code to arm
+        socket.onopen = function(event) {
+            const message = JSON.stringify({ fileName: fileName });
+            socket.send(message);
+        };
+        socket.onmessage = function(event) {
+            // Obsługa otrzymanej wiadomości
+            console.log('Received message from server:', event.data);
+            if(event.data == "File processed" || event.data == "Connection lost" || event.data == "File not found" ){
+                firstDrawnLine=0;
+                socket.close();
+                return;
             }
-            if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
-                currentHeight=currentHeight-(zPos*0.5);
-                secondHeightSet=true;
+            changedSomething=false;
+
+            let data = JSON.parse(event.data);
+            try{
+                if ('X' in data){
+                    changedSomething=true;
+                    xPos=parseFloat(data.X)*scale;
+                }
+                if ('Y' in data){
+                    changedSomething=true;
+                    yPos=parseFloat(data.Y)*scale;
+                }
+                if ('Z' in data){
+                    changedSomething=true;
+                    if(!firstHeightSet){
+                        currentHeight=zPos;
+                        firstHeightSet=true;
+                    }
+                    if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                        currentHeight=currentHeight-(zPos*0.5);
+                        secondHeightSet=true;
+                    }
+                    zPos=parseFloat(data.Z)*scale;
+                }
+            }catch(error){
+                console.error('Error:', error);
             }
-            zPos=parseFloat(data.Z)*scale;
-        }
-        if(changedSomething)
-        points.push(new THREE.Vector3(xPos, yPos, zPos));
+            if(changedSomething)
+            points.push(new THREE.Vector3(xPos, yPos, zPos));
 
-        if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
-            currentHeight=points[0].z- 0.1;
-        setTimeout(function() {
-            //update arm angles for UI
-            onLineRead(points[points.length-1],isRightSide);
-            if(currentHeight!=points[points.length-1].z){
-                lastHeight=currentHeight;
-            }
-            currentHeight=points[points.length-1].z;
-            if(points.length >=2)
-                draw3DLine(stlGroup,points[points.length-2],points[points.length-1],currentHeight-lastHeight);
-        }, 500);
-    };
-    socket.onclose = function(event) {
-        console.log("WebSocket connection closed:", event);
-    };
-
-    //draw file on the screen
-    /*
-    if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
-        fetch('/files/'+fileName, { method: 'GET' })
-                .then(response => response.blob())
-                .then(blob => {
-
-                    var reader = new FileReader();
-                    reader.onload = function() {
-                        var fileData = reader.result;
-                        var lines = fileData.split('\n');
-                        //push vector to array if position changed
-                        lines.forEach(line => {
-                        //
-                            if((!line.includes(';')) && line.includes("G1")){
-                                let commands=line.split(' ');
-                                changedSomething=false;
-                                commands.forEach(command=>{
-                                    var firstCharacter = command.charAt(0);
-                                    switch (firstCharacter) {
-                                        case "X":
-                                            xPos=parseFloat(command.slice(1))*scale;
-                                            changedSomething=true;
-                                            break;
-                                        case "Y":
-                                            yPos=parseFloat(command.slice(1))*scale;
-                                            changedSomething=true;
-                                            break;
-                                        case "Z":
-                                            zPos=parseFloat(command.slice(1))*scale;
-                                            changedSomething=true;
-
-                                            if(!firstHeightSet){
-                                                currentHeight=zPos;
-                                                firstHeightSet=true;
-                                            }
-                                            if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
-                                                currentHeight=currentHeight-(zPos*0.5);
-                                                secondHeightSet=true;
-                                            }
-                                            break;
-                                        default:
-                                            break;
-                                    }
-
-                                });
-                                if(changedSomething){
-                                    points.push(new THREE.Vector3(xPos, yPos, zPos));
-                                }
-                            }
-                            //
-
-                        });
-                        //current height is used to calculate thickness of line, if not set then set as start point -0.1
-                        if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
-                            currentHeight=points[0].z- 0.1;
-                        for(var i = 0; i < points.length - 1; i++) {
-                            (function(index) {
-                                setTimeout(function() {
-                                    //update arm angles for UI
-                                    onLineRead(points[index + 1],isRightSide);
-                                    if(currentHeight!=points[index + 1].z){
-                                        lastHeight=currentHeight;
-                                    }
-                                    currentHeight=points[index + 1].z;
-                                    draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
-                                }, 500 * index);
-                            })(i);
-                        }
-
-                };
-                reader.readAsText(blob);
-
-        })
-                .catch(error => {
-                    console.error('Error:', error);
-        });
+            if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
+                currentHeight=points[0].z- 0.1;
+            setTimeout(function() {
+                //update arm angles for UI
+                onLineRead(points[points.length-1],isRightSide);
+                if(currentHeight!=points[points.length-1].z){
+                    lastHeight=currentHeight;
+                }
+                currentHeight=points[points.length-1].z;
+                if(points.length >=2)
+                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],currentHeight-lastHeight);
+            }, 500);
+        };
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed:", event);
+        };
     }
-    */
 }
 
-function restoreDrawing(){
+export function restoreDrawing(){
+        var fileName=null;
+        socket = new WebSocket('ws://localhost:8080/files/draw');
+        socket.onmessage = function(event) {
+            // Obsługa otrzymanej wiadomości
+            console.log('Received message from server:', event.data);
+            if(event.data == "File processed" || event.data == "Connection lost" || event.data == "File not found" ){
+                firstDrawnLine=0;
+                socket.close();
+                return;
+            }
+            changedSomething=false;
+
+            let data = JSON.parse(event.data);
+            if("fileName" in data){
+                fileName = data.fileName;
+            }
+
+            if(firstDrawnLine==0 && "line" in data)
+                firstDrawnLine= parseInt(data.line);
+            if ('X' in data){
+                changedSomething=true;
+                xPos=parseFloat(data.X)*scale;
+            }
+            if ('Y' in data){
+                changedSomething=true;
+                yPos=parseFloat(data.Y)*scale;
+            }
+            if ('Z' in data){
+                changedSomething=true;
+                if(!firstHeightSet){
+                    currentHeight=zPos;
+                    firstHeightSet=true;
+                }
+                if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                    currentHeight=currentHeight-(zPos*0.5);
+                    secondHeightSet=true;
+                }
+                zPos=parseFloat(data.Z)*scale;
+            }
+            if(changedSomething)
+            points.push(new THREE.Vector3(xPos, yPos, zPos));
+
+            if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
+                currentHeight=points[0].z- 0.1;
+            setTimeout(function() {
+                //update arm angles for UI
+                onLineRead(points[points.length-1],isRightSide);
+                if(currentHeight!=points[points.length-1].z){
+                    lastHeight=currentHeight;
+                }
+                currentHeight=points[points.length-1].z;
+                if(points.length >=2)
+                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],currentHeight-lastHeight);
+            }, 500);
+        };
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed:", event);
+        };
+        setTimeout(function() {
+            if(fileName!=null)
+                fetch('/files/'+fileName, { method: 'GET' })
+                        .then(response => response.blob())
+                        .then(blob => {
+
+                            var reader = new FileReader();
+                            reader.onload = function() {
+                                var fileData = reader.result;
+                                var lines = fileData.split('\n');
+                                //push vector to array if position changed
+                                var lineNumber=1;
+                                for (let i = 0; i < lines.length; i++) {
+                                    if(lineNumber>=firstDrawnLine)
+                                        break;
+                                    if((!lines[i].includes(';')) && lines[i].includes("G1")){
+                                        let commands=lines[i].split(' ');
+                                        changedSomething=false;
+                                        commands.forEach(command=>{
+                                            var firstCharacter = command.charAt(0);
+                                            switch (firstCharacter) {
+                                                case "X":
+                                                    xPos=parseFloat(command.slice(1))*scale;
+                                                    changedSomething=true;
+                                                    break;
+                                                case "Y":
+                                                    yPos=parseFloat(command.slice(1))*scale;
+                                                    changedSomething=true;
+                                                    break;
+                                                case "Z":
+                                                    zPos=parseFloat(command.slice(1))*scale;
+                                                    changedSomething=true;
+
+                                                    if(!firstHeightSet){
+                                                        currentHeight=zPos;
+                                                        firstHeightSet=true;
+                                                    }
+                                                    if(firstHeightSet && !secondHeightSet && zPos!=currentHeight){
+                                                        currentHeight=currentHeight-(zPos*0.5);
+                                                        secondHeightSet=true;
+                                                    }
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+
+                                        });
+                                        if(changedSomething){
+                                            points.push(new THREE.Vector3(xPos, yPos, zPos));
+                                        }
+                                    }
+                                }
+                                //current height is used to calculate thickness of line, if not set then set as start point -0.1
+                                if((points[0] !== undefined)&&!(firstHeightSet&&secondHeightSet))
+                                    currentHeight=points[0].z- 0.1;
+                                for(var i = 0; i < points.length - 1; i++) {
+                                    (function(index) {
+                                        setTimeout(function() {
+                                            //update arm angles for UI
+                                            onLineRead(points[index + 1],isRightSide);
+                                            if(currentHeight!=points[index + 1].z){
+                                                lastHeight=currentHeight;
+                                            }
+                                            currentHeight=points[index + 1].z;
+                                            draw3DLine(stlGroup,points[index],points[index+1],currentHeight-lastHeight);
+                                        }, 500 * index);
+                                    })(i);
+                                }
+
+                        };
+                        reader.readAsText(blob);
+
+                })
+                        .catch(error => {
+                            console.error('Error:', error);
+                });
+        }, 500);
 
 }
 

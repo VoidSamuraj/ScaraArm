@@ -13,6 +13,7 @@ import {
   drawArmRange,
   getMinDistance,
   drawFile,
+  restoreDrawing
 } from "/static/elements.js";
 import {
   setupCanvasHelper,
@@ -272,10 +273,6 @@ var previousPosition = null;
 var toUndo = new THREE.Vector3();
 var temp = new THREE.Vector3();
 
-//update helpers rotation
-document.addEventListener("DOMContentLoaded", function () {
-  updateHelper();
-});
 controls.addEventListener("change", updateHelper);
 
 animate();
@@ -1389,3 +1386,9 @@ function drawFileOnScene(fileName) {
   drawFile(scene, fileName, setToolPosition, armShift, rightSide);
 }
 window.drawFileOnScene = drawFileOnScene;
+
+//update helpers rotation
+document.addEventListener("DOMContentLoaded", function () {
+  updateHelper();
+  restoreDrawing();
+});

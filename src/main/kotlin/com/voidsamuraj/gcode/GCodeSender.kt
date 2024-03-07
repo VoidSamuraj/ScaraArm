@@ -223,34 +223,48 @@ object GCodeSender {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         var line: String?
-                        while (br.readLine().also { line = it } != null && scope.isActive) {
+                        while (br.readLine().also {
+                            val index=it.indexOf(';')
+                                line = if(index==-1)
+                                    it
+                                else
+                                    it.substring(0,index)
+                        } != null && scope.isActive) {
                             line?.let {
-                                printWriter!!.write(it)
-                                var map:Map<String,String> = mapOf(Pair("line","$lineNumber"), Pair("CX","${position[0]}"), Pair("CY","${position[1]}"))
-                                val parts = it.split(" ").filter {it!="G1"}
-                                map=map.plus (parts.associate {
-                                    val key = it.substring(0, 1)
-                                    val value = it.substring(1)
-                                    key to value
-                                })
-                                val jsonObject= JsonObject(map.mapValues { JsonPrimitive(it.value) })
-                                onLineRead(jsonObject.toString())
-                                ++lineNumber
-                            }
-                            printWriter!!.flush()
-                            for (i in 1..3) {
-                                when (isOKReturned(bufferedInputStream!!)) {
-                                    StateReturn.SUCCESS -> break
-                                    StateReturn.PORT_DISCONNECTED -> {
-                                        System.err.println("Arm is disconnected")
-                                        return@withContext StateReturn.PORT_DISCONNECTED
-                                    }
+                                if (line!!.trim().length > 1){
+                                    printWriter!!.write(it)
+                                    var map: Map<String, String> = mapOf(
+                                        Pair("line", "$lineNumber"),
+                                        Pair("CX", "${position[0]}"),
+                                        Pair("CY", "${position[1]}")
+                                    )
+                                    println(line)
+                                    val parts = it.split(" ").filter { it != "G1" }
+                                    map = map.plus(parts.filter { it.isNotBlank() }.associate {
+                                        val key = it.substring(0, 1)
+                                        val value = it.substring(1)
+                                        key to value
+                                    })
+                                    val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
+                                    onLineRead(jsonObject.toString())
+                                    ++lineNumber
 
-                                    else -> {}
-                                }
-                                if (i == 3) {
-                                    System.err.println("Arm is not responding")
-                                    return@withContext StateReturn.FAILURE
+                                    printWriter!!.flush()
+                                    for (i in 1..3) {
+                                        when (isOKReturned(bufferedInputStream!!)) {
+                                            StateReturn.SUCCESS -> break
+                                            StateReturn.PORT_DISCONNECTED -> {
+                                                System.err.println("Arm is disconnected")
+                                                return@withContext StateReturn.PORT_DISCONNECTED
+                                            }
+
+                                            else -> {}
+                                        }
+                                        if (i == 3) {
+                                            System.err.println("Arm is not responding")
+                                            return@withContext StateReturn.FAILURE
+                                        }
+                                    }
                                 }
                             }
                         }

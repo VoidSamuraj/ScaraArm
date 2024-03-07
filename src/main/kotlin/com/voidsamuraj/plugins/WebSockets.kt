@@ -1,7 +1,6 @@
 package com.voidsamuraj.plugins
 import com.voidsamuraj.gcode.GCodeSender
 import com.voidsamuraj.routes.filesFolder
-import com.voidsamuraj.routes.isCurrentDrawing
 import io.ktor.server.application.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
@@ -23,6 +22,7 @@ fun Application.configureWebSockets() {
 class WebSocketHandler {
     private val clients = mutableListOf<WebSocketSession>()
     var fileName:String?=null
+    var isCurrentDrawing=false
     suspend fun handleWebSocket(session: WebSocketServerSession) {
         clients.add(session)
         for (frame in session.incoming) {
@@ -32,6 +32,11 @@ class WebSocketHandler {
             }else
                 session.send("File not found")
         }
+    }
+    suspend fun addClient(session: WebSocketServerSession){
+        clients.add(session)
+        if(fileName!=null)
+            session.send(Frame.Text(fileName!!))
     }
     suspend fun sendData(data: String) {
         val iterator= clients.iterator()
@@ -58,30 +63,33 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
                     delay(100)
                 }catch(e:Exception){System.err.println(e.localizedMessage)}
             }
-            if (isActive && fName!=null) {
-                isCurrentDrawing =true
+            if (isActive && fName!=null && !webSocketHandler.isCurrentDrawing) {
+                webSocketHandler.isCurrentDrawing =true
                 val ret = GCodeSender.sendGCode(fileToSend = "$filesFolder/$fName", scope = scope) { line ->
                     webSocketHandler.sendData(line)
                 }
-                isCurrentDrawing =false
+                webSocketHandler.isCurrentDrawing =false
 
                 when(ret){
                     GCodeSender.StateReturn.SUCCESS->{
+                        webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("File processed")
                     }
                     GCodeSender.StateReturn.FAILURE->{
+                        webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("Failed to draw file")
                     }
                     GCodeSender.StateReturn.PORT_DISCONNECTED->{
                         GCodeSender.closePort()
+                        webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("Connection lost")
                     }
                 }
-            }else if(isActive && fName==null){
-                webSocketHandler.sendData("Failed to draw file")
-            }else{
+            }else if(!isActive && fName!=null){
+                webSocketHandler.isCurrentDrawing=false
                 webSocketHandler.sendData("File processed")
             }
+            webSocketHandler.isCurrentDrawing=false
         }
     }
 
