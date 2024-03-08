@@ -26,7 +26,17 @@ Ktor server to control Scara arm
 ## Installation
 
 - server works with robotic arm based on <a href="https://github.com/VoidSamuraj/Arduino-Scara-Arm">Arduino-Scara-Arm</a>
-- Insert your keys in: src/main/kotlin/com/voidsamuraj/Keys.kt.
+- Insert your keys in: src/main/kotlin/com/voidsamuraj/Keys.kt:
+```
+package com.voidsamuraj
+import io.ktor.util.*
+
+object Keys {
+    val EncryptKey = hex("YOUR_ENCRYPTION_KEY")
+    val SignKey = hex("YOUR_SIGN_KEY")
+    val JWTSecret = "YOUR_JWT_SECRET"
+}
+  ```
 - The Project uses Kotlin and requires JVM.
 - There is an included Three.js library; if you want to change the version, you have to change the import paths in the used lib files, as I did, e.g., "/static/three/build/three.module.js." Lib is under: src/main/resources/files/three.
 - Build jar and Run.
