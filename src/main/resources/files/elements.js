@@ -456,9 +456,6 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
  * @TODO Synchronize arm code execution and Drawing state
  */
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
-    const data = {isRightSide: ''+isRightSide};
-    const params = new URLSearchParams(data);
-
     var lastHeight=0;
     var currentHeight=0;
     var firstHeightSet=false;
@@ -479,7 +476,6 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     stlGroup.translateZ(-1);
 
     scene.add(stlGroup);
-    var totalAngle=0;
     var points = [];
 
     var xPos=0;
@@ -552,8 +548,35 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide){
     }
 }
 
-export function restoreDrawing(){
+export function restoreDrawing(scene,onLineRead,xShift,isRightSide){
         var fileName=null;
+        var lastHeight=0;
+        var currentHeight=0;
+        var firstHeightSet=false;
+        var secondHeightSet=false;
+        stlGroup.clear();
+        scene.remove(stlGroup);
+        stlGroup = new THREE.Group();
+
+        if(isRightSide){
+            stlGroup.rotateX(-Math.PI/2);
+            stlGroup.rotateZ(Math.PI/2);
+            stlGroup.translateY(-xShift);
+        }else{
+            stlGroup.rotateX(-Math.PI/2);
+            stlGroup.rotateZ(Math.PI);
+            stlGroup.translateX(-xShift);
+        }
+        stlGroup.translateZ(-1);
+
+        scene.add(stlGroup);
+        var points = [];
+
+        var xPos=0;
+        var yPos=0;
+        var zPos=0;
+        var changedSomething=false;
+        const scale=0.1;
         socket = new WebSocket('ws://localhost:8080/files/draw');
         socket.onmessage = function(event) {
             // Obsługa otrzymanej wiadomości

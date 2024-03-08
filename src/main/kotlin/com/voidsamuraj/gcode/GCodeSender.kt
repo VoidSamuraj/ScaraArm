@@ -238,7 +238,6 @@ object GCodeSender {
                                         Pair("CX", "${position[0]}"),
                                         Pair("CY", "${position[1]}")
                                     )
-                                    println(line)
                                     val parts = it.split(" ").filter { it != "G1" }
                                     map = map.plus(parts.filter { it.isNotBlank() }.associate {
                                         val key = it.substring(0, 1)
@@ -247,7 +246,6 @@ object GCodeSender {
                                     })
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString())
-                                    ++lineNumber
 
                                     printWriter!!.flush()
                                     for (i in 1..3) {
@@ -266,6 +264,7 @@ object GCodeSender {
                                         }
                                     }
                                 }
+                                ++lineNumber
                             }
                         }
                         endCommunication(printWriter!!)

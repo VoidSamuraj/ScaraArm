@@ -1390,5 +1390,5 @@ window.drawFileOnScene = drawFileOnScene;
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {
   updateHelper();
-  restoreDrawing();
+  restoreDrawing(scene, setToolPosition, armShift, rightSide);
 });
