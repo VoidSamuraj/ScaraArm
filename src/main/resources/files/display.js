@@ -476,7 +476,7 @@ var armRange = drawArmRange(
   MAX_ARM1_ANGLE,
   MAX_ARM2_ANGLE,
   MAX_ARM1_ANGLE_COLLISION,
-  rightSide
+  !rightSide
 );
 scene.add(armRange);
 
@@ -734,7 +734,7 @@ function changeArmDimens() {
     MAX_ARM1_ANGLE,
     MAX_ARM2_ANGLE,
     MAX_ARM1_ANGLE_COLLISION,
-    rightSide
+    !rightSide
   );
   scene.add(armRange);
 }
@@ -1303,7 +1303,7 @@ function setToolPosition(vector, isRightSide) {
 
   toolMesh.translateY(vector.z - currentHeight);
   currentHeight = vector.z;
-  moveToolOnSceneToPosition(false);
+  moveToolOnSceneToPosition(false, 5);
   updatePositionText();
 }
 
@@ -1383,12 +1383,12 @@ function selectSTL() {
  * @param {string} fileName
  */
 function drawFileOnScene(fileName) {
-  drawFile(scene, fileName, setToolPosition, armShift, rightSide);
+  drawFile(scene, fileName, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
 }
 window.drawFileOnScene = drawFileOnScene;
 
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {
   updateHelper();
-  restoreDrawing(scene, setToolPosition, armShift, rightSide);
+  restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
 });

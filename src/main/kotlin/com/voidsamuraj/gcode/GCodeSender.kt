@@ -2,10 +2,7 @@ package com.voidsamuraj.gcode
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortInvalidPortException
 import io.ktor.util.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import java.io.*
 import java.util.*
@@ -21,14 +18,11 @@ import kotlin.math.*
 @Throws(InterruptedException::class, IOException::class)
 fun main() {
     GCodeSender.openPort()
-    /*val src = "/home/karol/Pobrane/t3.txt"
+    val src = "/home/karol/Intelij/scaracp/scara-arm2/FILES/xyz.gcode"
     val out = "/home/karol/Pobrane/output.txt"
     // if false generated code is in degrees, else steps are calculated
-    val sendGCode = false
-    GCodeSender.makeGCodeFile(src, out, sendGCode, false)
-    if (sendGCode) {
-        GCodeSender.sendGCode(out)
-    }*/
+    val inSteps = false
+    GCodeSender.makeGCodeFile(src, out, inSteps, false)
 }
 object GCodeSender {
 
@@ -52,6 +46,7 @@ object GCodeSender {
     private var bufferedInputStream:BufferedInputStream? = null
     private var printWriter:PrintWriter? = null
     private var SERIAL_PORT = "ttyACM0" //"COM5";
+    private val maxArmMovement = 55.0
     /**
      * sets port and closes previous connections
      * @param port should look like: Linux - "/dev/ttyACM0", Windows - "COM5"
@@ -80,6 +75,8 @@ object GCodeSender {
     private var speedrate = 1.0 // speed multiply
     private var speedNow = 0.0
     private var R = arm2Length + arm1Length
+    private val minRadius: Double = hypot(arm2Length*cos(-maxArmMovement*PI/180), arm2Length*sin(-maxArmMovement*PI/180)+arm1Length)
+
     private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
     private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
     private var maxMovement = 10 // all interpolation steps, divide one command to have linear movement
@@ -231,22 +228,26 @@ object GCodeSender {
                                     it.substring(0,index)
                         } != null && scope.isActive) {
                             line?.let {
-                                if (line!!.trim().length > 1){
-                                    printWriter!!.write(it)
+                                if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ){
                                     var map: Map<String, String> = mapOf(
-                                        Pair("line", "$lineNumber"),
-                                        Pair("CX", "${position[0]}"),
-                                        Pair("CY", "${position[1]}")
+                                        Pair("line", "$lineNumber")
                                     )
-                                    val parts = it.split(" ").filter { it != "G1" }
+                                    val parts = line!!.split(" ").filter { it != "G1" }
                                     map = map.plus(parts.filter { it.isNotBlank() }.associate {
-                                        val key = it.substring(0, 1)
-                                        val value = it.substring(1)
-                                        key to value
+                                        if(it.contains("G90"))
+                                            "G90" to ""
+                                        else if(it.contains("G91"))
+                                            "G91" to ""
+                                        else {
+                                            val key = it.substring(0, 1)
+                                            val value = it.substring(1)
+                                            key to value
+                                        }
                                     })
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString())
 
+                                    printWriter!!.write(it)
                                     printWriter!!.flush()
                                     for (i in 1..3) {
                                         when (isOKReturned(bufferedInputStream!!)) {
@@ -346,14 +347,19 @@ object GCodeSender {
             FileWriter(fout).use { fw ->
                 var fr= FileReader(fin)
                 var br = BufferedReader(fr)
-                var line: String?
+                var line: String? =null
                 var maxSpeed = 0.0
 
                 //loop for search max speed
-                while (br.readLine().also { line = it } != null) {
+                while (br.readLine()?.also {
+                        val index = it.indexOf(';')
+                        line = if (index == -1)
+                            it
+                        else
+                            it.substring(0, index)
+                } != null) {
                     val nr = line!!.indexOf('F')
-                    val comment = line!!.indexOf(';')
-                    if (nr != -1 && nr < comment) {
+                    if (nr != -1) {
                         val end = line!!.indexOf(' ', nr)
                         val newSpeed: Double = if (end != -1)
                             line!!.substring(nr + 1, end).toDouble()
@@ -368,7 +374,13 @@ object GCodeSender {
                 fr = FileReader(fin)
                 br = BufferedReader(fr)
                 fw.write("commands $commandNumber\n")
-                while (br.readLine().also { line = it } != null) {
+                while (br.readLine()?.also {
+                        val index=it.indexOf(';')
+                        line = if(index==-1)
+                            it
+                        else
+                            it.substring(0,index)
+                    } != null) {
                     if (line!!.contains("G90")) //absolute mode
                         isRelative = false
                     else if (line!!.contains("G91"))  //relative mode
@@ -455,13 +467,11 @@ object GCodeSender {
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
         if (xm != position[0] || ym != position[1]) {
             val newRadius: Double = hypot(xm, ym)
-            val minRadius: Double = hypot(arm2Length*cos(-55.0*PI/180), arm2Length*sin(-55.0*PI/180)+ arm1Length)
-
             if (newRadius > R) {
-                System.err.println("Object is outside workspace MAX_RADIUS<$newRadius")
+                System.err.println("Object is outside workspace MAX_RADIUS($R)<$newRadius")
 
             } else if(newRadius<minRadius){
-                System.err.println("Object is outside workspace MIN_RADIUS<$newRadius")
+                System.err.println("Object is outside workspace $newRadius<MIN_RADIUS($minRadius)")
             }
             val gamma: Double = atan2(ym, xm) //absolute degree angle to R
             val toBeta =

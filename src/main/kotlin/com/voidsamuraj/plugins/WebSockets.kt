@@ -5,10 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 import java.time.Duration
 fun Application.configureWebSockets() {
     install(WebSockets) {
@@ -36,7 +33,7 @@ class WebSocketHandler {
     suspend fun addClient(session: WebSocketServerSession){
         clients.add(session)
         if(fileName!=null)
-            session.send(Frame.Text(fileName!!))
+            session.send(Frame.Text(JsonObject(mapOf("fileName" to JsonPrimitive(fileName!!))).toString()))
     }
     suspend fun sendData(data: String) {
         val iterator= clients.iterator()
@@ -67,6 +64,7 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
                 webSocketHandler.isCurrentDrawing =true
                 val ret = GCodeSender.sendGCode(fileToSend = "$filesFolder/$fName", scope = scope) { line ->
                     webSocketHandler.sendData(line)
+                    delay(500)
                 }
                 webSocketHandler.isCurrentDrawing =false
 
