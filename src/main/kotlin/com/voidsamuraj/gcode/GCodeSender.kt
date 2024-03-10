@@ -199,6 +199,18 @@ object GCodeSender {
     }
 
     /**
+     * function which return current position of tool
+     * @return Map<String, String>, keys are named as CX, CY, CZ
+     */
+    fun getPosition():Map<String, String>{
+        return  mapOf(
+            Pair("CX", "${position[0]}"),
+            Pair("CY", "${position[1]}"),
+            Pair("CZ", "${position[2]}"),
+        )
+
+    }
+    /**
      * Function sending file to scara arm by defined port
      * @param fileToSend path of file which need to be made by [makeGCodeFile]
      * @return [StateReturn]
@@ -207,7 +219,9 @@ object GCodeSender {
      *
      */
      suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
-        try {
+         val tempIsRelative=isRelative
+         try {
+
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
                     System.err.println("Port is not opened")
@@ -216,6 +230,12 @@ object GCodeSender {
             val fin = File(fileToSend)
             resetPosition()
             var lineNumber=1
+            var lastZ:Double?
+            //to prevent nozzle lift at start from changing line thickness
+            var firstHeight=true
+            var secondHeight=true
+
+             var lineThickness=0.0
             withContext(Dispatchers.IO) {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
@@ -229,21 +249,73 @@ object GCodeSender {
                         } != null && scope.isActive) {
                             line?.let {
                                 if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ){
-                                    var map: Map<String, String> = mapOf(
+                                    val map: MutableMap<String, String> = mutableMapOf(
                                         Pair("line", "$lineNumber")
                                     )
                                     val parts = line!!.split(" ").filter { it != "G1" }
-                                    map = map.plus(parts.filter { it.isNotBlank() }.associate {
-                                        if(it.contains("G90"))
-                                            "G90" to ""
-                                        else if(it.contains("G91"))
-                                            "G91" to ""
-                                        else {
+                                    parts.filter { it.isNotBlank() }.forEach {
+                                        if(it.contains("G90")) {
+                                            isRelative=false
+                                        }else if(it.contains("G91")){
+                                            isRelative=true
+                                        }else {
                                             val key = it.substring(0, 1)
                                             val value = it.substring(1)
-                                            key to value
+                                            map[key] = value
                                         }
-                                    })
+                                    }
+                                    if(isRelative){
+                                        if(map.contains("X"))
+                                            position[0]+=map["X"]!!.toDouble()
+                                            map["CX"]= position[0].toString()
+                                        if(map.contains("Y"))
+                                            position[1]+=map["Y"]!!.toDouble()
+                                            map["CY"]= position[1].toString()
+                                        if(map.contains("Z")) {
+                                            lastZ = position[2]
+                                            position[2] += map["Z"]!!.toDouble()
+                                            map["CZ"]= position[2].toString()
+                                            if(firstHeight) {
+                                                lineThickness= position[2] - lastZ!!
+                                                firstHeight=false
+                                            }else if(secondHeight){
+                                                if(position[2]<lastZ!!)
+                                                    lineThickness= position[2]
+                                                else
+                                                    lineThickness= position[2] - lastZ!!
+                                                secondHeight=false
+                                            }else
+                                                lineThickness= position[2] - lastZ!!
+                                        }
+                                    }else{
+                                        if(map.contains("X"))
+                                            position[0]=map["X"]!!.toDouble()
+                                            map["CX"]= position[0].toString()
+                                        if(map.contains("Y"))
+                                            position[1]=map["Y"]!!.toDouble()
+                                            map["CY"]= position[1].toString()
+                                        if(map.contains("Z")) {
+                                            lastZ = position[2]
+                                            position[2] = map["Z"]!!.toDouble()
+                                            map["CZ"]= position[2].toString()
+                                            if(firstHeight) {
+                                                lineThickness= position[2] - lastZ!!
+                                                firstHeight=false
+                                            }else if(secondHeight){
+                                                if(position[2]<lastZ!!)
+                                                    lineThickness= position[2]
+                                                else
+                                                    lineThickness= position[2] - lastZ!!
+                                                secondHeight=false
+                                            }else
+                                                lineThickness= position[2] - lastZ!!
+                                        }
+                                    }
+                                    map.remove("X")
+                                    map.remove("Y")
+                                    map.remove("Z")
+                                    if(lineThickness!=0.0)
+                                        map["LT"]=lineThickness.toString()
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString())
 
@@ -282,6 +354,11 @@ object GCodeSender {
                 }
                 else -> throw e
             }
+        }finally{
+            position[0] = 0.0
+            position[1] = R.toDouble()
+            position[2] = 0.0
+            isRelative=tempIsRelative
         }
         return StateReturn.SUCCESS
     }

@@ -1303,7 +1303,7 @@ function setToolPosition(vector, isRightSide) {
 
   toolMesh.translateY(vector.z - currentHeight);
   currentHeight = vector.z;
-  moveToolOnSceneToPosition(false, 5);
+  moveToolOnSceneToPosition(false, 1);
   updatePositionText();
 }
 

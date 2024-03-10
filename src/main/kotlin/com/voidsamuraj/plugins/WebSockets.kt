@@ -33,7 +33,8 @@ class WebSocketHandler {
     suspend fun addClient(session: WebSocketServerSession){
         clients.add(session)
         if(fileName!=null)
-            session.send(Frame.Text(JsonObject(mapOf("fileName" to JsonPrimitive(fileName!!))).toString()))
+            session.send(Frame.Text(JsonObject(GCodeSender.getPosition().mapValues { JsonPrimitive(it.value) }
+                .plus("fileName" to JsonPrimitive(fileName!!))).toString()))
     }
     suspend fun sendData(data: String) {
         val iterator= clients.iterator()
@@ -64,7 +65,7 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
                 webSocketHandler.isCurrentDrawing =true
                 val ret = GCodeSender.sendGCode(fileToSend = "$filesFolder/$fName", scope = scope) { line ->
                     webSocketHandler.sendData(line)
-                    delay(500)
+                    delay(100)
                 }
                 webSocketHandler.isCurrentDrawing =false
 
