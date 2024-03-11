@@ -239,13 +239,15 @@ object GCodeSender {
             withContext(Dispatchers.IO) {
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
-                        var line: String?
+                        var line: String? = null
                         while (br.readLine().also {
-                            val index=it.indexOf(';')
-                                line = if(index==-1)
+                            if(it!=null) {
+                                val index = it.indexOf(';')
+                                line = if (index == -1)
                                     it
                                 else
-                                    it.substring(0,index)
+                                    it.substring(0, index)
+                            }
                         } != null && scope.isActive) {
                             line?.let {
                                 if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ){
@@ -314,8 +316,7 @@ object GCodeSender {
                                     map.remove("X")
                                     map.remove("Y")
                                     map.remove("Z")
-                                    if(lineThickness!=0.0)
-                                        map["LT"]=lineThickness.toString()
+                                    map["LT"]=lineThickness.toString()
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString())
 

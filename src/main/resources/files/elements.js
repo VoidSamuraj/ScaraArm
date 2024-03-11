@@ -441,7 +441,7 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
         mesh.rotateZ(-MAX_ARM1_ANGLE*Math.PI/180-Math.PI);
         mesh.scale.y = -1;
     }
-    mesh.position.set(armShift, -0.97,0);
+    mesh.position.set(armShift, -0.995,0);
 
     return mesh;
 }
@@ -506,11 +506,11 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
 
                 if ('CX' in data){
                     changedSomething=true;
-                    yPos=parseFloat(data.CX)*scale;
+                    xPos=parseFloat(data.CX)*scale;
                 }
                 if ('CY' in data){
                     changedSomething=true;
-                    xPos=parseFloat(data.CY)*scale;
+                    yPos=parseFloat(data.CY)*scale;
                 }
                 if ('CZ' in data){
                     changedSomething=true;
@@ -527,9 +527,9 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
             if(changedSomething){
                 if(points.length>1){
                     points[0]=points[1];
-                    points[1]=new THREE.Vector3(yPos, xPos, zPos);
+                    points[1]=new THREE.Vector3(xPos, yPos, zPos);
                 }else
-                    points.push(new THREE.Vector3(yPos, xPos, zPos));
+                    points.push(new THREE.Vector3(xPos, yPos, zPos));
             }
                 //update arm angles for UI
                 onLineRead(points[points.length-1],isRightSide);
@@ -545,10 +545,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
                     thickness=parseFloat(data.LT);
 
                 if(points.length >=2)
-                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)));
-        };
-        socket.onclose = function(event) {
-            console.log("WebSocket connection closed:", event);
+                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
         };
     }
 }
@@ -580,15 +577,16 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
         var points = [];
         var restoredPoints = [];
 
-        var xPos=startPos[0];
-        var yPos=startPos[1];
+        var xPos=startPos[1];
+        var yPos=startPos[0];
         var zPos=startPos[2];
 
-        var xPosFile=startPos[0];
-        var yPosFile=startPos[1];
+        var xPosFile=startPos[1];
+        var yPosFile=startPos[0];
         var zPosFile=startPos[2];
 
         var changedSomething=false;
+        var changedSomethingFile=false;
         const scale=0.02;
         socket = new WebSocket('ws://localhost:8080/files/draw');
         socket.onmessage = function(event) {
@@ -609,11 +607,11 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
 
              if ('CX' in data){
                  changedSomething=true;
-                 yPos=parseFloat(data.CX)*scale;
+                 xPos=parseFloat(data.CX)*scale;
              }
              if ('CY' in data){
                  changedSomething=true;
-                 xPos=parseFloat(data.CY)*scale;
+                 yPos=parseFloat(data.CY)*scale;
              }
              if ('CZ' in data){
                  changedSomething=true;
@@ -627,32 +625,30 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
             if(changedSomething){
                 if(points.length>1){
                     points[0]=points[1];
-                    points[1]=new THREE.Vector3(yPos, xPos, zPos);
+                    points[1]=new THREE.Vector3(xPos, yPos, zPos);
                 }else
-                    points.push(new THREE.Vector3(yPos, xPos, zPos));
+                    points.push(new THREE.Vector3(xPos, yPos, zPos));
             }
-            if((points[0] !== undefined)&&!secondHeightSet)
+            if(points[0] !== undefined)
                 //update arm angles for UI
                 onLineRead(points[points.length-1],isRightSide);
-                if(points.length >=2)
-                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)));
+                if(points.length >=2){
+                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
+                    }
         };
-        socket.onclose = function(event) {
-            console.log("WebSocket connection closed:", event);
-        };
+
         setTimeout(function() {
             if(fileName!=null){
                 fetch('/files/'+fileName, { method: 'GET' })
                         .then(response => response.blob())
                         .then(blob => {
-
                             var reader = new FileReader();
                             reader.onload = function() {
                                 var fileData = reader.result;
                                 var lines = fileData.split('\n');
                                 var lineNumber=1;
                                 for (let i = 0; i < lines.length; i++) {
-                                    if(lines[i].includes("END gcode"))
+                                    if(firstDrawnLine == i-1 || lines[i].includes("END gcode"))
                                         break;
                                     let commands;
                                     let index=lines[i].indexOf(';');
@@ -660,7 +656,9 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                                         commands=lines[i].substring(0,index).split(' ');
                                     else
                                         commands=lines[i].split(' ');
-                                    changedSomething=false;
+
+                                    let isExtruding=false;
+                                    changedSomethingFile=false;
                                     commands.forEach(command=>{
                                         var mode = command.substring(0, 3);
                                         if(mode == "G90"){
@@ -675,46 +673,49 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                                                         xPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         xPosFile=parseFloat(command.slice(1))*scale;
-                                                    changedSomething=true;
+                                                    changedSomethingFile=true;
                                                     break;
                                                 case "Y":
                                                     if(isRelativeFile)
                                                         yPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         yPosFile=parseFloat(command.slice(1))*scale;
-                                                    changedSomething=true;
+                                                    changedSomethingFile=true;
                                                     break;
                                                 case "Z":
                                                     if(isRelativeFile)
                                                         zPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         zPosFile=parseFloat(command.slice(1))*scale;
-                                                        changedSomething=true;
+                                                        changedSomethingFile=true;
                                                     break;
+                                                case "E":
+                                                        isExtruding = true;
+                                                     break;
                                                 default:
                                                     break;
                                             }
                                         }
                                     });
-                                    if(changedSomething){
-                                        restoredPoints.push(new THREE.Vector3(yPosFile, xPosFile, zPosFile));
+                                    if(changedSomethingFile){
+                                        restoredPoints.push({isExtruding : isExtruding,vector3 : new THREE.Vector3(xPosFile, yPosFile, zPosFile)});
                                      }
                                 }
                                 //current height is used to calculate thickness of line, if not set then set as start point -0.1
                                 if((restoredPoints[0] !== undefined)&&!(firstHeightSetFile&&secondHeightSetFile))
-                                    currentHeightFile=restoredPoints[0].z- 0.1;
+                                    currentHeightFile=restoredPoints[0].vector3.z- 0.1;
                                 for(var i = 0; i < restoredPoints.length - 1; i++) {
-                                          if(!firstHeightSetFile && restoredPoints[i].z == restoredPoints[i+1].z){
-                                              currentHeightFile=restoredPoints[i].z;
+                                          if(!firstHeightSetFile && restoredPoints[i].vector3.z == restoredPoints[i+1].vector3.z){
+                                              currentHeightFile=restoredPoints[i].vector3.z;
                                               firstHeightSetFile=true;
-                                          }else if(restoredPoints[i].z != restoredPoints[i+1].z){
-                                                currentHeightFile=restoredPoints[i+1].z;
-                                                lastHeightFile=restoredPoints[i].z;
+                                          }else if(restoredPoints[i].vector3.z != restoredPoints[i+1].vector3.z){
+                                                currentHeightFile=restoredPoints[i+1].vector3.z;
+                                                lastHeightFile=restoredPoints[i].vector3.z;
                                           }
                                           if(firstHeightSetFile && !secondHeightSetFile && lastHeightFile>currentHeightFile)
                                                 lastHeightFile=0;
-                                            currentHeightFile=restoredPoints[i + 1].z;
-                                            draw3DLine(stlGroup,restoredPoints[i],restoredPoints[i+1],currentHeightFile-lastHeightFile);
+                                            currentHeightFile=restoredPoints[i + 1].vector3.z;
+                                            draw3DLine(stlGroup,restoredPoints[i].vector3,restoredPoints[i+1].vector3,(currentHeightFile-lastHeightFile)*(restoredPoints[i+1].isExtruding?1:0.2),restoredPoints[i+1].isExtruding?0x00ff00:0x8D8D8D);
                                 }
                         };
                         reader.readAsText(blob);
@@ -724,7 +725,8 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                 });
                 }else
                     socket.close();
-        }, 1000);
+        }, 2000);
+
 
 }
 
@@ -735,17 +737,19 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
  * @param {THREE.Vector3} startPoint - start point of line
  * @param {THREE.Vector3} endPoint - end point of line
  * @param {number} lineWidth - thickness of line
+ * @param {hex} lineColor - line color in hex
  */
-function draw3DLine(group,startPoint,endPoint,lineWidth){
+function draw3DLine(group,startPoint,endPoint,lineWidth, lineColor = 0x00ff00){
     var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
     var distance = direction.length();
 
 
     var path = new THREE.LineCurve3(startPoint, endPoint);
-    var geometry = new THREE.TubeGeometry(path, 16, lineWidth, 6, true);
+    var segments=Math.min(Math.max(Math.ceil(startPoint.distanceTo(endPoint)*50),16),80);
+    var geometry = new THREE.TubeGeometry(path, segments, lineWidth, 6, true);
 
     var shadowMaterial = new THREE.MeshStandardMaterial({
-        color: 0x00ff00,
+        color: lineColor,
         roughness: 0.8,
         lightMapIntensity: 0.8,
     });
