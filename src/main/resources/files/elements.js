@@ -541,9 +541,9 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
                     lastHeight=0;
                 }
                 currentHeight=points[points.length-1].z;
-                if ('LT' in data)
+                if ('LT' in data){
                     thickness=parseFloat(data.LT);
-
+                }
                 if(points.length >=2)
                     draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
         };
@@ -636,7 +636,7 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                     draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
                     }
         };
-
+        return new Promise((resolve,reject)=>{
         setTimeout(function() {
             if(fileName!=null){
                 fetch('/files/'+fileName, { method: 'GET' })
@@ -723,9 +723,13 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                         .catch(error => {
                             console.error('Error:', error);
                 });
-                }else
+                resolve(true);
+                }else{
                     socket.close();
+                    resolve(false);
+                }
         }, 2000);
+        });
 
 
 }

@@ -92,6 +92,7 @@ var arm2RotationShift = 1 - additionalArm1Length;
 
 var editMode = false;
 var toolEditMode = false;
+var isArmDrawing = false;
 
 var rightSide = localStorage.getItem("rightSide"); //direction of arm(movement area)
 if (rightSide === null) rightSide = false;
@@ -288,7 +289,7 @@ if (
   renderer.domElement.addEventListener(
     "wheel",
     function (event) {
-      if (editMode && getCanMoveArm()) {
+      if (editMode && getCanMoveArm() && !isArmDrawing) {
         controls.enableZoom = false;
         var zoomChange = event.deltaY > 0 ? 1 : -1;
         let reacted = false;
@@ -900,7 +901,7 @@ function isAngleBetween(
  */
 async function setupMoveListener() {
   document.addEventListener("keydown", (event) => {
-    if (toolEditMode) {
+    if (toolEditMode && !isArmDrawing) {
       let armStepToSend = getMovePrecision() * 10;
       let armStep = getMovePrecision() / scaleDisplayDivider;
       switch (event.code) {
@@ -1305,6 +1306,31 @@ function setToolPosition(vector, isRightSide) {
   currentHeight = vector.z;
   moveToolOnSceneToPosition(false, 1);
   updatePositionText();
+    let percent = Math.round(
+      ((currentHeight - minHeight) / (maxHeight - minHeight)) * 100
+    );
+ updateTextTexture(
+   ((currentHeight - minHeight) * scaleDisplayDivider)
+     .toFixed(2)
+     .toString(),
+   40,
+   heightText,
+   -3.501 + (defaultArmLength * 2 - arm1Length - arm2Length),
+   0,
+   heightTextHeight
+ );
+  rectanglePercent = updateRectanglePercent(
+    scene, //scene
+    rotation2, //parentGroup
+    rectanglePercent, //oldRectanglePercentGroup
+    1.96, //width
+    1.6, //height
+    0.28, //barWidth
+    percent, //percentage
+    -3.38 + (defaultArmLength * 2 - arm1Length - arm2Length), //x
+    0, //y
+    heightTextHeight //z
+  );
 }
 
 /**
@@ -1326,7 +1352,7 @@ function updateToolPos() {
  * Function listtening for clicks on an object and mark it as selected(lastSelectedMesh). Show cartesian axis lines for arm.
  */
 function selectSTL() {
-  if (getCanMoveArm()) {
+  if (getCanMoveArm()&& !isArmDrawing) {
     const meshes = [baseMesh, arm1Mesh, arm2Mesh, toolMesh];
     changeSTLColor(lastSelectedMesh, armColor);
 
@@ -1383,6 +1409,7 @@ function selectSTL() {
  * @param {string} fileName
  */
 function drawFileOnScene(fileName) {
+  isArmDrawing = true;
   drawFile(scene, fileName, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
 }
 window.drawFileOnScene = drawFileOnScene;
@@ -1390,5 +1417,7 @@ window.drawFileOnScene = drawFileOnScene;
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {
   updateHelper();
-  restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
+  restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
+    isArmDrawing = value;
+  });
 });

@@ -286,7 +286,7 @@ object GCodeSender {
                                                 else
                                                     lineThickness= position[2] - lastZ!!
                                                 secondHeight=false
-                                            }else
+                                            }else if(position[2] != lastZ)
                                                 lineThickness= position[2] - lastZ!!
                                         }
                                     }else{
@@ -309,7 +309,7 @@ object GCodeSender {
                                                 else
                                                     lineThickness= position[2] - lastZ!!
                                                 secondHeight=false
-                                            }else
+                                            }else if(position[2] != lastZ)
                                                 lineThickness= position[2] - lastZ!!
                                         }
                                     }
