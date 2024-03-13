@@ -103,7 +103,7 @@ fun Route.armRoute() {
             }
             post("/direction"){
                 checkUserPermission {
-                    if (webSocketHandler.isCurrentDrawing) {
+                    if (!webSocketHandler.isCurrentDrawing) {
                         val formParameters = call.receiveParameters()
                         val dir = formParameters.getOrFail("isRight").toBoolean()
                         GCodeSender.setArmDirection(dir)
@@ -113,7 +113,7 @@ fun Route.armRoute() {
             }
             post("/gear-ratio"){
                 checkUserPermission {
-                    if (webSocketHandler.isCurrentDrawing) {
+                    if (!webSocketHandler.isCurrentDrawing) {
                         val formParameters = call.receiveParameters()
                         val arm1Ratio = formParameters["arm1Ratio"]?.toDoubleOrNull()
                         val arm2Ratio = formParameters["arm2Ratio"]?.toDoubleOrNull()
@@ -146,7 +146,7 @@ fun Route.armRoute() {
             }
             post("/max-speed"){
                 checkUserPermission {
-                    if (webSocketHandler.isCurrentDrawing) {
+                    if (!webSocketHandler.isCurrentDrawing) {
                         println("Changed speed")
                         val formParameters = call.receiveParameters()
                         val speed = formParameters.getOrFail("speed").toDouble().toInt()

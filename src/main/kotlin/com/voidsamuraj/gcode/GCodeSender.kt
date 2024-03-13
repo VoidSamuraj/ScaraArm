@@ -221,6 +221,14 @@ object GCodeSender {
      suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
          val tempIsRelative=isRelative
          try {
+             if(isRightSide){
+                 position[0] = 0.0
+                 position[1] = R.toDouble()
+             }else{
+                 position[0] = R.toDouble()
+                 position[1] = 0.0
+             }
+             position[2] = 0.0
 
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -228,7 +236,6 @@ object GCodeSender {
                     return StateReturn.FAILURE
                 }
             val fin = File(fileToSend)
-            resetPosition()
             var lineNumber=1
             var lastZ:Double?
             //to prevent nozzle lift at start from changing line thickness
@@ -317,6 +324,7 @@ object GCodeSender {
                                     map.remove("Y")
                                     map.remove("Z")
                                     map["LT"]=lineThickness.toString()
+                                    map["isRightSide"]=isRightSide.toString()
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString())
 

@@ -92,7 +92,7 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
         }
     }
 
-    fun stop() {
+    fun stopService() {
         scope.cancel()
     }
 }

@@ -465,12 +465,11 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
     scene.remove(stlGroup);
     stlGroup = new THREE.Group();
 
+    stlGroup.rotateX(-Math.PI/2);
     if(isRightSide){
-        stlGroup.rotateX(-Math.PI/2);
         stlGroup.rotateZ(Math.PI/2);
         stlGroup.translateY(-xShift);
     }else{
-        stlGroup.rotateX(-Math.PI/2);
         stlGroup.rotateZ(Math.PI);
         stlGroup.translateX(-xShift);
     }
@@ -562,12 +561,11 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
         scene.remove(stlGroup);
         stlGroup = new THREE.Group();
 
+        stlGroup.rotateX(-Math.PI/2);
         if(isRightSide){
-            stlGroup.rotateX(-Math.PI/2);
             stlGroup.rotateZ(Math.PI/2);
             stlGroup.translateY(-xShift);
         }else{
-            stlGroup.rotateX(-Math.PI/2);
             stlGroup.rotateZ(Math.PI);
             stlGroup.translateX(-xShift);
         }

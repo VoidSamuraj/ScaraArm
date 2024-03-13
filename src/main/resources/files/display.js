@@ -1167,8 +1167,9 @@ function moveArmByAngle(firstArmAngle, secondArmAngle) {
  * Update arm on the screen, based on currentToolX and currentToolY
  * @param {boolean} checkRotation - verify or not if arm angle is in range
  * @param {int} totalSteps - to divide one movement into totalSteps to make movement more linear
+ * @param {bool} isRightSide - determine direction of arm
  */
-function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
+function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20, isRightSide=rightSide) {
   let newRadius = Math.hypot(currentToolX, currentToolY);
 
   let gamma = Math.atan2(currentToolY, currentToolX);
@@ -1210,11 +1211,11 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
         MAX_ARM1_ANGLE,
         MAX_ARM1_ANGLE_COLLISION,
         arm1AngleNew,
-        rightSide
+        isRightSide
       )
     )
       canRotate = false;
-    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, rightSide))
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
       canRotate = false;
   }
   let steps = 0; // interpolation steps
@@ -1230,7 +1231,7 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           rotation2,
           arm2RotationShift,
           armShift,
-          rightSide
+          isRightSide
         );
         updateTextTexture(
           Math.round(arm1Angle % 360).toString(),
@@ -1244,9 +1245,9 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           ringMesh1,
           0.4,
           0.5,
-          rightSide ? arm1Angle % 360 : -arm1Angle % 360
+          isRightSide ? arm1Angle % 360 : -arm1Angle % 360
         );
-        if (rightSide)
+        if (isRightSide)
           arm2Text.rotation.z +=
             ((arm1AngleNewCp / totalSteps) * Math.PI) / 180;
         else
@@ -1257,7 +1258,7 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           rotation2,
           arm2AngleNewCp / totalSteps,
           arm2RotationShift,
-          rightSide
+          isRightSide
         );
         updateTextTexture(
           Math.round(arm2Angle % 360).toString(),
@@ -1271,9 +1272,9 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           ringMesh2,
           0.4,
           0.5,
-          rightSide ? arm2Angle % 360 : -arm2Angle % 360
+          isRightSide ? arm2Angle % 360 : -arm2Angle % 360
         );
-        if (rightSide)
+        if (isRightSide)
           arm2Text.rotation.z +=
             ((arm2AngleNewCp / totalSteps) * Math.PI) / 180;
         else
@@ -1304,7 +1305,7 @@ function setToolPosition(vector, isRightSide) {
 
   toolMesh.translateY(vector.z - currentHeight);
   currentHeight = vector.z;
-  moveToolOnSceneToPosition(false, 1);
+  moveToolOnSceneToPosition(false, 1, isRightSide);
   updatePositionText();
     let percent = Math.round(
       ((currentHeight - minHeight) / (maxHeight - minHeight)) * 100
