@@ -13,7 +13,8 @@ import {
   drawArmRange,
   getMinDistance,
   drawFile,
-  restoreDrawing
+  restoreDrawing,
+  drawPreviewFromFile
 } from "/static/elements.js";
 import {
   setupCanvasHelper,
@@ -1415,6 +1416,9 @@ function drawFileOnScene(fileName) {
 }
 window.drawFileOnScene = drawFileOnScene;
 
+window.drawFilePreview = function(fileName, onSuccess){
+    drawPreviewFromFile(scene, fileName, armShift, rightSide, [currentToolX, currentToolY,currentHeight],onSuccess);
+}
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {
   updateHelper();

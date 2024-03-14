@@ -447,12 +447,13 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
 }
 
 /**
- * Function to draw file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
+ * Function to draw file on scene and send code to arm, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
  * @param {string} fileName - name of file to draw 
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
- * @param {boolean} isRightSide - specifies orientation of arm  
+ * @param {boolean} isRightSide - specifies orientation of arm
+ * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
 export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos){
@@ -548,7 +549,15 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
         };
     }
 }
-
+/**
+ * Function to continue drawing file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
+ * @param {THREE.Scene} scene - scene witch will contain file.
+ * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
+ * @param {number} xShift - shift of model position
+ * @param {boolean} isRightSide - specifies orientation of arm
+ * @param {array} startPos -  array of double position of arm
+ * @TODO Synchronize arm code execution and Drawing state
+ */
 export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
         var fileName=null;
         var lastHeightFile=startPos[2];
@@ -728,8 +737,131 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
                 }
         }, 2000);
         });
+}
+/**
+ * Function to draw file on scene and send code to arm, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
+ * @param {THREE.Scene} scene - scene witch will contain file.
+ * @param {string} fileName - name of file to draw
+ * @param {number} xShift - shift of model position
+ * @param {boolean} isRightSide - specifies orientation of arm
+ * @param {array} startPos -  array of double position of arm
+ * @param {callback} onSuccess - function executed after successful drawn file
+ * @TODO Synchronize arm code execution and Drawing state
+ */
+export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPos, onSuccess){
+        var lastHeightFile=startPos[2];
+        var currentHeightFile=0;
+        var firstHeightSetFile=false;
+        var secondHeightSetFile=false;
+        var isRelativeFile= false;
+        stlGroup.clear();
+        scene.remove(stlGroup);
+        stlGroup = new THREE.Group();
 
+        stlGroup.rotateX(-Math.PI/2);
+        if(isRightSide){
+            stlGroup.rotateZ(Math.PI/2);
+            stlGroup.translateY(-xShift);
+        }else{
+            stlGroup.rotateZ(Math.PI);
+            stlGroup.translateX(-xShift);
+        }
+        stlGroup.translateZ(-1);
 
+        scene.add(stlGroup);
+        var points = [];
+
+        var xPosFile=startPos[1];
+        var yPosFile=startPos[0];
+        var zPosFile=startPos[2];
+
+        var changedSomethingFile=false;
+        const scale=0.02;
+                fetch('/files/'+fileName, { method: 'GET' })
+                        .then(response => response.blob())
+                        .then(blob => {
+                            var reader = new FileReader();
+                            reader.onload = function() {
+                                var fileData = reader.result;
+                                var lines = fileData.split('\n');
+                                var lineNumber=1;
+                                for (let i = 0; i < lines.length; i++) {
+                                    if(lines[i].includes("END gcode"))
+                                        break;
+                                    let commands;
+                                    let index=lines[i].indexOf(';');
+                                    if(index!=-1)
+                                        commands=lines[i].substring(0,index).split(' ');
+                                    else
+                                        commands=lines[i].split(' ');
+
+                                    let isExtruding=false;
+                                    changedSomethingFile=false;
+                                    commands.forEach(command=>{
+                                        var mode = command.substring(0, 3);
+                                        if(mode == "G90"){
+                                            isRelativeFile = false;
+                                        }else if(mode == "G91"){
+                                            isRelativeFile = true;
+                                        }else{
+                                            var firstCharacter = command.charAt(0);
+                                            switch (firstCharacter) {
+                                                case "X":
+                                                    if(isRelativeFile)
+                                                        xPosFile+=parseFloat(command.slice(1))*scale;
+                                                    else
+                                                        xPosFile=parseFloat(command.slice(1))*scale;
+                                                    changedSomethingFile=true;
+                                                    break;
+                                                case "Y":
+                                                    if(isRelativeFile)
+                                                        yPosFile+=parseFloat(command.slice(1))*scale;
+                                                    else
+                                                        yPosFile=parseFloat(command.slice(1))*scale;
+                                                    changedSomethingFile=true;
+                                                    break;
+                                                case "Z":
+                                                    if(isRelativeFile)
+                                                        zPosFile+=parseFloat(command.slice(1))*scale;
+                                                    else
+                                                        zPosFile=parseFloat(command.slice(1))*scale;
+                                                        changedSomethingFile=true;
+                                                    break;
+                                                case "E":
+                                                        isExtruding = true;
+                                                     break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+                                    });
+                                    if(changedSomethingFile){
+                                        points.push({isExtruding : isExtruding,vector3 : new THREE.Vector3(xPosFile, yPosFile, zPosFile)});
+                                     }
+                                }
+                                //current height is used to calculate thickness of line, if not set then set as start point -0.1
+                                if((points[0] !== undefined)&&!(firstHeightSetFile&&secondHeightSetFile))
+                                    currentHeightFile=points[0].vector3.z- 0.1;
+                                for(var i = 0; i < points.length - 1; i++) {
+                                          if(!firstHeightSetFile && points[i].vector3.z == points[i+1].vector3.z){
+                                              currentHeightFile=points[i].vector3.z;
+                                              firstHeightSetFile=true;
+                                          }else if(points[i].vector3.z != points[i+1].vector3.z){
+                                                currentHeightFile=points[i+1].vector3.z;
+                                                lastHeightFile=points[i].vector3.z;
+                                          }
+                                          if(firstHeightSetFile && !secondHeightSetFile && lastHeightFile>currentHeightFile)
+                                                lastHeightFile=0;
+                                            currentHeightFile=points[i + 1].vector3.z;
+                                            draw3DLine(stlGroup,points[i].vector3,points[i+1].vector3,(currentHeightFile-lastHeightFile)*(points[i+1].isExtruding?1:0.2),points[i+1].isExtruding?0x00ff00:0x8D8D8D);
+                                }
+                                onSuccess();
+                        };
+                        reader.readAsText(blob);
+                })
+                        .catch(error => {
+                            console.error('Error:', error);
+                });
 }
 
 

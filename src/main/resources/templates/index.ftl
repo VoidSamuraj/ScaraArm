@@ -208,8 +208,11 @@
             </li>
          </ul>
       </nav>
-      <div id="positionBox">
+      <div id="positionBox" class="topBox">
          <p id="positionText">X=1000 Y=1000</p>
+      </div>
+      <div id="startBox" class="topBox">
+        <button id="startButton" class="topBox">Start</button>
       </div>
       <div id="overlay"></div>
        <div class="alert hide" id="alert">
