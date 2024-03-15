@@ -13,7 +13,8 @@ import {
   drawArmRange,
   getMinDistance,
   drawFile,
-  restoreDrawing
+  restoreDrawing,
+  drawPreviewFromFile
 } from "/static/elements.js";
 import {
   setupCanvasHelper,
@@ -92,6 +93,7 @@ var arm2RotationShift = 1 - additionalArm1Length;
 
 var editMode = false;
 var toolEditMode = false;
+var isArmDrawing = false;
 
 var rightSide = localStorage.getItem("rightSide"); //direction of arm(movement area)
 if (rightSide === null) rightSide = false;
@@ -288,7 +290,7 @@ if (
   renderer.domElement.addEventListener(
     "wheel",
     function (event) {
-      if (editMode && getCanMoveArm()) {
+      if (editMode && getCanMoveArm() && !isArmDrawing) {
         controls.enableZoom = false;
         var zoomChange = event.deltaY > 0 ? 1 : -1;
         let reacted = false;
@@ -476,7 +478,7 @@ var armRange = drawArmRange(
   MAX_ARM1_ANGLE,
   MAX_ARM2_ANGLE,
   MAX_ARM1_ANGLE_COLLISION,
-  rightSide
+  !rightSide
 );
 scene.add(armRange);
 
@@ -734,7 +736,7 @@ function changeArmDimens() {
     MAX_ARM1_ANGLE,
     MAX_ARM2_ANGLE,
     MAX_ARM1_ANGLE_COLLISION,
-    rightSide
+    !rightSide
   );
   scene.add(armRange);
 }
@@ -900,7 +902,7 @@ function isAngleBetween(
  */
 async function setupMoveListener() {
   document.addEventListener("keydown", (event) => {
-    if (toolEditMode) {
+    if (toolEditMode && !isArmDrawing) {
       let armStepToSend = getMovePrecision() * 10;
       let armStep = getMovePrecision() / scaleDisplayDivider;
       switch (event.code) {
@@ -1166,8 +1168,9 @@ function moveArmByAngle(firstArmAngle, secondArmAngle) {
  * Update arm on the screen, based on currentToolX and currentToolY
  * @param {boolean} checkRotation - verify or not if arm angle is in range
  * @param {int} totalSteps - to divide one movement into totalSteps to make movement more linear
+ * @param {bool} isRightSide - determine direction of arm
  */
-function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
+function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20, isRightSide=rightSide) {
   let newRadius = Math.hypot(currentToolX, currentToolY);
 
   let gamma = Math.atan2(currentToolY, currentToolX);
@@ -1209,11 +1212,11 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
         MAX_ARM1_ANGLE,
         MAX_ARM1_ANGLE_COLLISION,
         arm1AngleNew,
-        rightSide
+        isRightSide
       )
     )
       canRotate = false;
-    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, rightSide))
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
       canRotate = false;
   }
   let steps = 0; // interpolation steps
@@ -1229,7 +1232,7 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           rotation2,
           arm2RotationShift,
           armShift,
-          rightSide
+          isRightSide
         );
         updateTextTexture(
           Math.round(arm1Angle % 360).toString(),
@@ -1243,9 +1246,9 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           ringMesh1,
           0.4,
           0.5,
-          rightSide ? arm1Angle % 360 : -arm1Angle % 360
+          isRightSide ? arm1Angle % 360 : -arm1Angle % 360
         );
-        if (rightSide)
+        if (isRightSide)
           arm2Text.rotation.z +=
             ((arm1AngleNewCp / totalSteps) * Math.PI) / 180;
         else
@@ -1256,7 +1259,7 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           rotation2,
           arm2AngleNewCp / totalSteps,
           arm2RotationShift,
-          rightSide
+          isRightSide
         );
         updateTextTexture(
           Math.round(arm2Angle % 360).toString(),
@@ -1270,9 +1273,9 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
           ringMesh2,
           0.4,
           0.5,
-          rightSide ? arm2Angle % 360 : -arm2Angle % 360
+          isRightSide ? arm2Angle % 360 : -arm2Angle % 360
         );
-        if (rightSide)
+        if (isRightSide)
           arm2Text.rotation.z +=
             ((arm2AngleNewCp / totalSteps) * Math.PI) / 180;
         else
@@ -1286,6 +1289,74 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20) {
 
     interpolateStep();
   }
+}
+
+
+/**
+ * Check if new position is in arm range
+ * @param {THREE.Vector3} vector of movement
+ * @param {bool} isRightSide - determine direction of arm
+ * @return {bool} - is position in range
+ */
+function checkIfCanMoveToPosition(vector, isRightSide){
+
+  var currentX = vector.x;
+  var currentY = -vector.y;
+  if (isRightSide) {
+    currentX = vector.y;
+    currentY = -vector.x;
+  }
+
+  var currentZ = vector.z;
+
+    let newRadius = Math.hypot(currentX, currentY);
+
+    let gamma = Math.atan2(currentY, currentX);
+    let toBeta =
+      (arm1Length * arm1Length +
+        arm2TotalLength * arm2TotalLength -
+        currentX * currentX -
+        currentY * currentY) /
+      (2 * arm1Length * arm2TotalLength);
+    let beta = Math.acos(toBeta);
+
+    let toAlpha =
+      (currentX * currentX +
+        currentY * currentY +
+        arm1Length * arm1Length -
+        arm2TotalLength * arm2TotalLength) /
+      (2 * arm1Length * newRadius);
+    let alpha = Math.acos(toAlpha);
+
+    let angle = gamma + alpha;
+    let arm1AngleNew = -(angle * (180 / Math.PI));
+    let arm2AngleNew = 180 - beta * (180 / Math.PI);
+
+    if (isNaN(arm1AngleNew)) {
+      arm1AngleNew = 0;
+    }
+
+    if (isNaN(arm2AngleNew)) {
+      arm2AngleNew = 0;
+    }
+
+    let arm1AngleNewCp = arm1AngleNew - arm1Angle;
+    let arm2AngleNewCp = arm2AngleNew - arm2Angle;
+    let canRotate = true;
+
+    if (
+      !isAngleBetween(
+        MAX_ARM1_ANGLE,
+        MAX_ARM1_ANGLE_COLLISION,
+        arm1AngleNew,
+        isRightSide
+      )
+    )
+      canRotate = false;
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
+      canRotate = false;
+
+    return canRotate;
 }
 
 /**
@@ -1303,8 +1374,33 @@ function setToolPosition(vector, isRightSide) {
 
   toolMesh.translateY(vector.z - currentHeight);
   currentHeight = vector.z;
-  moveToolOnSceneToPosition(false);
+  moveToolOnSceneToPosition(false, 1, isRightSide);
   updatePositionText();
+    let percent = Math.round(
+      ((currentHeight - minHeight) / (maxHeight - minHeight)) * 100
+    );
+ updateTextTexture(
+   ((currentHeight - minHeight) * scaleDisplayDivider)
+     .toFixed(2)
+     .toString(),
+   40,
+   heightText,
+   -3.501 + (defaultArmLength * 2 - arm1Length - arm2Length),
+   0,
+   heightTextHeight
+ );
+  rectanglePercent = updateRectanglePercent(
+    scene, //scene
+    rotation2, //parentGroup
+    rectanglePercent, //oldRectanglePercentGroup
+    1.96, //width
+    1.6, //height
+    0.28, //barWidth
+    percent, //percentage
+    -3.38 + (defaultArmLength * 2 - arm1Length - arm2Length), //x
+    0, //y
+    heightTextHeight //z
+  );
 }
 
 /**
@@ -1326,7 +1422,7 @@ function updateToolPos() {
  * Function listtening for clicks on an object and mark it as selected(lastSelectedMesh). Show cartesian axis lines for arm.
  */
 function selectSTL() {
-  if (getCanMoveArm()) {
+  if (getCanMoveArm()&& !isArmDrawing) {
     const meshes = [baseMesh, arm1Mesh, arm2Mesh, toolMesh];
     changeSTLColor(lastSelectedMesh, armColor);
 
@@ -1383,12 +1479,25 @@ function selectSTL() {
  * @param {string} fileName
  */
 function drawFileOnScene(fileName) {
-  drawFile(scene, fileName, setToolPosition, armShift, rightSide);
+  isArmDrawing = true;
+  drawFile(scene, fileName, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
 }
 window.drawFileOnScene = drawFileOnScene;
 
+window.drawFilePreview = function(fileName, onSuccess){
+    drawPreviewFromFile(scene, fileName, armShift, rightSide, [currentToolX, currentToolY,currentHeight], checkIfCanMoveToPosition, onSuccess, ()=>{
+            showDialog(
+              document.getElementById("alert"),
+              document.getElementById("alert-msg"),
+              "e",
+              "File outside arm range"
+            );
+    });
+}
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {
   updateHelper();
-  restoreDrawing(scene, setToolPosition, armShift, rightSide);
+  restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
+    isArmDrawing = value;
+  });
 });

@@ -40,6 +40,10 @@ const alertItem = document.getElementById("alert");
 const closeAlertButton = document.getElementById("alert-close");
 const alertMessage = document.getElementById("alert-msg");
 
+const startBox = document.getElementById("startBox");
+const startButton = document.getElementById("startButton");
+var selectedFile;
+
 speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
 arm1Ratio.value = parseFloat(localStorage.getItem("arm1Ratio") || "1").toFixed(
   2
@@ -480,7 +484,7 @@ function fillFilesTable() {
               fileData[2] +
               '</td><td><button class="loadFileButtons" onClick="window.loadFile(\'' +
               fileData[0] +
-              "')\">Load</button><button onClick=\"window.deleteFile('" +
+              "')\">Preview</button><button onClick=\"window.deleteFile('" +
               fileData[0] +
               "')\">Delete</button></td></tr>";
         });
@@ -1055,7 +1059,10 @@ window.deleteFile = function (fileName) {
 
 //load selected file
 window.loadFile = function (fileName) {
-  drawFileOnScene(fileName);
+    selectedFile=fileName;
+    drawFilePreview(selectedFile,()=>{
+        startBox.style.display = 'block';
+    });
 };
 
 ////    Option menu
@@ -1251,6 +1258,11 @@ closeAlertButton.addEventListener("click", function () {
     else
       saveMenu.style.left = barWidth;
   });
+
+startButton.addEventListener("click",  function () {
+    if(selectedFile!=null)
+        drawFileOnScene(selectedFile);
+});
 
 
 document.addEventListener("DOMContentLoaded", function () {

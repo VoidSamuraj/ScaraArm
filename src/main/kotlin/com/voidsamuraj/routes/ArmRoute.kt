@@ -2,6 +2,7 @@ package com.voidsamuraj.routes
 
 import com.fazecast.jSerialComm.SerialPort
 import com.voidsamuraj.gcode.GCodeSender
+import com.voidsamuraj.webSocketHandler
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -26,45 +27,57 @@ fun Route.armRoute() {
         route("/movement"){
             post("/angle"){
                 checkUserPermission {
-                    if (!GCodeSender.isPortOpen)
-                        if(GCodeSender.openPort()==GCodeSender.StateReturn.FAILURE){
-                            call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
-                            return@checkUserPermission
-                        }
-                    val formParameters = call.receiveParameters()
-                    val L = formParameters.getOrFail("L").toDoubleOrNull()
-                    val S = formParameters.getOrFail("S").toDoubleOrNull()
-                    val ret=GCodeSender.moveBy(L, S)
-                    when(ret){
-                        GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
-                        GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
-                        GCodeSender.StateReturn.PORT_DISCONNECTED->{
-                            GCodeSender.closePort()
-                            call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                    if(!webSocketHandler.isCurrentDrawing){
+                        if (!GCodeSender.isPortOpen)
+                            if (GCodeSender.openPort() == GCodeSender.StateReturn.FAILURE) {
+                                call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                                return@checkUserPermission
+                            }
+                        val formParameters = call.receiveParameters()
+                        val L = formParameters.getOrFail("L").toDoubleOrNull()
+                        val S = formParameters.getOrFail("S").toDoubleOrNull()
+                        val ret = GCodeSender.moveBy(L, S)
+                        when (ret) {
+                            GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
+                            GCodeSender.StateReturn.FAILURE -> call.respond(
+                                HttpStatusCode.InternalServerError,
+                                "Failed to move arm"
+                            )
+
+                            GCodeSender.StateReturn.PORT_DISCONNECTED -> {
+                                GCodeSender.closePort()
+                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                            }
                         }
                     }
                 }
             }
-            post("/cartesian"){
+            post("/cartesian") {
                 checkUserPermission {
-                    if (!GCodeSender.isPortOpen)
-                        if(GCodeSender.openPort()==GCodeSender.StateReturn.FAILURE){
-                            call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
-                            return@checkUserPermission
-                        }
-                    val formParameters = call.receiveParameters()
-                    val x = formParameters.getOrFail("x").toDoubleOrNull()
-                    val y = formParameters.getOrFail("y").toDoubleOrNull()
-                    val z = formParameters.getOrFail("z").toDoubleOrNull()
-                    val isRightSide = formParameters.getOrFail("isRightSide").toBooleanStrictOrNull()
+                    if(!webSocketHandler.isCurrentDrawing){
+                        if (!GCodeSender.isPortOpen)
+                            if (GCodeSender.openPort() == GCodeSender.StateReturn.FAILURE) {
+                                call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                                return@checkUserPermission
+                            }
+                        val formParameters = call.receiveParameters()
+                        val x = formParameters.getOrFail("x").toDoubleOrNull()
+                        val y = formParameters.getOrFail("y").toDoubleOrNull()
+                        val z = formParameters.getOrFail("z").toDoubleOrNull()
+                        val isRightSide = formParameters.getOrFail("isRightSide").toBooleanStrictOrNull()
 
-                    val ret=GCodeSender.moveBy(x, y, z, isRightSide!!)
-                    when(ret){
-                        GCodeSender.StateReturn.SUCCESS->call.respond(HttpStatusCode.OK, "Success")
-                        GCodeSender.StateReturn.FAILURE->call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
-                        GCodeSender.StateReturn.PORT_DISCONNECTED->{
-                            GCodeSender.closePort()
-                            call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                        val ret = GCodeSender.moveBy(x, y, z, isRightSide!!)
+                        when (ret) {
+                            GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
+                            GCodeSender.StateReturn.FAILURE -> call.respond(
+                                HttpStatusCode.InternalServerError,
+                                "Failed to move arm"
+                            )
+
+                            GCodeSender.StateReturn.PORT_DISCONNECTED -> {
+                                GCodeSender.closePort()
+                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                            }
                         }
                     }
                 }
@@ -73,62 +86,73 @@ fun Route.armRoute() {
         route("/set"){
             post("/length"){
                 checkUserPermission {
-                    val formParameters = call.receiveParameters()
-                    val arm1 = formParameters["arm1"]?.toDoubleOrNull()
-                    val arm2 = formParameters["arm2"]?.toDoubleOrNull()
-                    if (arm1 != null)
-                        GCodeSender.setArm1Length((arm1 * 10).toLong())
-                    if (arm2 != null)
-                        GCodeSender.setArm2Length((arm2 * 10).toLong())
-                    if (arm1 != null || arm2 != null)
-                        call.respond(HttpStatusCode.OK, "Success")
-                    else
-                        call.respond(HttpStatusCode.BadRequest, "Bad argument, arm1 and arm2.")
+                    if(!webSocketHandler.isCurrentDrawing){
+                        val formParameters = call.receiveParameters()
+                        val arm1 = formParameters["arm1"]?.toDoubleOrNull()
+                        val arm2 = formParameters["arm2"]?.toDoubleOrNull()
+                        if (arm1 != null)
+                            GCodeSender.setArm1Length((arm1 * 10).toLong())
+                        if (arm2 != null)
+                            GCodeSender.setArm2Length((arm2 * 10).toLong())
+                        if (arm1 != null || arm2 != null)
+                            call.respond(HttpStatusCode.OK, "Success")
+                        else
+                            call.respond(HttpStatusCode.BadRequest, "Bad argument, arm1 and arm2.")
+                    }
                 }
             }
             post("/direction"){
                 checkUserPermission {
-                    val formParameters = call.receiveParameters()
-                    val dir = formParameters.getOrFail("isRight").toBoolean()
-                    GCodeSender.setArmDirection(dir)
-                    call.respond(HttpStatusCode.OK, "Success")
+                    if (!webSocketHandler.isCurrentDrawing) {
+                        val formParameters = call.receiveParameters()
+                        val dir = formParameters.getOrFail("isRight").toBoolean()
+                        GCodeSender.setArmDirection(dir)
+                        call.respond(HttpStatusCode.OK, "Success")
+                    }
                 }
             }
             post("/gear-ratio"){
                 checkUserPermission {
-                    val formParameters = call.receiveParameters()
-                    val arm1Ratio = formParameters["arm1Ratio"]?.toDoubleOrNull()
-                    val arm2Ratio = formParameters["arm2Ratio"]?.toDoubleOrNull()
-                    val armAdditionalRatio = formParameters["armAdditionalRatio"]?.toDoubleOrNull()
-                    if (arm1Ratio != null)
-                        GCodeSender.setArm1GearRatio(arm1Ratio)
-                    if (arm2Ratio != null)
-                        GCodeSender.setArm2GearRatio(arm2Ratio)
-                    if (armAdditionalRatio != null)
-                        GCodeSender.setArmAdditionalGearRatio(armAdditionalRatio)
-                    call.respond(HttpStatusCode.OK, "Success")
+                    if (!webSocketHandler.isCurrentDrawing) {
+                        val formParameters = call.receiveParameters()
+                        val arm1Ratio = formParameters["arm1Ratio"]?.toDoubleOrNull()
+                        val arm2Ratio = formParameters["arm2Ratio"]?.toDoubleOrNull()
+                        val armAdditionalRatio = formParameters["armAdditionalRatio"]?.toDoubleOrNull()
+                        if (arm1Ratio != null)
+                            GCodeSender.setArm1GearRatio(arm1Ratio)
+                        if (arm2Ratio != null)
+                            GCodeSender.setArm2GearRatio(arm2Ratio)
+                        if (armAdditionalRatio != null)
+                            GCodeSender.setArmAdditionalGearRatio(armAdditionalRatio)
+                        call.respond(HttpStatusCode.OK, "Success")
+                    }
                 }
             }
             post("/motor-mode"){
                 checkUserPermission {
-                    val formParameters = call.receiveParameters()
-                    val mode = formParameters.getOrFail("mode").toInt()
-                    val enum = GCodeSender.StepsMode.values().find { it.steps == mode }
-                    if (enum != null) {
-                        GCodeSender.setMotorStepMode(enum)
-                        call.respond(HttpStatusCode.OK, "Success")
-                    } else {
-                        val rightArgs = GCodeSender.StepsMode.values().joinToString { "GCodeSender.$it-${it.steps}" }
-                        call.respond(HttpStatusCode.BadRequest, "Bad argument, mode. Use one of $rightArgs")
+                    if(!webSocketHandler.isCurrentDrawing){
+                        val formParameters = call.receiveParameters()
+                        val mode = formParameters.getOrFail("mode").toInt()
+                        val enum = GCodeSender.StepsMode.values().find { it.steps == mode }
+                        if (enum != null) {
+                            GCodeSender.setMotorStepMode(enum)
+                            call.respond(HttpStatusCode.OK, "Success")
+                        } else {
+                            val rightArgs = GCodeSender.StepsMode.values().joinToString { "GCodeSender.$it-${it.steps}" }
+                            call.respond(HttpStatusCode.BadRequest, "Bad argument, mode. Use one of $rightArgs")
+                        }
                     }
                 }
             }
             post("/max-speed"){
                 checkUserPermission {
-                    val formParameters = call.receiveParameters()
-                    val speed = formParameters.getOrFail("speed").toDouble().toInt()
-                    GCodeSender.setMaxSpeed(speed)
-                    call.respond(HttpStatusCode.OK, "Success")
+                    if (!webSocketHandler.isCurrentDrawing) {
+                        println("Changed speed")
+                        val formParameters = call.receiveParameters()
+                        val speed = formParameters.getOrFail("speed").toDouble().toInt()
+                        GCodeSender.setMaxSpeed(speed)
+                        call.respond(HttpStatusCode.OK, "Success")
+                    }
                 }
             }
         }
@@ -151,10 +175,12 @@ fun Route.armRoute() {
         }
         post("/select"){
             checkUserPermission {
-                val formParameters = call.receiveParameters()
-                val port = formParameters.getOrFail("port")
-                GCodeSender.setPort(port)
-                call.respond(HttpStatusCode.OK, "Success")
+                if(!webSocketHandler.isCurrentDrawing){
+                    val formParameters = call.receiveParameters()
+                    val port = formParameters.getOrFail("port")
+                    GCodeSender.setPort(port)
+                    call.respond(HttpStatusCode.OK, "Success")
+                }
             }
         }
     }
