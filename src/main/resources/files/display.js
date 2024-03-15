@@ -1291,6 +1291,74 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20, isRigh
   }
 }
 
+
+/**
+ * Check if new position is in arm range
+ * @param {THREE.Vector3} vector of movement
+ * @param {bool} isRightSide - determine direction of arm
+ * @return {bool} - is position in range
+ */
+function checkIfCanMoveToPosition(vector, isRightSide){
+
+  var currentX = vector.x;
+  var currentY = -vector.y;
+  if (isRightSide) {
+    currentX = vector.y;
+    currentY = -vector.x;
+  }
+
+  var currentZ = vector.z;
+
+    let newRadius = Math.hypot(currentX, currentY);
+
+    let gamma = Math.atan2(currentY, currentX);
+    let toBeta =
+      (arm1Length * arm1Length +
+        arm2TotalLength * arm2TotalLength -
+        currentX * currentX -
+        currentY * currentY) /
+      (2 * arm1Length * arm2TotalLength);
+    let beta = Math.acos(toBeta);
+
+    let toAlpha =
+      (currentX * currentX +
+        currentY * currentY +
+        arm1Length * arm1Length -
+        arm2TotalLength * arm2TotalLength) /
+      (2 * arm1Length * newRadius);
+    let alpha = Math.acos(toAlpha);
+
+    let angle = gamma + alpha;
+    let arm1AngleNew = -(angle * (180 / Math.PI));
+    let arm2AngleNew = 180 - beta * (180 / Math.PI);
+
+    if (isNaN(arm1AngleNew)) {
+      arm1AngleNew = 0;
+    }
+
+    if (isNaN(arm2AngleNew)) {
+      arm2AngleNew = 0;
+    }
+
+    let arm1AngleNewCp = arm1AngleNew - arm1Angle;
+    let arm2AngleNewCp = arm2AngleNew - arm2Angle;
+    let canRotate = true;
+
+    if (
+      !isAngleBetween(
+        MAX_ARM1_ANGLE,
+        MAX_ARM1_ANGLE_COLLISION,
+        arm1AngleNew,
+        isRightSide
+      )
+    )
+      canRotate = false;
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
+      canRotate = false;
+
+    return canRotate;
+}
+
 /**
  * Set position on of the tool and update displayed arm
  * @param {THREE.Vector3} vector
@@ -1417,7 +1485,14 @@ function drawFileOnScene(fileName) {
 window.drawFileOnScene = drawFileOnScene;
 
 window.drawFilePreview = function(fileName, onSuccess){
-    drawPreviewFromFile(scene, fileName, armShift, rightSide, [currentToolX, currentToolY,currentHeight],onSuccess);
+    drawPreviewFromFile(scene, fileName, armShift, rightSide, [currentToolX, currentToolY,currentHeight], checkIfCanMoveToPosition, onSuccess, ()=>{
+            showDialog(
+              document.getElementById("alert"),
+              document.getElementById("alert-msg"),
+              "e",
+              "File outside arm range"
+            );
+    });
 }
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", function () {

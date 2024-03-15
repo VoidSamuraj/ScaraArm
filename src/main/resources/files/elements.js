@@ -745,10 +745,12 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm
  * @param {array} startPos -  array of double position of arm
+ * @param {callback(THEE.Vector,boolean)} checkRange - function to check if new points of file are in range, returns boolean
  * @param {callback} onSuccess - function executed after successful drawn file
+ * @param {callback} onOutside - function executed when part of file is outside of range
  * @TODO Synchronize arm code execution and Drawing state
  */
-export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPos, onSuccess){
+export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPos, checkRange, onSuccess, onOutside){
         var lastHeightFile=startPos[2];
         var currentHeightFile=0;
         var firstHeightSetFile=false;
@@ -776,6 +778,7 @@ export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPo
         var zPosFile=startPos[2];
 
         var changedSomethingFile=false;
+        var fileInRange=true;
         const scale=0.02;
                 fetch('/files/'+fileName, { method: 'GET' })
                         .then(response => response.blob())
@@ -853,9 +856,15 @@ export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPo
                                           if(firstHeightSetFile && !secondHeightSetFile && lastHeightFile>currentHeightFile)
                                                 lastHeightFile=0;
                                             currentHeightFile=points[i + 1].vector3.z;
-                                            draw3DLine(stlGroup,points[i].vector3,points[i+1].vector3,(currentHeightFile-lastHeightFile)*(points[i+1].isExtruding?1:0.2),points[i+1].isExtruding?0x00ff00:0x8D8D8D);
+                                            let isInRange = checkRange(points[i+1].vector3, isRightSide);
+                                            if(isInRange == false)
+                                                fileInRange=false;
+                                            draw3DLine(stlGroup,points[i].vector3,points[i+1].vector3,(currentHeightFile-lastHeightFile)*(points[i+1].isExtruding?1:0.2),points[i+1].isExtruding?(isInRange?0x00ff00:0xff0000):0x8D8D8D);
                                 }
-                                onSuccess();
+                                if(fileInRange)
+                                    onSuccess();
+                                else
+                                    onOutside();
                         };
                         reader.readAsText(blob);
                 })
