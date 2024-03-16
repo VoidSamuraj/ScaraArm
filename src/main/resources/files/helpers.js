@@ -1,4 +1,7 @@
 
+var alertQueue = [];
+var isAlertVisible=false;
+
 /**
  * Replaces ',' with '.', checks if number is inside range and rounds it to two decimal places
   * @param alertItem html container containing dialog body
@@ -55,17 +58,29 @@ export function formatInt(alertItem, messageItem, text, min, max, time=5000) {
  * @param {string} message message displayed in alert
  * @param {int} duration message display duration in ms, -1 to not hide
  */
-export function showDialog(alertItem, messageItem, type, message, duration=5000){
-    messageItem.textContent=message;
-    if(type=='e' || type=='E'){
+export function showDialog(alertItem, messageItem, type, message, duration = 5000) {
+    alertQueue.push({ alertItem, messageItem, type, message, duration }); // Dodanie powiadomienia do kolejki
+    processQueue(); // Uruchomienie przetwarzania kolejki
+}
+
+function processQueue() {
+    if (alertQueue.length === 0) return; // Jeśli kolejka jest pusta, nie ma nic do zrobienia
+
+    if (isAlertVisible) return; // Sprawdzenie, czy powiadomienie jest aktualnie wyświetlane
+
+    const { alertItem, messageItem, type, message, duration } = alertQueue.shift(); // Pobranie pierwszego elementu z kolejki
+    isAlertVisible = true; // Ustawienie flagi na true, aby oznaczyć, że powiadomienie jest wyświetlane
+
+    messageItem.textContent = message;
+    if (type == 'e' || type == 'E') {
         alertItem.classList.add("alert-error");
         alertItem.classList.remove("alert-info");
         alertItem.classList.remove("alert-success");
-    }else if(type=='s' || type=='S'){
+    } else if (type == 's' || type == 'S') {
         alertItem.classList.add("alert-success");
         alertItem.classList.remove("alert-error");
         alertItem.classList.remove("alert-info");
-    }else{
+    } else {
         alertItem.classList.add("alert-info");
         alertItem.classList.remove("alert-error");
         alertItem.classList.remove("alert-success");
@@ -74,9 +89,10 @@ export function showDialog(alertItem, messageItem, type, message, duration=5000)
     alertItem.classList.add("show");
     alertItem.classList.remove("hide");
     alertItem.classList.add("showAlert");
-    if(duration>-1)
-        setTimeout(function(){
-            alertItem.classList.remove("show");
-            alertItem.classList.add("hide");
-        },duration);
+    setTimeout(function () {
+        alertItem.classList.remove("show");
+        alertItem.classList.add("hide");
+        isAlertVisible = false;
+        processQueue();
+    }, Math.abs(duration));
 }
