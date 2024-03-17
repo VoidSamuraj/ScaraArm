@@ -10,6 +10,7 @@ import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.math.*
 
+
 /**
  * Set of function to transform cartesian to scara and send to arduino
  * @author Karol Robak
@@ -17,9 +18,9 @@ import kotlin.math.*
 
 @Throws(InterruptedException::class, IOException::class)
 fun main() {
-    GCodeSender.openPort()
+    // GCodeSender.openPort()
     val src = "/home/karol/Intelij/scaracp/scara-arm2/FILES/xyz.gcode"
-    val out = "/home/karol/Pobrane/output.txt"
+    val out = "/home/karol/Pobrane/output2.txt"
     // if false generated code is in degrees, else steps are calculated
     val inSteps = false
     GCodeSender.makeGCodeFile(src, out, inSteps, false)
@@ -46,7 +47,7 @@ object GCodeSender {
     private var bufferedInputStream:BufferedInputStream? = null
     private var printWriter:PrintWriter? = null
     private var SERIAL_PORT = "ttyACM0" //"COM5";
-    private val maxArmMovement = 55.0
+    private const val MAX_ARM_MOVEMENT = 55.0
     /**
      * sets port and closes previous connections
      * @param port should look like: Linux - "/dev/ttyACM0", Windows - "COM5"
@@ -68,14 +69,14 @@ object GCodeSender {
 
     private const val L = 'L' //long axis name
     private const val S = 'S' //short axis name
-    private var isRightSide = false
+    private var isRightSide = true
     private var arm1Length: Long =200// 100 //long arm length in mm
     private var arm2Length: Long = 200//60 //short arm length in mm
     private var isRelative = false
     private var speedrate = 1.0 // speed multiply
     private var speedNow = 0.0
     private var R = arm2Length + arm1Length
-    private val minRadius: Double = hypot(arm2Length*cos(-maxArmMovement*PI/180), arm2Length*sin(-maxArmMovement*PI/180)+arm1Length)
+    private val minRadius: Double = hypot(arm2Length*cos(-MAX_ARM_MOVEMENT*PI/180), arm2Length*sin(-MAX_ARM_MOVEMENT*PI/180)+arm1Length)
 
     private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
     private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
@@ -218,17 +219,17 @@ object GCodeSender {
      * @see StateReturn
      *
      */
-     suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
-         val tempIsRelative=isRelative
-         try {
-             if(isRightSide){
-                 position[0] = 0.0
-                 position[1] = R.toDouble()
-             }else{
-                 position[0] = R.toDouble()
-                 position[1] = 0.0
-             }
-             position[2] = 0.0
+    suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
+        val tempIsRelative=isRelative
+        try {
+            if(isRightSide){
+                position[0] = 0.0
+                position[1] = R.toDouble()
+            }else{
+                position[0] = R.toDouble()
+                position[1] = 0.0
+            }
+            position[2] = 0.0
 
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -237,112 +238,158 @@ object GCodeSender {
                 }
             val fin = File(fileToSend)
             var lineNumber=1
-            var lastZ:Double?
+            var lastZ: Double
+            var nowZ: Double
             //to prevent nozzle lift at start from changing line thickness
             var firstHeight=true
             var secondHeight=true
+            var lineThickness=0.0
+            var maxSpeed= speedNow
 
-             var lineThickness=0.0
             withContext(Dispatchers.IO) {
+                //check number of lines in file and send to arm
+                var lines = 0
+                BufferedReader(FileReader(fin)).use { reader ->
+                    reader.forEachLine { line ->
+                        lines++
+                        val regex = Regex("\\bF(\\d+)\\b")
+                        val matchResult = regex.find(line)
+                        matchResult?.let { result ->
+                            val speed = result.groupValues[1].toDouble()
+                            if(speed>maxSpeed)
+                                maxSpeed=speed
+                        }
+                    }
+                }
+                printWriter!!.write("commands $lines\n")
+                printWriter!!.flush()
+                //waiting for arm response
+                for (i in 1..3) {
+                    when (isOKReturned(bufferedInputStream!!)) {
+                        StateReturn.SUCCESS -> break
+                        StateReturn.PORT_DISCONNECTED -> {
+                            System.err.println("Arm is disconnected")
+                            return@withContext StateReturn.PORT_DISCONNECTED
+                        }
+
+                        else -> {}
+                    }
+                    if (i == 3) {
+                        System.err.println("Arm is not responding")
+                        return@withContext StateReturn.FAILURE
+                    }
+                }
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         var line: String? = null
-                        while (br.readLine().also {
-                            if(it!=null) {
-                                val index = it.indexOf(';')
-                                line = if (index == -1)
-                                    it
-                                else
-                                    it.substring(0, index)
-                            }
-                        } != null && scope.isActive) {
+                        while (br.readLine().also { //filter out comments
+                                if(it!=null) {
+                                    val index = it.indexOf(';')
+                                    line = if (index == -1)
+                                        it
+                                    else
+                                        it.substring(0, index)
+                                }
+                            } != null && scope.isActive) {
                             line?.let {
-                                if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ){
+                                if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ) { //filter out commands
                                     val map: MutableMap<String, String> = mutableMapOf(
                                         Pair("line", "$lineNumber")
                                     )
                                     val parts = line!!.split(" ").filter { it != "G1" }
                                     parts.filter { it.isNotBlank() }.forEach {
-                                        if(it.contains("G90")) {
-                                            isRelative=false
-                                        }else if(it.contains("G91")){
-                                            isRelative=true
-                                        }else {
+                                        if (it.contains("G90")) {
+                                            isRelative = false
+                                        } else if (it.contains("G91")) {
+                                            isRelative = true
+                                        } else {
                                             val key = it.substring(0, 1)
                                             val value = it.substring(1)
                                             map[key] = value
                                         }
                                     }
-                                    if(isRelative){
-                                        if(map.contains("X"))
-                                            position[0]+=map["X"]!!.toDouble()
-                                            map["CX"]= position[0].toString()
-                                        if(map.contains("Y"))
-                                            position[1]+=map["Y"]!!.toDouble()
-                                            map["CY"]= position[1].toString()
-                                        if(map.contains("Z")) {
+                                    if (isRelative) {  //calculate current position of arm
+                                        if (map.contains("X"))
+                                            map["CX"] = (position[0] + map["X"]!!.toDouble()).toString()
+                                        if (map.contains("Y"))
+                                            map["CY"] = (position[1] + map["Y"]!!.toDouble()).toString()
+                                        if (map.contains("Z")) {
                                             lastZ = position[2]
-                                            position[2] += map["Z"]!!.toDouble()
-                                            map["CZ"]= position[2].toString()
-                                            if(firstHeight) {
-                                                lineThickness= position[2] - lastZ!!
-                                                firstHeight=false
-                                            }else if(secondHeight){
-                                                if(position[2]<lastZ!!)
-                                                    lineThickness= position[2]
+                                            nowZ=position[2] + map["Z"]!!.toDouble()
+                                            map["CZ"] = nowZ.toString()
+                                            if (firstHeight) {
+                                                lineThickness = nowZ - lastZ
+                                                firstHeight = false
+                                            } else if (secondHeight) {
+                                                lineThickness = if (nowZ < lastZ)
+                                                    nowZ
                                                 else
-                                                    lineThickness= position[2] - lastZ!!
-                                                secondHeight=false
-                                            }else if(position[2] != lastZ)
-                                                lineThickness= position[2] - lastZ!!
+                                                    nowZ - lastZ
+                                                secondHeight = false
+                                            } else if (nowZ != lastZ)
+                                                lineThickness = nowZ - lastZ
                                         }
-                                    }else{
-                                        if(map.contains("X"))
-                                            position[0]=map["X"]!!.toDouble()
-                                            map["CX"]= position[0].toString()
-                                        if(map.contains("Y"))
-                                            position[1]=map["Y"]!!.toDouble()
-                                            map["CY"]= position[1].toString()
-                                        if(map.contains("Z")) {
+                                    } else {
+                                        if (map.contains("X"))
+                                            map["CX"] = map["X"]!!
+                                        if (map.contains("Y"))
+                                            map["CY"] = map["Y"]!!
+                                        if (map.contains("Z")) {
                                             lastZ = position[2]
-                                            position[2] = map["Z"]!!.toDouble()
-                                            map["CZ"]= position[2].toString()
-                                            if(firstHeight) {
-                                                lineThickness= position[2] - lastZ!!
-                                                firstHeight=false
-                                            }else if(secondHeight){
-                                                if(position[2]<lastZ!!)
-                                                    lineThickness= position[2]
+                                            nowZ=map["Z"]!!.toDouble()
+                                            map["CZ"] = map["Z"]!!
+                                            if (firstHeight) {
+                                                lineThickness = nowZ - lastZ
+                                                firstHeight = false
+                                            } else if (secondHeight) {
+                                                lineThickness = if (nowZ < lastZ)
+                                                    nowZ
                                                 else
-                                                    lineThickness= position[2] - lastZ!!
-                                                secondHeight=false
-                                            }else if(position[2] != lastZ)
-                                                lineThickness= position[2] - lastZ!!
+                                                    nowZ - lastZ
+                                                secondHeight = false
+                                            } else if (nowZ != lastZ)
+                                                lineThickness = nowZ - lastZ
                                         }
                                     }
+                                    val isMoving = map.contains("X") || map.contains("Y") || map.contains("Z")
                                     map.remove("X")
                                     map.remove("Y")
                                     map.remove("Z")
-                                    map["LT"]=lineThickness.toString()
-                                    map["isRightSide"]=isRightSide.toString()
+                                    map["LT"] = lineThickness.toString()
+                                    map["isRightSide"] = isRightSide.toString()
                                     val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
-                                    onLineRead(jsonObject.toString())
+                                    onLineRead(jsonObject.toString()) // send data to websocket
 
-                                    printWriter!!.write(it)
-                                    printWriter!!.flush()
-                                    for (i in 1..3) {
-                                        when (isOKReturned(bufferedInputStream!!)) {
-                                            StateReturn.SUCCESS -> break
-                                            StateReturn.PORT_DISCONNECTED -> {
-                                                System.err.println("Arm is disconnected")
-                                                return@withContext StateReturn.PORT_DISCONNECTED
+                                    if(isMoving) {
+                                        //sending data to arm
+                                        val message = transition(
+                                            map["CX"]?.toDouble(),
+                                            map["CY"]?.toDouble(),
+                                            map["CZ"]?.toDouble(),
+                                            speedNow,
+                                            inSteps = true,
+                                            isRightSide
+                                        )
+                                        if(message!=""){
+                                            printWriter!!.write(message)
+                                            printWriter!!.flush()
+
+                                            //waiting for arm response
+                                            for (i in 1..3) {
+                                                when (isOKReturned(bufferedInputStream!!)) {
+                                                    StateReturn.SUCCESS -> break
+                                                    StateReturn.PORT_DISCONNECTED -> {
+                                                        System.err.println("Arm is disconnected")
+                                                        return@withContext StateReturn.PORT_DISCONNECTED
+                                                    }
+
+                                                    else -> {}
+                                                }
+                                                if (i == 3) {
+                                                    System.err.println("Arm is not responding")
+                                                    return@withContext StateReturn.FAILURE
+                                                }
                                             }
-
-                                            else -> {}
-                                        }
-                                        if (i == 3) {
-                                            System.err.println("Arm is not responding")
-                                            return@withContext StateReturn.FAILURE
                                         }
                                     }
                                 }
@@ -423,6 +470,7 @@ object GCodeSender {
      * @param inSteps true: returns calculated steps, false: returns degrees
      * @param isRightSide changes direction of arm
      */
+
     fun makeGCodeFile(src: String, out: String, inSteps: Boolean, isRightSide: Boolean) {
         try {
             val fin = File(src)
@@ -443,7 +491,7 @@ object GCodeSender {
                             it
                         else
                             it.substring(0, index)
-                } != null) {
+                    } != null) {
                     val nr = line!!.indexOf('F')
                     if (nr != -1) {
                         val end = line!!.indexOf(' ', nr)
@@ -551,6 +599,12 @@ object GCodeSender {
         val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
         val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
+        println("x${position[0]} y${position[1]} z${position[2]}, x$xm y$ym z$zm, Relative-$isRelative, right-$isRightSide")
+        /*  if (f10 < 10){
+              println("x${position[0]} y${position[1]} z${position[2]}, x$xm y$ym z$zm, Relative-$isRelative, right-$isRightSide")
+          println("speedrate-$speedrate,MOTOR_STEPS_PRER_ROTATION-$MOTOR_STEPS_PRER_ROTATION ARM_SHORT_DEGREES_BY_ROTATION-$ARM_SHORT_DEGREES_BY_ROTATION, ARM_SHORT_ADDITIONAL_ROTATION-$ARM_SHORT_ADDITIONAL_ROTATION, ARM_LONG_STEPS_PER_ROTATION-$ARM_LONG_STEPS_PER_ROTATION, minraduis-$minRadius")
+          ++f10
+          }*/
         if (xm != position[0] || ym != position[1]) {
             val newRadius: Double = hypot(xm, ym)
             if (newRadius > R) {
@@ -578,40 +632,53 @@ object GCodeSender {
             val deltaY = ym - position[1]
             val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovement).toInt()
             if (totalSteps>1) for (steps in 0 until totalSteps) {
+
+                println("D1")
                 if (inSteps) {
-                    command.append(L)
-                        .append((alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
-                        .append(" ").append(S)
-                        .append((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
+                    val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
+                    val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
+                    if(lm!=0L)
+                        command.append(L).append(lm)
+                    if(sm!=0L)
+                        command.append(" ").append(S).append(sm)
                     // -1 for direction
-                    if (zm != position[2] && isRelative) {
+                    if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
                         command.append(" Z")
                             .append(zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1)
                     }
                 } else {
-                    command.append("" + L).append(alphaChange / totalSteps).append(" ")
-                        .append(S).append(betaChange / totalSteps)
+                    val lm=alphaChange / totalSteps
+                    val sm=betaChange / totalSteps
+                    if(lm!=0.0)
+                        command.append(L).append(lm)
+                    if(sm!=0.0)
+                        command.append(" ").append(S).append(sm)
                 }
-                if (speed != null && speed != -1.0)
+                if (speed != null && speed != -1.0 && speed != 0.0)
                     command.append(" F").append((speed * speedrate).toLong())
                 command.append("\n")
             } else {
+                println("D2")
                 if (inSteps) {
-                    command.append(L)
-                        .append((alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong())
-                        .append(" ").append(S)
-                        .append((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION).toLong() / 360 * if (isRightSide) 1 else -1)
+                    val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
+                    val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
+                    if(lm!=0L)
+                        command.append(L).append(lm)
+                    if(sm!=0L)
+                        command.append(" ").append(S).append(sm)
                     // -1 for direction
-                    if (zm != position[2] && isRelative) {
+                    if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
                         command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
                     }
                 } else {
-                    command.append("" + L).append(alphaChange).append(" ").append(S)
-                        .append(betaChange)
+                    if(alphaChange!=0.0)
+                        command.append("" + L).append(alphaChange)
+                    if(betaChange!=0.0)
+                        command.append(" ").append(S).append(betaChange)
                 }
-                if (speed != null && speed != -1.0) command.append(" F").append((speed * speedrate).toLong())
+                if (speed != null && speed != -1.0 && speed != 0.0) command.append(" F").append((speed * speedrate).toLong())
                 command.append("\n")
             }
             if (!alphaAdd.isNaN()) angles[0] = alphaAdd
@@ -620,9 +687,10 @@ object GCodeSender {
             if (ym != position[1]) position[1] = ym
             if (zm != position[2]) position[2] = zm
             return command.toString()
-        } else if (zm != position[2] && isRelative) {
-            command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
-            command.append("\n")
+        } else if (zm != position[2]) {
+            println("Z ${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1} $zm $MOTOR_STEPS_PRER_ROTATION")
+            command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1).append("\n")
+            position[2] = zm
             return command.toString()
         }
         return ""
@@ -642,10 +710,7 @@ object GCodeSender {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-        val isRelativeCp = isRelative
-        isRelative = true
-        val lines: List<String> = transition(xMove, yMove, zMove, null, true, isRightSide).split("\n").filter { it!="" }
-        isRelative = isRelativeCp
+        val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).split("\n").filter { it!="" }
         try {
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -653,7 +718,6 @@ object GCodeSender {
                     return StateReturn.FAILURE
                 }
             for (line in lines) {
-                println(line)
                 printWriter!!.write(line)
                 printWriter!!.flush()
 
@@ -708,7 +772,7 @@ object GCodeSender {
         val xPos: Double = arm1Length * sin(firstArmAngle) + arm2Length * sin(secondArmAngle + firstArmAngle)
         val isRelativeCp = isRelative
         isRelative = false
-        val lines: List<String> = transition(xPos, yPos, null, null, true, !isRightSide).split("\n").filter { it!="" }
+        val lines: List<String> = transition(xPos, yPos, position[2], null, true, !isRightSide).split("\n").filter { it!="" }
         isRelative = isRelativeCp
         try {
             if (!isPortOpen)
