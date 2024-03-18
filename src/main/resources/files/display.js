@@ -478,7 +478,7 @@ var armRange = drawArmRange(
   MAX_ARM1_ANGLE,
   MAX_ARM2_ANGLE,
   MAX_ARM1_ANGLE_COLLISION,
-  !rightSide
+  rightSide
 );
 scene.add(armRange);
 
@@ -736,7 +736,7 @@ function changeArmDimens() {
     MAX_ARM1_ANGLE,
     MAX_ARM2_ANGLE,
     MAX_ARM1_ANGLE_COLLISION,
-    !rightSide
+    rightSide
   );
   scene.add(armRange);
 }
@@ -1300,10 +1300,9 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20, isRigh
  */
 function checkIfCanMoveToPosition(vector, isRightSide){
 
-  var currentX = vector.x;
-  var currentY = -vector.y;
+  var currentX = vector.y;
+  var currentY = vector.x;
   if (isRightSide) {
-    currentX = vector.y;
     currentY = -vector.x;
   }
 
@@ -1500,4 +1499,5 @@ document.addEventListener("DOMContentLoaded", function () {
   restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
     isArmDrawing = value;
   });
+
 });

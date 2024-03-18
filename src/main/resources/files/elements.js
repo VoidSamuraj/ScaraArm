@@ -479,10 +479,18 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
     scene.add(stlGroup);
     var points = [];
 
-    var xPos=startPos[0];
-    var yPos=startPos[1];
+    var xPos;
+    var yPos;
+    if(!isRightSide){
+        xPos=startPos[1]
+        yPos=startPos[0]
+    }else{
+        xPos=startPos[0];
+        yPos=startPos[1];
+    }
     var zPos=startPos[2];
     var changedSomething=false;
+    var changedPos=false;
     const scale=0.02; //0.1/5
 
    if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
@@ -530,7 +538,6 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
                     points[1]=new THREE.Vector3(xPos, yPos, zPos);
                 }else
                     points.push(new THREE.Vector3(xPos, yPos, zPos));
-            }
                 //update arm angles for UI
                 onLineRead(points[points.length-1],isRightSide);
                 if(currentHeight!=points[points.length-1].z){
@@ -546,6 +553,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
                 }
                 if(points.length >=2)
                     draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
+            }
         };
     }
 }
@@ -584,12 +592,23 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
         var points = [];
         var restoredPoints = [];
 
-        var xPos=startPos[1];
-        var yPos=startPos[0];
-        var zPos=startPos[2];
+        var xPos;
+        var yPos;
+        var xPosFile;
+        var yPosFile;
 
-        var xPosFile=startPos[1];
-        var yPosFile=startPos[0];
+        if(isRightSide){
+            xPos=startPos[1]
+            yPos=startPos[0]
+            xPosFile=startPos[1]
+            yPosFile=startPos[0]
+        }else{
+            xPos=startPos[0];
+            yPos=startPos[1];
+            xPosFile=startPos[0];
+            yPosFile=startPos[1];
+        }
+        var zPos=startPos[2];
         var zPosFile=startPos[2];
 
         var changedSomething=false;
@@ -627,21 +646,24 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
              if ('LT' in data){
                  thickness=parseFloat(data.LT);
              }
-            if(firstDrawnLine==0 && "line" in data)
-                firstDrawnLine= parseInt(data.line);
-            if(changedSomething){
-                if(points.length>1){
-                    points[0]=points[1];
-                    points[1]=new THREE.Vector3(xPos, yPos, zPos);
-                }else
-                    points.push(new THREE.Vector3(xPos, yPos, zPos));
+             if("line" in data){
+                if(firstDrawnLine==0)
+                    firstDrawnLine= parseInt(data.line);
+                if(changedSomething){
+                    if(points.length>1){
+                        points[0]=points[1];
+                        points[1]=new THREE.Vector3(xPos, yPos, zPos);
+                    }else
+                        points.push(new THREE.Vector3(xPos, yPos, zPos));
+
+                    if(points[0] !== undefined)
+                        //update arm angles for UI
+                        onLineRead(points[points.length-1],isRightSide);
+                        if(points.length >=2){
+                            draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
+                            }
+                }
             }
-            if(points[0] !== undefined)
-                //update arm angles for UI
-                onLineRead(points[points.length-1],isRightSide);
-                if(points.length >=2){
-                    draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
-                    }
         };
         return new Promise((resolve,reject)=>{
         setTimeout(function() {
@@ -773,8 +795,16 @@ export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPo
         scene.add(stlGroup);
         var points = [];
 
-        var xPosFile=startPos[1];
-        var yPosFile=startPos[0];
+        var xPosFile;
+        var yPosFile;
+
+        if(isRightSide){
+            xPosFile=startPos[1]
+            yPosFile=startPos[0]
+        }else{
+            xPosFile=startPos[0];
+            yPosFile=startPos[1];
+        }
         var zPosFile=startPos[2];
 
         var changedSomethingFile=false;
@@ -857,9 +887,11 @@ export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPo
                                                 lastHeightFile=0;
                                             currentHeightFile=points[i + 1].vector3.z;
                                             let isInRange = checkRange(points[i+1].vector3, isRightSide);
+                                            draw3DLine(stlGroup,points[i].vector3,points[i+1].vector3,(currentHeightFile-lastHeightFile)*(points[i+1].isExtruding?1:0.2),points[i+1].isExtruding?(isInRange?0x00ff00:0xff0000):0x8D8D8D);
+
                                             if(isInRange == false)
                                                 fileInRange=false;
-                                            draw3DLine(stlGroup,points[i].vector3,points[i+1].vector3,(currentHeightFile-lastHeightFile)*(points[i+1].isExtruding?1:0.2),points[i+1].isExtruding?(isInRange?0x00ff00:0xff0000):0x8D8D8D);
+
                                 }
                                 if(fileInRange)
                                     onSuccess();

@@ -222,7 +222,7 @@ object GCodeSender {
     suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
         val tempIsRelative=isRelative
         try {
-            if(isRightSide){
+            if(!isRightSide){
                 position[0] = 0.0
                 position[1] = R.toDouble()
             }else{
@@ -310,9 +310,9 @@ object GCodeSender {
                                     }
                                     if (isRelative) {  //calculate current position of arm
                                         if (map.contains("X"))
-                                            map["CX"] = (position[0] + map["X"]!!.toDouble()).toString()
+                                            map["CX"] = (position[1] + map["X"]!!.toDouble()).toString()
                                         if (map.contains("Y"))
-                                            map["CY"] = (position[1] + map["Y"]!!.toDouble()).toString()
+                                            map["CY"] = (position[0] + map["Y"]!!.toDouble()).toString()
                                         if (map.contains("Z")) {
                                             lastZ = position[2]
                                             nowZ=position[2] + map["Z"]!!.toDouble()
@@ -351,13 +351,18 @@ object GCodeSender {
                                                 lineThickness = nowZ - lastZ
                                         }
                                     }
-                                    val isMoving = map.contains("X") || map.contains("Y") || map.contains("Z")
-                                    map.remove("X")
-                                    map.remove("Y")
-                                    map.remove("Z")
-                                    map["LT"] = lineThickness.toString()
-                                    map["isRightSide"] = isRightSide.toString()
-                                    val jsonObject = JsonObject(map.mapValues { JsonPrimitive(it.value) })
+                                    val mapToWeb=map.toMutableMap().apply {
+                                        if (!contains("CX")) put("CX", position[1].toString())
+                                        if (!contains("CY")) put("CY", position[0].toString())
+                                        if (!contains("CZ")) put("CZ", position[2].toString())
+                                    }
+                                    val isMoving = mapToWeb.contains("X") || mapToWeb.contains("Y") || mapToWeb.contains("Z")
+                                    mapToWeb.remove("X")
+                                    mapToWeb.remove("Y")
+                                    mapToWeb.remove("Z")
+                                    mapToWeb["LT"] = lineThickness.toString()
+                                    mapToWeb["isRightSide"] = isRightSide.toString()
+                                    val jsonObject = JsonObject(mapToWeb.mapValues { JsonPrimitive(it.value) })
                                     onLineRead(jsonObject.toString()) // send data to websocket
 
                                     if(isMoving) {
@@ -392,6 +397,8 @@ object GCodeSender {
                                             }
                                         }
                                     }
+
+
                                 }
                                 ++lineNumber
                             }
@@ -441,7 +448,7 @@ object GCodeSender {
                 when(e){
                     is IOException,
                     is InterruptedException -> {
-                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+                        System.err.println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
                     }
                     else -> throw e
                 }
@@ -454,7 +461,7 @@ object GCodeSender {
                 when(e){
                     is IOException,
                     is InterruptedException -> {
-                        println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
+                        System.err.println("Exception Line: "+Thread.currentThread().stackTrace[1].lineNumber+"  "+ e.message)
                     }
                     else -> throw e
                 }
@@ -599,12 +606,6 @@ object GCodeSender {
         val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
         val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
-        println("x${position[0]} y${position[1]} z${position[2]}, x$xm y$ym z$zm, Relative-$isRelative, right-$isRightSide")
-        /*  if (f10 < 10){
-              println("x${position[0]} y${position[1]} z${position[2]}, x$xm y$ym z$zm, Relative-$isRelative, right-$isRightSide")
-          println("speedrate-$speedrate,MOTOR_STEPS_PRER_ROTATION-$MOTOR_STEPS_PRER_ROTATION ARM_SHORT_DEGREES_BY_ROTATION-$ARM_SHORT_DEGREES_BY_ROTATION, ARM_SHORT_ADDITIONAL_ROTATION-$ARM_SHORT_ADDITIONAL_ROTATION, ARM_LONG_STEPS_PER_ROTATION-$ARM_LONG_STEPS_PER_ROTATION, minraduis-$minRadius")
-          ++f10
-          }*/
         if (xm != position[0] || ym != position[1]) {
             val newRadius: Double = hypot(xm, ym)
             if (newRadius > R) {
@@ -632,8 +633,6 @@ object GCodeSender {
             val deltaY = ym - position[1]
             val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovement).toInt()
             if (totalSteps>1) for (steps in 0 until totalSteps) {
-
-                println("D1")
                 if (inSteps) {
                     val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
@@ -659,7 +658,6 @@ object GCodeSender {
                     command.append(" F").append((speed * speedrate).toLong())
                 command.append("\n")
             } else {
-                println("D2")
                 if (inSteps) {
                     val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
@@ -688,7 +686,6 @@ object GCodeSender {
             if (zm != position[2]) position[2] = zm
             return command.toString()
         } else if (zm != position[2]) {
-            println("Z ${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1} $zm $MOTOR_STEPS_PRER_ROTATION")
             command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1).append("\n")
             position[2] = zm
             return command.toString()
