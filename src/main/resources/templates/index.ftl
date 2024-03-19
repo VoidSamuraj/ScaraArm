@@ -26,7 +26,7 @@
       </nav>
       <nav id="portMenu">
          <ul>
-            <li class="button menu-button" id="closePortIcon">
+            <li class="button menu-button" id="closePortMenuIcon">
                <img class="icons" src="static/icon/back.svg" alt="back">
             </li>
             <li class="button menu-button" >

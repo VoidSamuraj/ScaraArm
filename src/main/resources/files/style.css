@@ -631,6 +631,9 @@ table td, table th {
     height: auto;
     border-radius: 8px;
 }
+#optionsMenu input:disabled,#optionsMenu select:disabled,#optionsMenu button:disabled{
+    filter: grayscale(80%);
+}
 @media screen and (max-width: 960px) {
     #positionBox{
         min-width: 220px;

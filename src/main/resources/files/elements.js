@@ -456,7 +456,7 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos){
+export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos){
     var lastHeight=startPos[2];
     var currentHeight=lastHeight;
     var firstHeightSet=false;
@@ -566,7 +566,7 @@ export function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos)
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
+export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
         var fileName=null;
         var lastHeightFile=startPos[2];
         var currentHeightFile=0;
@@ -772,7 +772,7 @@ export function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
  * @param {callback} onOutside - function executed when part of file is outside of range
  * @TODO Synchronize arm code execution and Drawing state
  */
-export function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPos, checkRange, onSuccess, onOutside){
+export async function drawPreviewFromFile(scene, fileName, xShift,isRightSide, startPos, checkRange, onSuccess, onOutside){
         var lastHeightFile=startPos[2];
         var currentHeightFile=0;
         var firstHeightSetFile=false;

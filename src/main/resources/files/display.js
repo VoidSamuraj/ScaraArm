@@ -1483,7 +1483,7 @@ function drawFileOnScene(fileName) {
 }
 window.drawFileOnScene = drawFileOnScene;
 
-window.drawFilePreview = function(fileName, onSuccess){
+window.drawFilePreview = async function(fileName, onSuccess){
     drawPreviewFromFile(scene, fileName, armShift, rightSide, [currentToolX, currentToolY,currentHeight], checkIfCanMoveToPosition, onSuccess, ()=>{
             showDialog(
               document.getElementById("alert"),
@@ -1494,7 +1494,7 @@ window.drawFilePreview = function(fileName, onSuccess){
     });
 }
 //update helpers rotation
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function (){
   updateHelper();
   restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
     isArmDrawing = value;

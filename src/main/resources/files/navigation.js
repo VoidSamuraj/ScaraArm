@@ -105,6 +105,7 @@ var buttons = document.querySelectorAll(".first");
 var expanded = false;
 var menuDisplayed = false;
 var canMoveArm = false;
+var areFileBlocked = true;
 export var demoMode = false;
 
 portMenu.style.minHeight = firstMenuStyle.height;
@@ -128,12 +129,23 @@ export function getCanMoveArm() {
   return canMoveArm;
 }
 /**
- * Function to disable or activate loading buttons when arm is not connected.
+ * Function to disable or activate loading buttons.
  * @param state boolean
  */
 function blockLoadButtons(state) {
   let loadFileButtons = document.querySelectorAll(".loadFileButtons");
   loadFileButtons.forEach((button) => {
+    if (state) button.setAttribute("disabled", "");
+    else button.removeAttribute("disabled");
+  });
+}
+/**
+ * Function to disable or activate settings buttons.
+ * @param state boolean
+ */
+function blockOptionsButtons(state) {
+  let options = document.querySelectorAll("#optionsMenu .scroll-list input, #optionsMenu .scroll-list select, #save, #load");
+  options.forEach((button) => {
     if (state) button.setAttribute("disabled", "");
     else button.removeAttribute("disabled");
   });
@@ -175,7 +187,7 @@ export function getRotationPrecision() {
  * @param {callback} updateDrawing function to show applied changes
  * @returns {boolean} true if pressed [number, ',', '.', enter] else false
  */
-function onEditSize(event, name, updateDrawing) {
+async function onEditSize(event, name, updateDrawing) {
   if (event.charCode == 13) {
     //enter pressed
     let valFormatted;
@@ -457,7 +469,7 @@ export function setupOptionMenu(updateDrawing) {
 }
 
 //List all files from server and display in table
-function fillFilesTable() {
+async function fillFilesTable() {
   let html = "";
   fetch("/files")
     .then((response) => {
@@ -482,7 +494,7 @@ function fillFilesTable() {
               fileData[1] +
               "</td><td>" +
               fileData[2] +
-              '</td><td><button class="loadFileButtons" onClick="window.loadFile(\'' +
+              '</td><td><button class="loadFileButtons" onClick="loadFile(\'' +
               fileData[0] +
               "')\">Preview</button><button onClick=\"window.deleteFile('" +
               fileData[0] +
@@ -490,6 +502,7 @@ function fillFilesTable() {
         });
 
       document.querySelector("#tableFiles table tbody").innerHTML = html;
+      blockLoadButtons(areFileBlocked);
     })
     .catch((error) => {
       console.error("ERROR during reading files list:", error);
@@ -497,11 +510,15 @@ function fillFilesTable() {
     });
 }
 //List all accessible ports from server and display in table
-function fillPortsTable() {
+async function fillPortsTable() {
   let html = "";
   fetch("/ports", { method: "GET" })
     .then((response) => {
       if (!response.ok) {
+        canMoveArm=false;
+        blockOptionsButtons(true);
+        areFileBlocked=true;
+        blockLoadButtons(true);
         throw new Error("Network response error for /ports");
       }
       return response.json();
@@ -533,7 +550,10 @@ function fillPortsTable() {
             if (this.value == "demo") {
               canMoveArm = true;
               demoMode = true;
+              areFileBlocked=true;
+              blockLoadButtons(true);
               showDialog(alertItem, alertMessage, "s", "DEMO MODE");
+              blockOptionsButtons(!canMoveArm);
             } else {
               var formData = new FormData();
               formData.append("port", this.value);
@@ -567,7 +587,7 @@ function fillPortsTable() {
 /**
  * Function to load possible stepper modes from server and display in select
  */
-function fillModeList() {
+async function fillModeList() {
   let html = "";
   fetch("/modes", { method: "GET" })
     .then((response) => response.json())
@@ -597,7 +617,7 @@ function fillModeList() {
 /**
 * Function to load options files names for this user
 */
-function fillSavedOptionsList(onLoad){
+async function fillSavedOptionsList(onLoad){
       let htmlInput = "";
       let htmlButtons = "";
       var counter=0;
@@ -654,8 +674,9 @@ function fillSavedOptionsList(onLoad){
 /**
  * Function to select connected port
  */
-function selectConnectedPort() {
+async function selectConnectedPort() {
   canMoveArm = false;
+  areFileBlocked=true;
   fetch("/ports/last", { method: "GET" }).then((response) => {
     if (response.status !== 204) {
       response.text().then((data) => {
@@ -666,8 +687,10 @@ function selectConnectedPort() {
           if (port.value === data) {
             port.checked = true;
             canMoveArm = true;
+            areFileBlocked=false;
           }
         });
+        blockLoadButtons(areFileBlocked);
       });
     }
   });
@@ -676,19 +699,23 @@ function selectConnectedPort() {
 /**
  * Function to init connection between arm, with selected port
  */
-function connectToArm() {
+async function connectToArm() {
   fetch("/arm/start", {
     method: "POST",
   })
     .then((response) => {
       if (response.ok) {
         canMoveArm = true;
+        areFileBlocked=false;
         showDialog(alertItem, alertMessage, "s", "Connected to arm");
       } else {
         console.error("Cannot connect to arm");
         canMoveArm = false;
+        areFileBlocked=true;
         showDialog(alertItem, alertMessage, "e", "Cannot connect to arm");
       }
+      blockLoadButtons(areFileBlocked);
+      blockOptionsButtons(!canMoveArm);
     })
     .catch((error) => {
       console.error("Error:", error);
@@ -696,7 +723,7 @@ function connectToArm() {
     });
 }
 
-function saveSettings(name,id) {
+async function saveSettings(name,id) {
   const formData = new FormData();
   formData.append("right", checkbox.checked);
   formData.append("speed", speedInput.value);
@@ -721,7 +748,7 @@ function saveSettings(name,id) {
       showDialog(alertItem, alertMessage, "e", "Cannot save options file");
     });
 }
-function setSettings() {
+async function setSettings() {
   const formData = new FormData();
   formData.append("right", checkbox.checked);
   formData.append("speed", speedInput.value);
@@ -742,7 +769,7 @@ function setSettings() {
       showDialog(alertItem, alertMessage, "e", "Cannot set options");
     });
 }
-function loadSavedSettings(onLoad, name, id) {
+async function loadSavedSettings(onLoad, name, id) {
   fetch("/files/options/read?name="+name+'&id='+id, { method: "GET" })
     .then((response) => response.blob())
     .then((blob) => {
@@ -796,6 +823,7 @@ function loadSavedSettings(onLoad, name, id) {
               }
           }
         });
+        blockOptionsButtons(!canMoveArm);
         onLoad();
       };
       reader.readAsText(blob);
@@ -805,7 +833,7 @@ function loadSavedSettings(onLoad, name, id) {
     });
 }
 
-export function refreshPorts() {
+export async function refreshPorts() {
   fillPortsTable();
   selectConnectedPort();
 }
@@ -902,7 +930,7 @@ manual.addEventListener("click", function () {
     }
   }, time);
 });
-document.getElementById("closePortIcon").addEventListener("click", function () {
+document.getElementById("closePortMenuIcon").addEventListener("click", function () {
   portMenu.style.left = portMenuHide;
   turnOffOverlay();
   expanded = false;
@@ -962,7 +990,7 @@ document.getElementById("portButton").addEventListener("click", function () {
  * Button in First Menu, switch to passive mode, you cannot longer controll arm on your own,
  * Now you can execute file on arm
  */
-loadFileButton.addEventListener("click", function () {
+loadFileButton.addEventListener("click", async function (){
   firstMenu.style.width = barWidth;
   var time =
     optionsMenuStyle.left === optionMenuHide &&
@@ -977,7 +1005,6 @@ loadFileButton.addEventListener("click", function () {
       expanded = true;
       turnOnOverlay();
       loadMenu.style.left = barWidth;
-      blockLoadButtons(!canMoveArm);
     } else {
       expanded = false;
       turnOffOverlay();
@@ -993,7 +1020,7 @@ document.getElementById("closeLoadIcon").addEventListener("click", function () {
 });
 
 //button to upload file on server
-document.getElementById("myfile").addEventListener("change", function () {
+document.getElementById("myfile").addEventListener("change", async function () {
   let fileName = this.files[0].name;
   const formData = new FormData();
   formData.append("file", this.files[0]);
@@ -1036,7 +1063,7 @@ document.getElementById("myfile").addEventListener("change", function () {
 });
 
 //delete selected file
-window.deleteFile = function (fileName) {
+window.deleteFile = async function (fileName){
   if (confirm("Confirm deletion of " + fileName) == true) {
     fetch("/files/" + fileName, {
       method: "DELETE",
@@ -1058,9 +1085,9 @@ window.deleteFile = function (fileName) {
 };
 
 //load selected file
-window.loadFile = function (fileName) {
+window.loadFile = async function loadFile(fileName){
     selectedFile=fileName;
-    drawFilePreview(selectedFile,()=>{
+    await drawFilePreview(selectedFile,()=>{
         startBox.style.display = 'block';
     });
 };
@@ -1167,7 +1194,7 @@ speedInput.addEventListener("blur", function () {
   speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
 });
 
-document.getElementById("save").addEventListener("click", function () {
+document.getElementById("save").addEventListener("click", async function (){
                     var inputs = document.querySelectorAll('.saveItem');
                     var buttons = document.querySelectorAll('.saveItemButton');
                     var th = document.querySelector('#tableSavedOptions th');
@@ -1185,7 +1212,7 @@ document.getElementById("save").addEventListener("click", function () {
        saveMenu.style.left = "474px";
       }, 200);
 });
-    document.getElementById("load").addEventListener("click", function () {
+    document.getElementById("load").addEventListener("click", async function (){
                     var inputs = document.querySelectorAll('.saveItem');
                     var buttons = document.querySelectorAll('.saveItemButton');
                     var th = document.querySelector('#tableSavedOptions th');
@@ -1203,7 +1230,7 @@ document.getElementById("save").addEventListener("click", function () {
                saveMenu.style.left = "474px";
               }, 200);
     });
-logout.addEventListener("click", function () {
+logout.addEventListener("click", async function (){
   if (confirm("Are you sure you want to Logout?") == true) {
     let xhr = new XMLHttpRequest();
     xhr.open("POST", "/user/logout");
@@ -1219,7 +1246,7 @@ logout.addEventListener("click", function () {
     xhr.send();
   }
 });
-deleteAccount.addEventListener("click", function () {
+deleteAccount.addEventListener("click", async function (){
   if (confirm("Are you sure you want to delete account?")) {
     if (
       confirm(
@@ -1259,15 +1286,16 @@ closeAlertButton.addEventListener("click", function () {
       saveMenu.style.left = barWidth;
   });
 
-startButton.addEventListener("click",  function () {
+startButton.addEventListener("click",  async function (){
     if(selectedFile!=null)
         drawFileOnScene(selectedFile);
 });
 
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function (){
   fillFilesTable();
   fillPortsTable();
   selectConnectedPort();
+  blockOptionsButtons(!canMoveArm);
   saveMenu.style.top = ""+(parseInt(window.getComputedStyle(optionsMenu).height) - parseInt(window.getComputedStyle(saveMenu).height))+"px";
 });
