@@ -40,8 +40,12 @@ const alertItem = document.getElementById("alert");
 const closeAlertButton = document.getElementById("alert-close");
 const alertMessage = document.getElementById("alert-msg");
 
-const startBox = document.getElementById("startBox");
+const startButtonBox = document.getElementById("startButtonBox");
+const pauseButtonBox = document.getElementById("pauseButtonBox");
+const stopButtonBox = document.getElementById("stopButtonBox");
 const startButton = document.getElementById("startButton");
+const pauseButton = document.getElementById("pauseButton");
+const stopButton = document.getElementById("stopButton");
 var selectedFile;
 
 speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
@@ -106,6 +110,7 @@ var expanded = false;
 var menuDisplayed = false;
 var canMoveArm = false;
 var areFileBlocked = true;
+var isGCodePaused = false;
 export var demoMode = false;
 
 portMenu.style.minHeight = firstMenuStyle.height;
@@ -1088,7 +1093,7 @@ window.deleteFile = async function (fileName){
 window.loadFile = async function loadFile(fileName){
     selectedFile=fileName;
     await drawFilePreview(selectedFile,()=>{
-        startBox.style.display = 'block';
+        startButtonBox.style.display = 'block';
     });
 };
 
@@ -1287,10 +1292,39 @@ closeAlertButton.addEventListener("click", function () {
   });
 
 startButton.addEventListener("click",  async function (){
-    if(selectedFile!=null)
+    if(selectedFile!=null){
+        areFileBlocked=true;
+        canMoveArm=false;
+        blockOptionsButtons(true);
+        blockLoadButtons(true);
+        startButtonBox.style.display = "none";
+        stopButtonBox.style.display = "block";
+        pauseButtonBox.style.display = "block";
         drawFileOnScene(selectedFile);
+    }
 });
 
+pauseButton.addEventListener("click",  async function (){
+        if(isGCodePaused){
+            fetch("/arm/resume", {method: "POST"});
+            pauseButton.innerText = "Pause";
+            pauseButton.style.backgroundColor = "#a52727";
+        }else{
+            fetch("/arm/pause", {method: "POST"});
+            pauseButton.innerText = "Resume";
+            pauseButton.style.backgroundColor = "#28a745";
+        }
+        isGCodePaused=!isGCodePaused;
+});
+
+stopButton.addEventListener("click",  async function (){
+    if (confirm("Are you sure you want to STOP GCode execution?") == true){
+        fetch("/arm/stop", {method: "POST"});
+        startButtonBox.style.display = "none";
+        stopButtonBox.style.display = "none";
+        pauseButtonBox.style.display = "none";
+    }
+});
 
 document.addEventListener("DOMContentLoaded", async function (){
   fillFilesTable();

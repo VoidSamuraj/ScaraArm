@@ -914,7 +914,7 @@ export async function drawPreviewFromFile(scene, fileName, xShift,isRightSide, s
  * @param {number} lineWidth - thickness of line
  * @param {hex} lineColor - line color in hex
  */
-function draw3DLine(group,startPoint,endPoint,lineWidth, lineColor = 0x00ff00){
+async function draw3DLine(group,startPoint,endPoint,lineWidth, lineColor = 0x00ff00){
     var direction = new THREE.Vector3().subVectors(endPoint, startPoint);
     var distance = direction.length();
 

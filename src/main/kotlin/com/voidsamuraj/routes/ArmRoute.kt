@@ -1,6 +1,7 @@
 package com.voidsamuraj.routes
 
 import com.fazecast.jSerialComm.SerialPort
+import com.voidsamuraj.gCodeService
 import com.voidsamuraj.gcode.GCodeSender
 import com.voidsamuraj.webSocketHandler
 import io.ktor.http.*
@@ -19,7 +20,16 @@ fun Route.armRoute() {
                     call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
             }
         }
-        post("/end"){
+        post("/pause"){
+            GCodeSender.setPaused(true)
+        }
+        post("/resume"){
+            GCodeSender.setPaused(false)
+        }
+        post("/stop"){
+            gCodeService.stopService()
+        }
+        post("/disconnect"){
             GCodeSender.endCommunication()
             GCodeSender.closePort()
             call.respond(HttpStatusCode.OK, "Success")

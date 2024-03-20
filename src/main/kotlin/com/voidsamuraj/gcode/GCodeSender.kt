@@ -89,6 +89,7 @@ object GCodeSender {
     private var ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
         get() = field * MOTOR_STEPS_PRER_ROTATION
 
+    private var paused=false
     /**
      * Function to reset state to unmodified, it not moves arm
      */
@@ -106,6 +107,7 @@ object GCodeSender {
         ARM_LONG_STEPS_PER_ROTATION =  35.0 / 20.0 //1.75
         ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
         ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
+        paused=false
     }
 
     /**
@@ -118,9 +120,21 @@ object GCodeSender {
         angles[0] = 90.0
         angles[1] =180.0
     }
+    /**
+     * Function to set arm direction
+     * @param isRightSide:Boolean
+     */
     fun setArmDirection(isRightSide: Boolean){
         this.isRightSide=isRightSide
     }
+    /**
+     * Function to pause sending file to arm and web page
+     * @param isPaused:Boolean
+     */
+    fun setPaused(isPaused:Boolean){
+        paused=isPaused
+    }
+
     /**
      * Sets length of first arm (connected to base)
      * @param length length in mm
@@ -291,6 +305,9 @@ object GCodeSender {
                                         it.substring(0, index)
                                 }
                             } != null && scope.isActive) {
+                            while(paused){
+                                delay(1000)
+                            }
                             line?.let {
                                 if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ) { //filter out commands
                                     val map: MutableMap<String, String> = mutableMapOf(
@@ -402,6 +419,7 @@ object GCodeSender {
                                 }
                                 ++lineNumber
                             }
+
                         }
                         endCommunication(printWriter!!)
                         return@withContext StateReturn.SUCCESS
