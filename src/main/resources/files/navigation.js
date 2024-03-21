@@ -46,6 +46,9 @@ const stopButtonBox = document.getElementById("stopButtonBox");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
 const stopButton = document.getElementById("stopButton");
+
+const consoleMenu = document.getElementById("consoleMenu");
+
 var selectedFile;
 
 speedInput.value = parseFloat(localStorage.getItem("maxSpeed") || "20");
@@ -111,6 +114,7 @@ var menuDisplayed = false;
 var canMoveArm = false;
 var areFileBlocked = true;
 var isGCodePaused = false;
+var isConsoleOpen = false;
 export var demoMode = false;
 
 portMenu.style.minHeight = firstMenuStyle.height;
@@ -351,6 +355,38 @@ async function onEditSize(event, name, updateDrawing) {
     return false;
   }
   return true;
+}
+/**
+* Function to animate background position in vertical
+* @param {DOM element} element change background position
+* @param {int} from  start position of background
+* @param {int} to  end position of background
+* @param {int} duration of animation in ms
+*/
+function changeBackgroundAnimation(element, from , to, duration) {
+    let start = null;
+    let direction = 'normal';
+
+    function animate(timestamp) {
+        if (!start) start = timestamp;
+        const progress = timestamp - start;
+        const percentage = Math.min(progress / duration, 1);
+
+        let newPosition;
+        if (direction === 'normal') {
+            newPosition = from + percentage * (to - from);
+        } else {
+            newPosition = from + (1 - percentage) * (to - from);
+        }
+
+        element.style.backgroundPosition = `0 ${newPosition}%`;
+
+        if (percentage < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+
+    requestAnimationFrame(animate);
 }
 
 /**
@@ -1326,6 +1362,16 @@ stopButton.addEventListener("click",  async function (){
     }
 });
 
+document.getElementById("consoleButton").addEventListener("click",  async function (){
+    if(isConsoleOpen){
+        consoleMenu.style.bottom = ""+(-consoleMenu.clientHeight + 90)+"px";
+        changeBackgroundAnimation(document.getElementById("consoleButtonBox"),100 , 0, 500);
+    }else{
+        consoleMenu.style.bottom = "0px";
+        changeBackgroundAnimation(document.getElementById("consoleButtonBox"), 0, 100, 500);
+    }
+    isConsoleOpen=!isConsoleOpen;
+});
 document.addEventListener("DOMContentLoaded", async function (){
   fillFilesTable();
   fillPortsTable();

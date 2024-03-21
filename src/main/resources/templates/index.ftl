@@ -109,7 +109,7 @@
             <hr>
             <div class="scroll-list">
                 <li class="button menu-button" id="switch">
-                    <input id="toggle" class="toggle" type="checkbox" role="switch" name="toggle"">
+                    <input id="toggle" class="toggle" type="checkbox" role="switch" name="toggle">
                     <label for="toggle" class="slot">
                     <span class="slot__label">Left</span>
                     <span class="slot__label">Right</span>
@@ -220,6 +220,20 @@
         </div>
         <div id="stopButtonBox" class="buttonOverlay">
             <button id="stopButton" class="printButton">Stop</button>
+        </div>
+      </div>
+      <div id="consoleMenu">
+      <div id="consoleButtonBox">
+        <button id="consoleButton" >
+          <img src="static/icon/console.svg" alt="console">
+        </button>
+        </div>
+        <div id="consoleBox">
+            <div id="commands"></div>
+            <div id="terminal">
+                <input type="text"/>
+                <button id="sendCommand">Send</button>
+            </div>
         </div>
       </div>
       <div id="overlay"></div>
