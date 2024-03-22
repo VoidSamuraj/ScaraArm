@@ -700,6 +700,7 @@ table td, table th {
   display:flex;
   flex-direction: column;
   flex-grow: 1;
+  max-height: calc(100% - 100px);
 }
 
 #commands{
@@ -711,7 +712,7 @@ table td, table th {
   padding: 5px;
   overflow-y: auto;
   overflow-x: hidden;
-  max-height:745px;
+  max-height:100%;
   box-sizing: border-box;
 }
 #terminal{
