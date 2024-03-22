@@ -449,14 +449,15 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
 /**
  * Function to draw file on scene and send code to arm, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
- * @param {string} fileName - name of file to draw 
+ * @param {string} fileName - name of file to draw
+ * @param {DOM element} console - element displaying executed GCode.
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, startPos){
+export async function drawFile(scene, console, fileName,onLineRead,xShift,isRightSide, startPos){
     var lastHeight=startPos[2];
     var currentHeight=lastHeight;
     var firstHeightSet=false;
@@ -492,6 +493,12 @@ export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, sta
     var changedSomething=false;
     var changedPos=false;
     const scale=0.02; //0.1/5
+    console.innerText="";
+    var scrollToBottom=true;
+
+    console.addEventListener("scroll", function() {
+        scrollToBottom=console.scrollHeight - console.clientHeight <= console.scrollTop + 1;
+    });
 
    if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
         socket = new WebSocket('ws://localhost:8080/files/draw');
@@ -509,16 +516,22 @@ export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, sta
             changedSomething=false;
 
             let data = JSON.parse(event.data);
-
+            var ret="";
                 let isThin=!('E' in data);
 
                 if ('CX' in data){
                     changedSomething=true;
-                    xPos=parseFloat(data.CX)*scale;
+                    let newX=parseFloat(data.CX)*scale;
+                    if(newX != xPos)
+                        ret+=" X"+data.CX;
+                    xPos=newX;
                 }
                 if ('CY' in data){
                     changedSomething=true;
-                    yPos=parseFloat(data.CY)*scale;
+                    let newY=parseFloat(data.CY)*scale;
+                    if(newY!=yPos)
+                        ret+=" Y"+data.CY;
+                    yPos=newY;
                 }
                 if ('CZ' in data){
                     changedSomething=true;
@@ -530,7 +543,24 @@ export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, sta
                         currentHeight=currentHeight-(zPos*0.5);
                         secondHeightSet=true;
                     }
-                    zPos=parseFloat(data.CZ)*scale;
+                    let newZ=parseFloat(data.CZ)*scale;
+                    if(newZ!=zPos)
+                        ret+=" Z"+data.CZ;
+                    zPos=newZ;
+
+                }
+                if ('E' in data)
+                   ret+=" E"+data.E;
+                if ('F' in data)
+                        ret+=" F"+data.F;
+                if(ret!=""){
+                    if(console.children.length>=100)
+                        console.removeChild(console.firstChild);
+                    var element = document.createElement("div");
+                    element.textContent = "G1 "+ret;
+                    console.appendChild(element);
+                    if(scrollToBottom)
+                        element.scrollIntoView();
                 }
             if(changedSomething){
                 if(points.length>1){
@@ -560,13 +590,14 @@ export async function drawFile(scene,fileName,onLineRead,xShift,isRightSide, sta
 /**
  * Function to continue drawing file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
+ * @param {DOM element} console - element displaying executed GCode.
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startPos){
+export async function restoreDrawing(scene, console, onLineRead,xShift,isRightSide, startPos){
         var fileName=null;
         var lastHeightFile=startPos[2];
         var currentHeightFile=0;
@@ -614,6 +645,16 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
         var changedSomething=false;
         var changedSomethingFile=false;
         const scale=0.02;
+
+        var commands="";
+        var restored=false;
+        console.innerText="";
+        var scrollToBottom=true;
+
+        console.addEventListener("scroll", function() {
+            scrollToBottom=console.scrollHeight - console.clientHeight <= console.scrollTop + 1;
+        });
+
         socket = new WebSocket('ws://localhost:8080/files/draw');
         socket.onmessage = function(event) {
             // Obsługa otrzymanej wiadomości
@@ -625,6 +666,8 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
             changedSomething=false;
 
             let data = JSON.parse(event.data);
+            var ret="";
+
             if("fileName" in data){
                 fileName = data.fileName;
             }
@@ -633,16 +676,48 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
 
              if ('CX' in data){
                  changedSomething=true;
-                 xPos=parseFloat(data.CX)*scale;
+                 let newX=parseFloat(data.CX)*scale;
+                 if(newX != xPos)
+                     ret+=" X"+data.CX;
+                 xPos=newX;
              }
              if ('CY' in data){
                  changedSomething=true;
-                 yPos=parseFloat(data.CY)*scale;
+                 let newY=parseFloat(data.CY)*scale;
+                 if(newY!=yPos)
+                     ret+=" Y"+data.CY;
+                 yPos=newY;
              }
              if ('CZ' in data){
                  changedSomething=true;
-                 zPos=parseFloat(data.CZ)*scale;
+                 let newZ = parseFloat(data.CZ)*scale;
+                 if(zPos!=zPos)
+                     ret+=" Z"+data.CZ;
+                 zPos=newZ;
              }
+
+             if ('E' in data)
+                ret+=" E"+data.E;
+             if ('F' in data)
+                     ret+=" F"+data.F;
+
+             if(ret!=""){
+                  if(restored){
+                      if(commands!=""){
+                        console.innerText+commands;
+                        commands="";
+                      }
+                        while(console.children.length>=100)
+                            console.removeChild(console.firstChild);
+                        var element = document.createElement("div");
+                        element.textContent = "G1 "+ret;
+                        console.appendChild(element);
+                        if(scrollToBottom)
+                            element.scrollIntoView();
+                  }else
+                    commands+="G1 "+ret+"\n";
+             }
+
              if ('LT' in data){
                  thickness=parseFloat(data.LT);
              }
@@ -688,13 +763,18 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
 
                                     let isExtruding=false;
                                     changedSomethingFile=false;
+                                    var currentCommand=""
                                     commands.forEach(command=>{
                                         var mode = command.substring(0, 3);
                                         if(mode == "G90"){
                                             isRelativeFile = false;
+                                            currentCommand+="G90 ";
                                         }else if(mode == "G91"){
                                             isRelativeFile = true;
+                                            currentCommand+="G91 ";
                                         }else{
+                                            if(command=="G1")
+                                                currentCommand+="G1 ";
                                             var firstCharacter = command.charAt(0);
                                             switch (firstCharacter) {
                                                 case "X":
@@ -702,6 +782,7 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
                                                         xPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         xPosFile=parseFloat(command.slice(1))*scale;
+                                                    currentCommand+=command+" ";
                                                     changedSomethingFile=true;
                                                     break;
                                                 case "Y":
@@ -709,6 +790,7 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
                                                         yPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         yPosFile=parseFloat(command.slice(1))*scale;
+                                                    currentCommand+=command+" ";
                                                     changedSomethingFile=true;
                                                     break;
                                                 case "Z":
@@ -716,10 +798,12 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
                                                         zPosFile+=parseFloat(command.slice(1))*scale;
                                                     else
                                                         zPosFile=parseFloat(command.slice(1))*scale;
-                                                        changedSomethingFile=true;
+                                                    currentCommand+=command+" ";
+                                                    changedSomethingFile=true;
                                                     break;
                                                 case "E":
                                                         isExtruding = true;
+                                                        currentCommand+=command+" ";
                                                      break;
                                                 default:
                                                     break;
@@ -727,6 +811,14 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
                                         }
                                     });
                                     if(changedSomethingFile){
+                                        while(console.children.length>=100)
+                                            console.removeChild(console.firstChild);
+                                        var element = document.createElement("div");
+                                        element.textContent = currentCommand;
+                                        console.appendChild(element);
+                                        if(scrollToBottom)
+                                            element.scrollIntoView();
+                                        currentCommand="";
                                         restoredPoints.push({isExtruding : isExtruding,vector3 : new THREE.Vector3(xPosFile, yPosFile, zPosFile)});
                                      }
                                 }
@@ -746,6 +838,7 @@ export async function restoreDrawing(scene,onLineRead,xShift,isRightSide, startP
                                             currentHeightFile=restoredPoints[i + 1].vector3.z;
                                             draw3DLine(stlGroup,restoredPoints[i].vector3,restoredPoints[i+1].vector3,(currentHeightFile-lastHeightFile)*(restoredPoints[i+1].isExtruding?1:0.2),restoredPoints[i+1].isExtruding?0x00ff00:0x8D8D8D);
                                 }
+                                restored=true;
                         };
                         reader.readAsText(blob);
                 })

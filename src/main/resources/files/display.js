@@ -1479,7 +1479,7 @@ function selectSTL() {
  */
 function drawFileOnScene(fileName) {
   isArmDrawing = true;
-  drawFile(scene, fileName, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
+  drawFile(scene,document.getElementById("commands"), fileName, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]);
 }
 window.drawFileOnScene = drawFileOnScene;
 
@@ -1496,7 +1496,7 @@ window.drawFilePreview = async function(fileName, onSuccess){
 //update helpers rotation
 document.addEventListener("DOMContentLoaded", async function (){
   updateHelper();
-  restoreDrawing(scene, setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
+  restoreDrawing(scene,document.getElementById("commands"), setToolPosition, armShift, rightSide, [currentToolX, currentToolY,currentHeight]).then((value)=>{
     isArmDrawing = value;
   });
 

@@ -672,7 +672,7 @@ table td, table th {
   background-color:#1C1E2A;
   border: 2px solid #f0f0f0;
   border-radius: 5px;
-  margin: 10px 10px 0px 10px;
+  margin: 10px;
   padding: 11px;
   color: #f0f0f0;
   width: 70px;
@@ -696,7 +696,7 @@ table td, table th {
 #consoleBox{
   background-color: #1C1E2A;
   border-radius: 0px 0px 10px 0px;
-  padding: 10px;
+  padding: 0px 10px 10px 10px;
   display:flex;
   flex-direction: column;
   flex-grow: 1;
@@ -708,6 +708,11 @@ table td, table th {
   border-radius: 10px;
   flex-grow: 1;
   margin-bottom: 10px;
+  padding: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height:745px;
+  box-sizing: border-box;
 }
 #terminal{
  width: 100%;
@@ -720,7 +725,7 @@ table td, table th {
     border-radius: 0.75em 0px 0px 0.75em;
     border-width: 0px;
     height: 3em;
-    padding: 0px;
+    padding: 0px 5px;
     background-color:white;
     margin: 0px;
 }
