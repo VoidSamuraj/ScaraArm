@@ -1,4 +1,4 @@
-import { formatInt, formatFloat, showDialog } from "/static/helpers.js";
+import { formatInt, formatFloat, showDialog, checkIfThatIsGCode} from "/static/helpers.js";
 /**
  * File setting listeners to menu
  *
@@ -46,6 +46,9 @@ const stopButtonBox = document.getElementById("stopButtonBox");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
 const stopButton = document.getElementById("stopButton");
+const sendCommand = document.getElementById("sendCommand");
+const commandInput = document.getElementById("commandInput");
+const console = document.getElementById("commands");
 
 const consoleMenu = document.getElementById("consoleMenu");
 
@@ -878,6 +881,24 @@ export async function refreshPorts() {
   fillPortsTable();
   selectConnectedPort();
 }
+/**
+*Function witch verifies and sends GCode from commandInput
+*/
+function sendGCode(){
+    if(checkIfThatIsGCode(commandInput.value)){
+        var formData = new FormData();
+        formData.append("command", commandInput.value);
+        fetch("/arm/send-command", {method: "POST", body: formData}).then((response) => {
+             if(console.children.length>=100)
+                 console.removeChild(console.firstChild);
+             var element = document.createElement("div");
+             element.textContent = commandInput.value;
+             console.appendChild(element);
+             commandInput.value="";
+        });
+    }else{
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                              setting up listeners
@@ -1342,27 +1363,49 @@ startButton.addEventListener("click",  async function (){
 
 pauseButton.addEventListener("click",  async function (){
         if(isGCodePaused){
-            fetch("/arm/resume", {method: "POST"});
-            pauseButton.innerText = "Pause";
-            pauseButton.style.backgroundColor = "#a52727";
+            fetch("/arm/resume", {method: "POST"}).then((response) => {
+                if (response.ok) {
+                    pauseButton.innerText = "Pause";
+                    pauseButton.style.backgroundColor = "#a52727";
+                    isGCodePaused=!isGCodePaused;
+                }
+            });
         }else{
-            fetch("/arm/pause", {method: "POST"});
-            pauseButton.innerText = "Resume";
-            pauseButton.style.backgroundColor = "#28a745";
+            fetch("/arm/pause", {method: "POST"}).then((response) => {
+                if (response.ok) {
+                    pauseButton.innerText = "Resume";
+                    pauseButton.style.backgroundColor = "#28a745";
+                    isGCodePaused=!isGCodePaused;
+                }
+            });
         }
-        isGCodePaused=!isGCodePaused;
 });
 
 stopButton.addEventListener("click",  async function (){
     if (confirm("Are you sure you want to STOP GCode execution?") == true){
-        fetch("/arm/stop", {method: "POST"});
-        startButtonBox.style.display = "none";
-        stopButtonBox.style.display = "none";
-        pauseButtonBox.style.display = "none";
+        fetch("/arm/stop", {method: "POST"}).then((response) => {
+            if (response.ok) {
+                startButtonBox.style.display = "none";
+                stopButtonBox.style.display = "none";
+                pauseButtonBox.style.display = "none";
+            }
+        });
     }
 });
 
+sendCommand.addEventListener("click",  async function (){
+    sendGCode();
+});
+commandInput.addEventListener("keyup", function(event) {
+    if (event.key === "Enter") {
+        sendGCode();
+    }
+});
+
+
+
 document.getElementById("consoleButton").addEventListener("click",  async function (){
+
     if(isConsoleOpen){
         consoleMenu.style.bottom = ""+(-consoleMenu.clientHeight + 90)+"px";
         changeBackgroundAnimation(document.getElementById("consoleButtonBox"),100 , 0, 500);

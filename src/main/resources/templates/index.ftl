@@ -231,7 +231,7 @@
         <div id="consoleBox">
             <div id="commands"></div>
             <div id="terminal">
-                <input type="text"/>
+                <input id="commandInput" type="text"/>
                 <button id="sendCommand">Send</button>
             </div>
         </div>

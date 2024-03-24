@@ -22,12 +22,29 @@ fun Route.armRoute() {
         }
         post("/pause"){
             GCodeSender.setPaused(true)
+            call.respond(HttpStatusCode.OK, "Success")
         }
         post("/resume"){
             GCodeSender.setPaused(false)
+            call.respond(HttpStatusCode.OK, "Success")
         }
         post("/stop"){
             gCodeService.stopService()
+            call.respond(HttpStatusCode.OK, "Success")
+        }
+        post("/send-command"){
+            val formParameters = call.receiveParameters()
+            val command = formParameters["command"]
+            if(command!=null){
+                GCodeSender.setPaused(true)
+                val isOk= GCodeSender.sendGCodeCommand(command)== GCodeSender.StateReturn.SUCCESS
+                GCodeSender.setPaused(false)
+                if(isOk)
+                    call.respond(HttpStatusCode.OK, "Success")
+                else
+                    call.respond(HttpStatusCode.BadRequest, "Something gone wrong")
+            }else
+                call.respond(HttpStatusCode.BadRequest, "Wrong command")
         }
         post("/disconnect"){
             GCodeSender.endCommunication()

@@ -15,18 +15,16 @@ import kotlin.math.*
  * Set of function to transform cartesian to scara and send to arduino
  * @author Karol Robak
  */
-
 @Throws(InterruptedException::class, IOException::class)
 fun main() {
     // GCodeSender.openPort()
-    val src = "/home/karol/Intelij/scaracp/scara-arm2/FILES/xyz.gcode"
-    val out = "/home/karol/Pobrane/output2.txt"
+    //val src = "/home/karol/Intelij/scaracp/scara-arm2/FILES/xyz.gcode"
+    //val out = "/home/karol/Pobrane/output2.txt"
     // if false generated code is in degrees, else steps are calculated
-    val inSteps = false
-    GCodeSender.makeGCodeFile(src, out, inSteps, false)
+    //val inSteps = false
+    //GCodeSender.makeGCodeFile(src, out, inSteps, false)
 }
 object GCodeSender {
-
     enum class Platform{
         WINDOWS,
         LINUX
@@ -262,10 +260,10 @@ object GCodeSender {
 
             withContext(Dispatchers.IO) {
                 //check number of lines in file and send to arm
-                var lines = 0
+                var linesNumber = 0
                 BufferedReader(FileReader(fin)).use { reader ->
                     reader.forEachLine { line ->
-                        lines++
+                        linesNumber++
                         val regex = Regex("\\bF(\\d+)\\b")
                         val matchResult = regex.find(line)
                         matchResult?.let { result ->
@@ -275,7 +273,7 @@ object GCodeSender {
                         }
                     }
                 }
-                printWriter!!.write("commands $lines\n")
+                printWriter!!.write("commands $linesNumber\n")
                 printWriter!!.flush()
                 //waiting for arm response
                 for (i in 1..3) {
@@ -384,7 +382,7 @@ object GCodeSender {
 
                                     if(isMoving) {
                                         //sending data to arm
-                                        val message = transition(
+                                        val lines = transition(
                                             map["CX"]?.toDouble(),
                                             map["CY"]?.toDouble(),
                                             map["CZ"]?.toDouble(),
@@ -392,8 +390,9 @@ object GCodeSender {
                                             inSteps = true,
                                             isRightSide
                                         )
-                                        if(message!=""){
-                                            printWriter!!.write(message)
+                                            lines.forEach { line ->
+
+                                            printWriter!!.write(line)
                                             printWriter!!.flush()
 
                                             //waiting for arm response
@@ -547,7 +546,8 @@ object GCodeSender {
                     else if (line!!.contains("G1")) { // movement
                         val commands: List<String> = line!!
                             .split(";")[0].split(" "). filter { it!="" }
-                        fw.write(calculate(commands, inSteps, isRightSide))
+                        val newCommands=calculate(commands, inSteps, isRightSide).joinToString(separator = " ")
+                        fw.write(newCommands)
                     }
                 }
                 br.close()
@@ -565,7 +565,7 @@ object GCodeSender {
      * @param isRightSide changes direction of arm
      * @return calculated scara code for one command (line)
      */
-    private fun calculate(code: List<String>, inSteps: Boolean, isRightSide: Boolean): String {
+    private fun calculate(code: List<String>, inSteps: Boolean, isRightSide: Boolean): List<String> {
         var x: Double? = null
         var y: Double? = null
         var z: Double? = null
@@ -587,13 +587,15 @@ object GCodeSender {
                     z = c.substring(1).toDouble()
                 }
 
-                'F' -> speedNow = c.substring(1).toDouble()
+                'F' -> {
+                    speedNow = c.substring(1).toDouble()
+                }
                 else -> {}
             }
         }
         if (have)
             return transition(x, y, z, speedNow, inSteps, isRightSide)
-        return ""
+        return emptyList()
     }
 
     /**
@@ -619,8 +621,8 @@ object GCodeSender {
         speed: Double?,
         inSteps: Boolean,
         isRightSide: Boolean,
-    ): String {
-        val command = StringBuilder()
+    ): List<String> {
+        val commands = mutableListOf<String>()
         val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
         val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
@@ -655,62 +657,111 @@ object GCodeSender {
                     val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
                     if(lm!=0L)
-                        command.append(L).append(lm)
+                        commands.add("$L$lm")
                     if(sm!=0L)
-                        command.append(" ").append(S).append(sm)
+                        commands.add("$S$sm")
                     // -1 for direction
                     if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
-                        command.append(" Z")
-                            .append(zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1)
+                        commands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
                     }
                 } else {
                     val lm=alphaChange / totalSteps
                     val sm=betaChange / totalSteps
                     if(lm!=0.0)
-                        command.append(L).append(lm)
+                        commands.add("$L$lm")
                     if(sm!=0.0)
-                        command.append(" ").append(S).append(sm)
+                        commands.add("$S$sm")
                 }
                 if (speed != null && speed != -1.0 && speed != 0.0)
-                    command.append(" F").append((speed * speedrate).toLong())
-                command.append("\n")
+                    commands.add("F${(speed * speedrate).toLong()}")
             } else {
                 if (inSteps) {
                     val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
                     if(lm!=0L)
-                        command.append(L).append(lm)
+                        commands.add("$L$lm")
                     if(sm!=0L)
-                        command.append(" ").append(S).append(sm)
+                        commands.add("$S$sm")
                     // -1 for direction
                     if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
-                        command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1)
+                        commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
                     }
                 } else {
                     if(alphaChange!=0.0)
-                        command.append("" + L).append(alphaChange)
+                        commands.add("$L$alphaChange")
                     if(betaChange!=0.0)
-                        command.append(" ").append(S).append(betaChange)
+                        commands.add("$S$betaChange")
                 }
-                if (speed != null && speed != -1.0 && speed != 0.0) command.append(" F").append((speed * speedrate).toLong())
-                command.append("\n")
+                if (speed != null && speed != -1.0 && speed != 0.0)
+                    commands.add("F${(speed * speedrate).toLong()}")
             }
             if (!alphaAdd.isNaN()) angles[0] = alphaAdd
             if (!betaAdd.isNaN()) angles[1] = betaAdd
             if (xm != position[0]) position[0] = xm
             if (ym != position[1]) position[1] = ym
             if (zm != position[2]) position[2] = zm
-            return command.toString()
         } else if (zm != position[2]) {
-            command.append(" Z").append(zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1).append("\n")
+            commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
             position[2] = zm
-            return command.toString()
         }
-        return ""
+        return commands
     }
 
+    /**
+     * Function to send GCode, it verifies if it is in proper format like: "G1 X10 Y10 Z10 E10 F10"
+     * , none of this params are necessary and it works with decimals.
+     *  @param commandLine GCode command
+     *  @return StateReturn
+     */
+    fun sendGCodeCommand(commandLine:String):StateReturn{
+        val commands: List<String> = commandLine.split(" "). filter { it!="" }
+        var ret=true
+        commands.forEach { command ->
+            if(!(command == "G1" || command == "g1" || command =="")) {
+                val first = command[0].uppercaseChar()
+                val value = command.substring(1)
+                when(first){
+                    'X',
+                    'Y',
+                    'Z',
+                    'E',
+                    'F'->{
+                        val numberRegex = """^-?\d+(\.\d+)?$""".toRegex()
+                        if (!numberRegex.matches(value))
+                            ret = false
+                    }else->
+                    ret=false
+                }
+            }
+        }
+        if(ret) {
+            val newCommands = calculate(commands, true, isRightSide)
+            newCommands.forEach{ newCommand ->
+                printWriter!!.write(newCommand)
+                printWriter!!.flush()
+
+                //waiting for arm response
+                for (i in 1..3) {
+                    when (isOKReturned(bufferedInputStream!!)) {
+                        StateReturn.SUCCESS -> return StateReturn.SUCCESS
+                        StateReturn.PORT_DISCONNECTED -> {
+                            System.err.println("Arm is disconnected")
+                            return StateReturn.PORT_DISCONNECTED
+                        }
+
+                        else -> {}
+                    }
+                }
+                System.err.println("Arm is not responding")
+                return StateReturn.FAILURE
+            }
+            return StateReturn.SUCCESS
+        }else{
+            return StateReturn.FAILURE
+        }
+    }
     /**
      * function to move arm in cartesian space. Function creates connection to communicate
      * TODO needed testing
@@ -725,7 +776,7 @@ object GCodeSender {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-        val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).split("\n").filter { it!="" }
+        val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
         try {
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -787,7 +838,7 @@ object GCodeSender {
         val xPos: Double = arm1Length * sin(firstArmAngle) + arm2Length * sin(secondArmAngle + firstArmAngle)
         val isRelativeCp = isRelative
         isRelative = false
-        val lines: List<String> = transition(xPos, yPos, position[2], null, true, !isRightSide).split("\n").filter { it!="" }
+        val lines: List<String> = transition(xPos, yPos, position[2], null, true, !isRightSide).filter { it!="" }
         isRelative = isRelativeCp
         try {
             if (!isPortOpen)

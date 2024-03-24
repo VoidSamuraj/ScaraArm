@@ -96,3 +96,40 @@ function processQueue() {
         processQueue();
     }, Math.abs(duration));
 }
+/**
+*Function to check if input is GCode, it supports G1 command but G1 is not necessary.
+* @param {string} line - line to check if is in GCode format
+* @returns {boolean} - true if is in format "G1 X10 Y10 Z10 E10 F10", none of this params are necessary and it works with decimals.
+*/
+export function checkIfThatIsGCode(line){
+   var elements = line.split(" ");
+   var ret=true;
+   elements.forEach(command => {
+       if(command == "G1" || command == "g1" || command ==""){
+
+       }else{
+       var first = command.charAt(0);
+       var value = command.slice(1);
+
+       switch (first) {
+           case 'X':
+           case 'Y':
+           case 'Z':
+           case 'E':
+           case 'F':
+           case 'x':
+           case 'y':
+           case 'z':
+           case 'e':
+           case 'f':
+               var numberRegex = /^-?\d+(\.\d+)?$/;
+               if(!numberRegex.test(value))
+                    ret=false;
+               break;
+           default:
+            ret=false;
+       }
+    }
+   });
+   return ret;
+}
