@@ -5,6 +5,8 @@ import {onArmDisconnect} from '/static/display.js'
 var socket;
 var stlGroup = new THREE.Group();
 var firstDrawnLine=0;
+var isCommandRelative=false;
+var lastThickness=null;
 /**
  * Create circle and adds it to scene.
  * @param {number} size - circle size.
@@ -450,14 +452,14 @@ export function drawArmRange(panelSize,armShift, arm1Length, arm2Length, MAX_ARM
  * Function to draw file on scene and send code to arm, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
  * @param {string} fileName - name of file to draw
- * @param {DOM element} console - element displaying executed GCode.
+ * @param {DOM element} consoleList - element displaying executed GCode.
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export async function drawFile(scene, console, fileName,onLineRead,xShift,isRightSide, startPos){
+export async function drawFile(scene, consoleList, fileName,onLineRead,xShift,isRightSide, startPos){
     var lastHeight=startPos[2];
     var currentHeight=lastHeight;
     var firstHeightSet=false;
@@ -493,11 +495,11 @@ export async function drawFile(scene, console, fileName,onLineRead,xShift,isRigh
     var changedSomething=false;
     var changedPos=false;
     const scale=0.02; //0.1/5
-    console.innerText="";
+    consoleList.innerText="";
     var scrollToBottom=true;
 
-    console.addEventListener("scroll", function() {
-        scrollToBottom=console.scrollHeight - console.clientHeight <= console.scrollTop + 1;
+    consoleList.addEventListener("scroll", function() {
+        scrollToBottom=consoleList.scrollHeight - consoleList.clientHeight <= consoleList.scrollTop + 1;
     });
 
    if(fileName!=null && typeof fileName !== 'undefined' && fileName!=""){
@@ -554,11 +556,11 @@ export async function drawFile(scene, console, fileName,onLineRead,xShift,isRigh
                 if ('F' in data)
                         ret+=" F"+data.F;
                 if(ret!=""){
-                    if(console.children.length>=100)
-                        console.removeChild(console.firstChild);
+                    if(consoleList.children.length>=100)
+                        consoleList.removeChild(consoleList.firstChild);
                     var element = document.createElement("div");
                     element.textContent = "G1 "+ret;
-                    console.appendChild(element);
+                    consoleList.appendChild(element);
                     if(scrollToBottom)
                         element.scrollIntoView();
                 }
@@ -580,9 +582,11 @@ export async function drawFile(scene, console, fileName,onLineRead,xShift,isRigh
                 currentHeight=points[points.length-1].z;
                 if ('LT' in data){
                     thickness=parseFloat(data.LT);
+                    lastThickness=thickness;
                 }
-                if(points.length >=2)
+                if(points.length >=2){
                     draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
+            }
             }
         };
     }
@@ -720,6 +724,7 @@ export async function restoreDrawing(scene, console, onLineRead,xShift,isRightSi
 
              if ('LT' in data){
                  thickness=parseFloat(data.LT);
+                 lastThickness=thickness;
              }
              if("line" in data){
                 if(firstDrawnLine==0)
@@ -853,6 +858,91 @@ export async function restoreDrawing(scene, console, onLineRead,xShift,isRightSi
         }, 2000);
         });
 }
+
+export function executeCommand(command, currentPos,isRightSide, onEnd){
+        var xPos;
+        var yPos;
+        var zPos=currentPos.z;
+        if(isRightSide){
+            xPos=-currentPos.y;
+            yPos=currentPos.x;
+        }else{
+            xPos=currentPos.x;
+            yPos=-currentPos.y;
+        }
+
+        var currentPosChanged= new THREE.Vector3(xPos, yPos, zPos);
+
+        var changedSomething=false;
+        var isThin = true;
+        const scale=0.02;
+
+     commands=command.split(' ');
+     commands.forEach(command=>{
+         var mode = command.substring(0, 3);
+         if(mode == "G90"){
+             isCommandRelative = false;
+         }else if(mode == "G91"){
+             isCommandRelative = true;
+         }else{
+             var firstCharacter = command.charAt(0);
+             switch (firstCharacter) {
+                 case "Y":
+                    if(isRightSide){
+                         if(isCommandRelative)
+                             xPos+=parseFloat(command.slice(1))*scale;
+                         else
+                             xPos=parseFloat(command.slice(1))*scale;
+                     }else{
+                         if(isCommandRelative)
+                            yPos+=parseFloat(command.slice(1))*scale;
+                         else
+                            yPos=parseFloat(command.slice(1))*scale;
+                     }
+                     changedSomething=true;
+                     break;
+                 case "X":
+                    if(isRightSide){
+                         if(isCommandRelative)
+                            yPos+=parseFloat(command.slice(1))*scale;
+                         else
+                            yPos=parseFloat(command.slice(1))*scale;
+                    }else{
+                        if(isCommandRelative)
+                            xPos+=parseFloat(command.slice(1))*scale;
+                        else
+                            xPos=parseFloat(command.slice(1))*scale;
+                    }
+                     changedSomething=true;
+                     break;
+                 case "Z":
+                     if(isCommandRelative)
+                         zPos+=parseFloat(command.slice(1))*scale;
+                     else
+                         zPos=parseFloat(command.slice(1))*scale;
+                     changedSomething=true;
+                     break;
+                 case "E":
+                         isThin = false;
+                      break;
+                 default:
+                     break;
+             }
+         }
+     });
+     if(changedSomething){
+        let newPos=new THREE.Vector3(xPos, yPos, zPos);
+        draw3DLine(
+        stlGroup,
+        currentPosChanged,
+        newPos,
+        Math.abs(lastThickness*scale*(isThin?0.2:1)),
+        isThin?0x2828cc:0x0000ff
+        );
+        onEnd(newPos);
+     }
+}
+
 /**
  * Function to draw file on scene and send code to arm, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.

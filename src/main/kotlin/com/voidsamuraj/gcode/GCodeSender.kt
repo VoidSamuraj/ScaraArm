@@ -37,7 +37,8 @@ object GCodeSender {
     enum class StateReturn{
         SUCCESS,
         FAILURE,
-        PORT_DISCONNECTED
+        PORT_DISCONNECTED,
+        OUTSIDE_RANGE
     }
 
     private var port: SerialPort? = null
@@ -87,7 +88,19 @@ object GCodeSender {
     private var ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
         get() = field * MOTOR_STEPS_PRER_ROTATION
 
+    //flag to set pause
     private var paused=false
+    /**
+     * Function returns boolean of paused flag. This flag is to stop executing next command.
+     * */
+    fun getIsPaused()= paused
+    // to check if last line is executed and sendGCode paused
+    private var isPaused=false
+    /**
+     * Function returns if arm is now paused
+     */
+    fun getIsNowPaused()= isPaused
+
     /**
      * Function to reset state to unmodified, it not moves arm
      */
@@ -291,6 +304,7 @@ object GCodeSender {
                         return@withContext StateReturn.FAILURE
                     }
                 }
+                isPaused=false
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         var line: String? = null
@@ -304,8 +318,10 @@ object GCodeSender {
                                 }
                             } != null && scope.isActive) {
                             while(paused){
+                                isPaused=true
                                 delay(1000)
                             }
+                            isPaused=false
                             line?.let {
                                 if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ) { //filter out commands
                                     val map: MutableMap<String, String> = mutableMapOf(
@@ -390,7 +406,7 @@ object GCodeSender {
                                             inSteps = true,
                                             isRightSide
                                         )
-                                            lines.forEach { line ->
+                                        lines.forEach { line ->
 
                                             printWriter!!.write(line)
                                             printWriter!!.flush()
@@ -420,6 +436,7 @@ object GCodeSender {
                             }
 
                         }
+                        isPaused=true
                         endCommunication(printWriter!!)
                         return@withContext StateReturn.SUCCESS
                     }
@@ -630,8 +647,9 @@ object GCodeSender {
             val newRadius: Double = hypot(xm, ym)
             if (newRadius > R) {
                 System.err.println("Object is outside workspace MAX_RADIUS($R)<$newRadius")
-
+                commands.add(";outside")
             } else if(newRadius<minRadius){
+                commands.add(";outside")
                 System.err.println("Object is outside workspace $newRadius<MIN_RADIUS($minRadius)")
             }
             val gamma: Double = atan2(ym, xm) //absolute degree angle to R
@@ -719,45 +737,57 @@ object GCodeSender {
         val commands: List<String> = commandLine.split(" "). filter { it!="" }
         var ret=true
         commands.forEach { command ->
-            if(!(command == "G1" || command == "g1" || command =="")) {
-                val first = command[0].uppercaseChar()
-                val value = command.substring(1)
-                when(first){
-                    'X',
-                    'Y',
-                    'Z',
-                    'E',
-                    'F'->{
-                        val numberRegex = """^-?\d+(\.\d+)?$""".toRegex()
-                        if (!numberRegex.matches(value))
-                            ret = false
-                    }else->
-                    ret=false
+            when(command){
+                "g90",
+                "G90" -> isRelative=false
+                "g91",
+                "G91" -> isRelative=true
+                else -> {
+                    if(!(command == "G1" || command == "g1" || command =="")) {
+                        val first = command[0].uppercaseChar()
+                        val value = command.substring(1)
+                        when(first){
+                            'X',
+                            'Y',
+                            'Z',
+                            'E',
+                            'F'->{
+                                val numberRegex = """^-?\d+(\.\d+)?$""".toRegex()
+                                if (!numberRegex.matches(value))
+                                    ret = false
+                            }else->
+                            ret=false
+                        }
+                    }
                 }
             }
+
         }
         if(ret) {
             val newCommands = calculate(commands, true, isRightSide)
-            newCommands.forEach{ newCommand ->
-                printWriter!!.write(newCommand)
-                printWriter!!.flush()
+            if(!newCommands.contains(";outside")){
+                newCommands.forEach{ newCommand ->
+                    printWriter!!.write(newCommand)
+                    printWriter!!.flush()
 
-                //waiting for arm response
-                for (i in 1..3) {
-                    when (isOKReturned(bufferedInputStream!!)) {
-                        StateReturn.SUCCESS -> return StateReturn.SUCCESS
-                        StateReturn.PORT_DISCONNECTED -> {
-                            System.err.println("Arm is disconnected")
-                            return StateReturn.PORT_DISCONNECTED
+                    //waiting for arm response
+                    for (i in 1..3) {
+                        when (isOKReturned(bufferedInputStream!!)) {
+                            StateReturn.SUCCESS -> return StateReturn.SUCCESS
+                            StateReturn.PORT_DISCONNECTED -> {
+                                System.err.println("Arm is disconnected")
+                                return StateReturn.PORT_DISCONNECTED
+                            }
+
+                            else -> {}
                         }
-
-                        else -> {}
                     }
+                    System.err.println("Arm is not responding")
+                    return StateReturn.FAILURE
                 }
-                System.err.println("Arm is not responding")
-                return StateReturn.FAILURE
+                return StateReturn.SUCCESS
             }
-            return StateReturn.SUCCESS
+            return StateReturn.OUTSIDE_RANGE
         }else{
             return StateReturn.FAILURE
         }

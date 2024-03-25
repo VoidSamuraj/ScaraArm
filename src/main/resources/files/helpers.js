@@ -105,7 +105,10 @@ export function checkIfThatIsGCode(line){
    var elements = line.split(" ");
    var ret=true;
    elements.forEach(command => {
-       if(command == "G1" || command == "g1" || command ==""){
+       if(command == "G1" || command == "g1"
+        || command == "G91" || command == "g91"
+        || command == "G90" || command == "g90"
+        || command ==""){
 
        }else{
        var first = command.charAt(0);

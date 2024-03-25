@@ -1,4 +1,6 @@
 import { formatInt, formatFloat, showDialog, checkIfThatIsGCode} from "/static/helpers.js";
+import {getCurrentPosition, setToolPosition, getIsRightSide} from "/static/display.js";
+import {executeCommand} from "/static/elements.js";
 /**
  * File setting listeners to menu
  *
@@ -48,7 +50,7 @@ const pauseButton = document.getElementById("pauseButton");
 const stopButton = document.getElementById("stopButton");
 const sendCommand = document.getElementById("sendCommand");
 const commandInput = document.getElementById("commandInput");
-const console = document.getElementById("commands");
+const consoleList = document.getElementById("commands");
 
 const consoleMenu = document.getElementById("consoleMenu");
 
@@ -360,7 +362,7 @@ async function onEditSize(event, name, updateDrawing) {
   return true;
 }
 /**
-* Function to animate background position in vertical
+* Function to animate background-position style in vertical
 * @param {DOM element} element change background position
 * @param {int} from  start position of background
 * @param {int} to  end position of background
@@ -889,14 +891,35 @@ function sendGCode(){
         var formData = new FormData();
         formData.append("command", commandInput.value);
         fetch("/arm/send-command", {method: "POST", body: formData}).then((response) => {
-             if(console.children.length>=100)
-                 console.removeChild(console.firstChild);
-             var element = document.createElement("div");
-             element.textContent = commandInput.value;
-             console.appendChild(element);
+            if(consoleList.children.length>=100)
+                consoleList.removeChild(consoleList.firstChild);
+            var element = document.createElement("div");
+            element.textContent = commandInput.value;
+
+            if(response.ok){
+                 var pos=getCurrentPosition();
+                 executeCommand(commandInput.value, pos, getIsRightSide(), setToolPosition);
+                 element.style.color = "green";
+             }else{
+                 element.style.color = "red";
+                 showDialog(
+                   alertItem,
+                   alertMessage,
+                   "e",
+                   "Position from command line is outside work space"
+                 );
+             }
+             consoleList.appendChild(element);
+             element.scrollIntoView();
              commandInput.value="";
         });
     }else{
+        showDialog(
+          alertItem,
+          alertMessage,
+          "e",
+          "Command should be formatted like: \"G1 X11 Y22 Z33 E44 F55\" but none of these is required"
+        );
     }
 }
 

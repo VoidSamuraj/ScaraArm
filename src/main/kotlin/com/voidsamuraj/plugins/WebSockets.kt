@@ -74,7 +74,8 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
                         webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("File processed")
                     }
-                    GCodeSender.StateReturn.FAILURE->{
+                    GCodeSender.StateReturn.FAILURE,
+                    GCodeSender.StateReturn.OUTSIDE_RANGE->{
                         webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("Failed to draw file")
                     }

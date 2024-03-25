@@ -99,9 +99,17 @@ var rightSide = localStorage.getItem("rightSide"); //direction of arm(movement a
 if (rightSide === null) rightSide = false;
 else rightSide = JSON.parse(rightSide);
 
+export function getIsRightSide(){
+    return rightSide;
+}
+
 var currentHeight = minHeight;
 var currentToolX = arm1Length + arm2TotalLength;
 var currentToolY = 0;
+
+export function getCurrentPosition(){
+    return  new THREE.Vector3(currentToolX,currentToolY, currentHeight);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //                              Objects on scene
@@ -1361,9 +1369,13 @@ function checkIfCanMoveToPosition(vector, isRightSide){
 /**
  * Set position on of the tool and update displayed arm
  * @param {THREE.Vector3} vector
- * @param {boolean} isRightSide - specifies orientation of arm
+ * @param {boolean} isRightSideMode - specifies orientation of arm
  */
-function setToolPosition(vector, isRightSide) {
+export function setToolPosition(vector, isRightSideMode) {
+  var isRightSide=isRightSide;
+  if(isRightSide==null)
+    isRightSide=rightSide;
+
   currentToolX = vector.x;
   currentToolY = -vector.y;
   if (isRightSide) {

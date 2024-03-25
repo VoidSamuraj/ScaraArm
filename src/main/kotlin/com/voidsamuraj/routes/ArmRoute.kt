@@ -10,6 +10,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import kotlinx.coroutines.delay
+
 fun Route.armRoute() {
     route("/arm"){
         post("/start"){
@@ -36,12 +38,18 @@ fun Route.armRoute() {
             val formParameters = call.receiveParameters()
             val command = formParameters["command"]
             if(command!=null){
+                val temp=GCodeSender.getIsPaused()
                 GCodeSender.setPaused(true)
-                val isOk= GCodeSender.sendGCodeCommand(command)== GCodeSender.StateReturn.SUCCESS
-                GCodeSender.setPaused(false)
-                if(isOk)
+                while(!GCodeSender.getIsNowPaused()){
+                    delay(100)
+                }
+                val state= GCodeSender.sendGCodeCommand(command)
+                GCodeSender.setPaused(temp)
+                if(state == GCodeSender.StateReturn.SUCCESS)
                     call.respond(HttpStatusCode.OK, "Success")
-                else
+                else if(state == GCodeSender.StateReturn.OUTSIDE_RANGE){
+                    call.respond(HttpStatusCode.BadRequest, "Object outside range")
+                }else
                     call.respond(HttpStatusCode.BadRequest, "Something gone wrong")
             }else
                 call.respond(HttpStatusCode.BadRequest, "Wrong command")
@@ -66,7 +74,8 @@ fun Route.armRoute() {
                         val ret = GCodeSender.moveBy(L, S)
                         when (ret) {
                             GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
-                            GCodeSender.StateReturn.FAILURE -> call.respond(
+                            GCodeSender.StateReturn.FAILURE,
+                            GCodeSender.StateReturn.OUTSIDE_RANGE -> call.respond(
                                 HttpStatusCode.InternalServerError,
                                 "Failed to move arm"
                             )
@@ -96,7 +105,8 @@ fun Route.armRoute() {
                         val ret = GCodeSender.moveBy(x, y, z, isRightSide!!)
                         when (ret) {
                             GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
-                            GCodeSender.StateReturn.FAILURE -> call.respond(
+                            GCodeSender.StateReturn.FAILURE,
+                            GCodeSender.StateReturn.OUTSIDE_RANGE ->  call.respond(
                                 HttpStatusCode.InternalServerError,
                                 "Failed to move arm"
                             )
