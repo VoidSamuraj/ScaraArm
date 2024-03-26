@@ -594,269 +594,278 @@ export async function drawFile(scene, consoleList, fileName,onLineRead,xShift,is
 /**
  * Function to continue drawing file on scene, it work like simulation of 3D printing, moving tool and placing 3d lines on visited route
  * @param {THREE.Scene} scene - scene witch will contain file.
- * @param {DOM element} console - element displaying executed GCode.
+ * @param {DOM element} consoleList - element displaying executed GCode.
  * @param {callback(THEE.Vector,boolean)} onLineRead - function updating tool position in for displaying
  * @param {number} xShift - shift of model position
  * @param {boolean} isRightSide - specifies orientation of arm
  * @param {array} startPos -  array of double position of arm
  * @TODO Synchronize arm code execution and Drawing state
  */
-export async function restoreDrawing(scene, console, onLineRead,xShift,isRightSide, startPos){
-        var fileName=null;
-        var lastHeightFile=startPos[2];
-        var currentHeightFile=0;
-        var firstHeightSetFile=false;
-        var secondHeightSetFile=false;
-        var isRelativeFile= false;
-        var thickness=0.0;
-        stlGroup.clear();
-        scene.remove(stlGroup);
-        stlGroup = new THREE.Group();
+export async function restoreDrawing(scene, consoleList, onLineRead,xShift,isRightSide, startPos){
+  fetch("/arm/is-drawing", { method: "GET" }).then((response) => {
+        response.text().then((isDrawing)=>{
+            if(isDrawing=="true"){
+                    var fileName=null;
+                    var lastHeightFile=startPos[2];
+                    var currentHeightFile=0;
+                    var firstHeightSetFile=false;
+                    var secondHeightSetFile=false;
+                    var isRelativeFile= false;
+                    var thickness=0.0;
+                    stlGroup.clear();
+                    scene.remove(stlGroup);
+                    stlGroup = new THREE.Group();
 
-        stlGroup.rotateX(-Math.PI/2);
-        if(isRightSide){
-            stlGroup.rotateZ(Math.PI/2);
-            stlGroup.translateY(-xShift);
-        }else{
-            stlGroup.rotateZ(Math.PI);
-            stlGroup.translateX(-xShift);
-        }
-        stlGroup.translateZ(-1);
+                    stlGroup.rotateX(-Math.PI/2);
+                    if(isRightSide){
+                        stlGroup.rotateZ(Math.PI/2);
+                        stlGroup.translateY(-xShift);
+                    }else{
+                        stlGroup.rotateZ(Math.PI);
+                        stlGroup.translateX(-xShift);
+                    }
+                    stlGroup.translateZ(-1);
 
-        scene.add(stlGroup);
-        var points = [];
-        var restoredPoints = [];
+                    scene.add(stlGroup);
+                    var points = [];
+                    var restoredPoints = [];
 
-        var xPos;
-        var yPos;
-        var xPosFile;
-        var yPosFile;
+                    var xPos;
+                    var yPos;
+                    var xPosFile;
+                    var yPosFile;
 
-        if(isRightSide){
-            xPos=startPos[1]
-            yPos=startPos[0]
-            xPosFile=startPos[1]
-            yPosFile=startPos[0]
-        }else{
-            xPos=startPos[0];
-            yPos=startPos[1];
-            xPosFile=startPos[0];
-            yPosFile=startPos[1];
-        }
-        var zPos=startPos[2];
-        var zPosFile=startPos[2];
+                    if(isRightSide){
+                        xPos=startPos[1]
+                        yPos=startPos[0]
+                        xPosFile=startPos[1]
+                        yPosFile=startPos[0]
+                    }else{
+                        xPos=startPos[0];
+                        yPos=startPos[1];
+                        xPosFile=startPos[0];
+                        yPosFile=startPos[1];
+                    }
+                    var zPos=startPos[2];
+                    var zPosFile=startPos[2];
 
-        var changedSomething=false;
-        var changedSomethingFile=false;
-        const scale=0.02;
+                    var changedSomething=false;
+                    var changedSomethingFile=false;
+                    const scale=0.02;
 
-        var commands="";
-        var restored=false;
-        console.innerText="";
-        var scrollToBottom=true;
+                    var commands="";
+                    var restored=false;
+                    consoleList.innerText="";
+                    var scrollToBottom=true;
 
-        console.addEventListener("scroll", function() {
-            scrollToBottom=console.scrollHeight - console.clientHeight <= console.scrollTop + 1;
-        });
+                    consoleList.addEventListener("scroll", function() {
+                        scrollToBottom=consoleList.scrollHeight - consoleList.clientHeight <= consoleList.scrollTop + 1;
+                    });
 
-        socket = new WebSocket('ws://localhost:8080/files/draw');
-        socket.onmessage = function(event) {
-            // Obsługa otrzymanej wiadomości
-            if(event.data == "File processed" || event.data == "Connection lost" || event.data == "File not found" ){
-                firstDrawnLine=0;
-                socket.close();
-                return;
-            }
-            changedSomething=false;
+                    socket = new WebSocket('ws://localhost:8080/files/draw');
+                    socket.onmessage = function(event) {
+                        // Obsługa otrzymanej wiadomości
+                        if(event.data == "File processed" || event.data == "Connection lost" || event.data == "File not found" ){
+                            console.log("DANE",event.data);
+                            firstDrawnLine=0;
+                            socket.close();
+                            return;
+                        }
+                        changedSomething=false;
 
-            let data = JSON.parse(event.data);
-            var ret="";
+                        let data = JSON.parse(event.data);
+                        var ret="";
 
-            if("fileName" in data){
-                fileName = data.fileName;
-            }
+                        if("fileName" in data){
+                            fileName = data.fileName;
+                        }
 
-            let isThin=!('E' in data);
+                        let isThin=!('E' in data);
 
-             if ('CX' in data){
-                 changedSomething=true;
-                 let newX=parseFloat(data.CX)*scale;
-                 if(newX != xPos)
-                     ret+=" X"+data.CX;
-                 xPos=newX;
-             }
-             if ('CY' in data){
-                 changedSomething=true;
-                 let newY=parseFloat(data.CY)*scale;
-                 if(newY!=yPos)
-                     ret+=" Y"+data.CY;
-                 yPos=newY;
-             }
-             if ('CZ' in data){
-                 changedSomething=true;
-                 let newZ = parseFloat(data.CZ)*scale;
-                 if(zPos!=zPos)
-                     ret+=" Z"+data.CZ;
-                 zPos=newZ;
-             }
+                         if ('CX' in data){
+                             changedSomething=true;
+                             let newX=parseFloat(data.CX)*scale;
+                             if(newX != xPos)
+                                 ret+=" X"+data.CX;
+                             xPos=newX;
+                         }
+                         if ('CY' in data){
+                             changedSomething=true;
+                             let newY=parseFloat(data.CY)*scale;
+                             if(newY!=yPos)
+                                 ret+=" Y"+data.CY;
+                             yPos=newY;
+                         }
+                         if ('CZ' in data){
+                             changedSomething=true;
+                             let newZ = parseFloat(data.CZ)*scale;
+                             if(zPos!=zPos)
+                                 ret+=" Z"+data.CZ;
+                             zPos=newZ;
+                         }
 
-             if ('E' in data)
-                ret+=" E"+data.E;
-             if ('F' in data)
-                     ret+=" F"+data.F;
+                         if ('E' in data)
+                            ret+=" E"+data.E;
+                         if ('F' in data)
+                                 ret+=" F"+data.F;
 
-             if(ret!=""){
-                  if(restored){
-                      if(commands!=""){
-                        console.innerText+commands;
-                        commands="";
-                      }
-                        while(console.children.length>=100)
-                            console.removeChild(console.firstChild);
-                        var element = document.createElement("div");
-                        element.textContent = "G1 "+ret;
-                        console.appendChild(element);
-                        if(scrollToBottom)
-                            element.scrollIntoView();
-                  }else
-                    commands+="G1 "+ret+"\n";
-             }
+                         if(ret!=""){
+                              if(restored){
+                                  if(commands!=""){
+                                    consoleLis.innerText+commands;
+                                    commands="";
+                                  }
+                                    while(consoleLis.children.length>=100)
+                                        consoleLis.removeChild(consoleLis.firstChild);
+                                    var element = document.createElement("div");
+                                    element.textContent = "G1 "+ret;
+                                    consoleLis.appendChild(element);
+                                    if(scrollToBottom)
+                                        element.scrollIntoView();
+                              }else
+                                commands+="G1 "+ret+"\n";
+                         }
 
-             if ('LT' in data){
-                 thickness=parseFloat(data.LT);
-                 lastThickness=thickness;
-             }
-             if("line" in data){
-                if(firstDrawnLine==0)
-                    firstDrawnLine= parseInt(data.line);
-                if(changedSomething){
-                    if(points.length>1){
-                        points[0]=points[1];
-                        points[1]=new THREE.Vector3(xPos, yPos, zPos);
-                    }else
-                        points.push(new THREE.Vector3(xPos, yPos, zPos));
+                         if ('LT' in data){
+                             thickness=parseFloat(data.LT);
+                             lastThickness=thickness;
+                         }
+                         if("line" in data){
+                            if(firstDrawnLine==0)
+                                firstDrawnLine= parseInt(data.line);
+                            if(changedSomething){
+                                if(points.length>1){
+                                    points[0]=points[1];
+                                    points[1]=new THREE.Vector3(xPos, yPos, zPos);
+                                }else
+                                    points.push(new THREE.Vector3(xPos, yPos, zPos));
 
-                    if(points[0] !== undefined)
-                        //update arm angles for UI
-                        onLineRead(points[points.length-1],isRightSide);
-                        if(points.length >=2){
-                            draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
-                            }
-                }
-            }
-        };
-        return new Promise((resolve,reject)=>{
-        setTimeout(function() {
-            if(fileName!=null){
-                fetch('/files/'+fileName, { method: 'GET' })
-                        .then(response => response.blob())
-                        .then(blob => {
-                            var reader = new FileReader();
-                            reader.onload = function() {
-                                var fileData = reader.result;
-                                var lines = fileData.split('\n');
-                                var lineNumber=1;
-                                for (let i = 0; i < lines.length; i++) {
-                                    if(firstDrawnLine == i-1 || lines[i].includes("END gcode"))
-                                        break;
-                                    let commands;
-                                    let index=lines[i].indexOf(';');
-                                    if(index!=-1)
-                                        commands=lines[i].substring(0,index).split(' ');
-                                    else
-                                        commands=lines[i].split(' ');
-
-                                    let isExtruding=false;
-                                    changedSomethingFile=false;
-                                    var currentCommand=""
-                                    commands.forEach(command=>{
-                                        var mode = command.substring(0, 3);
-                                        if(mode == "G90"){
-                                            isRelativeFile = false;
-                                            currentCommand+="G90 ";
-                                        }else if(mode == "G91"){
-                                            isRelativeFile = true;
-                                            currentCommand+="G91 ";
-                                        }else{
-                                            if(command=="G1")
-                                                currentCommand+="G1 ";
-                                            var firstCharacter = command.charAt(0);
-                                            switch (firstCharacter) {
-                                                case "X":
-                                                    if(isRelativeFile)
-                                                        xPosFile+=parseFloat(command.slice(1))*scale;
-                                                    else
-                                                        xPosFile=parseFloat(command.slice(1))*scale;
-                                                    currentCommand+=command+" ";
-                                                    changedSomethingFile=true;
-                                                    break;
-                                                case "Y":
-                                                    if(isRelativeFile)
-                                                        yPosFile+=parseFloat(command.slice(1))*scale;
-                                                    else
-                                                        yPosFile=parseFloat(command.slice(1))*scale;
-                                                    currentCommand+=command+" ";
-                                                    changedSomethingFile=true;
-                                                    break;
-                                                case "Z":
-                                                    if(isRelativeFile)
-                                                        zPosFile+=parseFloat(command.slice(1))*scale;
-                                                    else
-                                                        zPosFile=parseFloat(command.slice(1))*scale;
-                                                    currentCommand+=command+" ";
-                                                    changedSomethingFile=true;
-                                                    break;
-                                                case "E":
-                                                        isExtruding = true;
-                                                        currentCommand+=command+" ";
-                                                     break;
-                                                default:
-                                                    break;
-                                            }
+                                if(points[0] !== undefined)
+                                    //update arm angles for UI
+                                    onLineRead(points[points.length-1],isRightSide);
+                                    if(points.length >=2){
+                                        draw3DLine(stlGroup,points[points.length-2],points[points.length-1],Math.abs(thickness*scale*(isThin?0.2:1)),isThin?0x8D8D8D:0x00ff00);
                                         }
-                                    });
-                                    if(changedSomethingFile){
-                                        while(console.children.length>=100)
-                                            console.removeChild(console.firstChild);
-                                        var element = document.createElement("div");
-                                        element.textContent = currentCommand;
-                                        console.appendChild(element);
-                                        if(scrollToBottom)
-                                            element.scrollIntoView();
-                                        currentCommand="";
-                                        restoredPoints.push({isExtruding : isExtruding,vector3 : new THREE.Vector3(xPosFile, yPosFile, zPosFile)});
-                                     }
-                                }
-                                //current height is used to calculate thickness of line, if not set then set as start point -0.1
-                                if((restoredPoints[0] !== undefined)&&!(firstHeightSetFile&&secondHeightSetFile))
-                                    currentHeightFile=restoredPoints[0].vector3.z- 0.1;
-                                for(var i = 0; i < restoredPoints.length - 1; i++) {
-                                          if(!firstHeightSetFile && restoredPoints[i].vector3.z == restoredPoints[i+1].vector3.z){
-                                              currentHeightFile=restoredPoints[i].vector3.z;
-                                              firstHeightSetFile=true;
-                                          }else if(restoredPoints[i].vector3.z != restoredPoints[i+1].vector3.z){
-                                                currentHeightFile=restoredPoints[i+1].vector3.z;
-                                                lastHeightFile=restoredPoints[i].vector3.z;
-                                          }
-                                          if(firstHeightSetFile && !secondHeightSetFile && lastHeightFile>currentHeightFile)
-                                                lastHeightFile=0;
-                                            currentHeightFile=restoredPoints[i + 1].vector3.z;
-                                            draw3DLine(stlGroup,restoredPoints[i].vector3,restoredPoints[i+1].vector3,(currentHeightFile-lastHeightFile)*(restoredPoints[i+1].isExtruding?1:0.2),restoredPoints[i+1].isExtruding?0x00ff00:0x8D8D8D);
-                                }
-                                restored=true;
-                        };
-                        reader.readAsText(blob);
-                })
-                        .catch(error => {
-                            console.error('Error:', error);
-                });
-                resolve(true);
-                }else{
-                    socket.close();
-                    resolve(false);
-                }
-        }, 2000);
-        });
+                            }
+                        }
+                    };
+                    return new Promise((resolve,reject)=>{
+                    setTimeout(function() {
+                        if(fileName!=null){
+                            fetch('/files/'+fileName, { method: 'GET' })
+                                    .then(response => response.blob())
+                                    .then(blob => {
+                                        var reader = new FileReader();
+                                        reader.onload = function() {
+                                            var fileData = reader.result;
+                                            var lines = fileData.split('\n');
+                                            var lineNumber=1;
+                                            for (let i = 0; i < lines.length; i++) {
+                                                if(firstDrawnLine == i-1 || lines[i].includes("END gcode"))
+                                                    break;
+                                                let commands;
+                                                let index=lines[i].indexOf(';');
+                                                if(index!=-1)
+                                                    commands=lines[i].substring(0,index).split(' ');
+                                                else
+                                                    commands=lines[i].split(' ');
+
+                                                let isExtruding=false;
+                                                changedSomethingFile=false;
+                                                var currentCommand=""
+                                                commands.forEach(command=>{
+                                                    var mode = command.substring(0, 3);
+                                                    if(mode == "G90"){
+                                                        isRelativeFile = false;
+                                                        currentCommand+="G90 ";
+                                                    }else if(mode == "G91"){
+                                                        isRelativeFile = true;
+                                                        currentCommand+="G91 ";
+                                                    }else{
+                                                        if(command=="G1")
+                                                            currentCommand+="G1 ";
+                                                        var firstCharacter = command.charAt(0);
+                                                        switch (firstCharacter) {
+                                                            case "X":
+                                                                if(isRelativeFile)
+                                                                    xPosFile+=parseFloat(command.slice(1))*scale;
+                                                                else
+                                                                    xPosFile=parseFloat(command.slice(1))*scale;
+                                                                currentCommand+=command+" ";
+                                                                changedSomethingFile=true;
+                                                                break;
+                                                            case "Y":
+                                                                if(isRelativeFile)
+                                                                    yPosFile+=parseFloat(command.slice(1))*scale;
+                                                                else
+                                                                    yPosFile=parseFloat(command.slice(1))*scale;
+                                                                currentCommand+=command+" ";
+                                                                changedSomethingFile=true;
+                                                                break;
+                                                            case "Z":
+                                                                if(isRelativeFile)
+                                                                    zPosFile+=parseFloat(command.slice(1))*scale;
+                                                                else
+                                                                    zPosFile=parseFloat(command.slice(1))*scale;
+                                                                currentCommand+=command+" ";
+                                                                changedSomethingFile=true;
+                                                                break;
+                                                            case "E":
+                                                                    isExtruding = true;
+                                                                    currentCommand+=command+" ";
+                                                                 break;
+                                                            default:
+                                                                break;
+                                                        }
+                                                    }
+                                                });
+                                                if(changedSomethingFile){
+                                                    while(consoleLis.children.length>=100)
+                                                        consoleLis.removeChild(consoleLis.firstChild);
+                                                    var element = document.createElement("div");
+                                                    element.textContent = currentCommand;
+                                                    consoleLis.appendChild(element);
+                                                    if(scrollToBottom)
+                                                        element.scrollIntoView();
+                                                    currentCommand="";
+                                                    restoredPoints.push({isExtruding : isExtruding,vector3 : new THREE.Vector3(xPosFile, yPosFile, zPosFile)});
+                                                 }
+                                            }
+                                            //current height is used to calculate thickness of line, if not set then set as start point -0.1
+                                            if((restoredPoints[0] !== undefined)&&!(firstHeightSetFile&&secondHeightSetFile))
+                                                currentHeightFile=restoredPoints[0].vector3.z- 0.1;
+                                            for(var i = 0; i < restoredPoints.length - 1; i++) {
+                                                      if(!firstHeightSetFile && restoredPoints[i].vector3.z == restoredPoints[i+1].vector3.z){
+                                                          currentHeightFile=restoredPoints[i].vector3.z;
+                                                          firstHeightSetFile=true;
+                                                      }else if(restoredPoints[i].vector3.z != restoredPoints[i+1].vector3.z){
+                                                            currentHeightFile=restoredPoints[i+1].vector3.z;
+                                                            lastHeightFile=restoredPoints[i].vector3.z;
+                                                      }
+                                                      if(firstHeightSetFile && !secondHeightSetFile && lastHeightFile>currentHeightFile)
+                                                            lastHeightFile=0;
+                                                        currentHeightFile=restoredPoints[i + 1].vector3.z;
+                                                        draw3DLine(stlGroup,restoredPoints[i].vector3,restoredPoints[i+1].vector3,(currentHeightFile-lastHeightFile)*(restoredPoints[i+1].isExtruding?1:0.2),restoredPoints[i+1].isExtruding?0x00ff00:0x8D8D8D);
+                                            }
+                                            restored=true;
+                                    };
+                                    reader.readAsText(blob);
+                            })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                            });
+                            resolve(true);
+                            }else{
+                                socket.close();
+                                resolve(false);
+                            }
+                    }, 2000);
+                    });
+
+            }
+        })
+      });
+
 }
 
 export function executeCommand(command, currentPos,isRightSide, onEnd){

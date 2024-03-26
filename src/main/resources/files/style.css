@@ -570,7 +570,7 @@ table td, table th {
     text-align: center;
     left: 50%;
     transform: translate(-50%, 0%);
-    z-index: 3;
+    z-index: 1;
 }
 
 .buttonOverlay{
@@ -715,6 +715,11 @@ table td, table th {
   max-height:100%;
   box-sizing: border-box;
 }
+#sendCommand:disabled{
+    color:gray;
+    background-color:lightgray;
+}
+
 #terminal{
  width: 100%;
  display: flex;

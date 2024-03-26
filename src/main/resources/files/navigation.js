@@ -154,6 +154,19 @@ function blockLoadButtons(state) {
   });
 }
 /**
+ * Function to disable or activate command line execution.
+ * @param state boolean
+ */
+function blockCommandLine(state) {
+    if (state){
+        commandInput.setAttribute("disabled", "");
+        sendCommand.setAttribute("disabled", "");
+     }else {
+        commandInput.removeAttribute("disabled");
+        sendCommand.removeAttribute("disabled");
+    }
+}
+/**
  * Function to disable or activate settings buttons.
  * @param state boolean
  */
@@ -556,7 +569,7 @@ async function fillFilesTable() {
     });
 }
 //List all accessible ports from server and display in table
-async function fillPortsTable() {
+async function fillPortsTable(onSuccess) {
   let html = "";
   fetch("/ports", { method: "GET" })
     .then((response) => {
@@ -593,37 +606,43 @@ async function fillPortsTable() {
       radioButtons.forEach((radioButton) => {
         radioButton.addEventListener("change", function () {
           if (this.checked) {
-            if (this.value == "demo") {
-              canMoveArm = true;
-              demoMode = true;
-              areFileBlocked=true;
-              blockLoadButtons(true);
-              showDialog(alertItem, alertMessage, "s", "DEMO MODE");
-              blockOptionsButtons(!canMoveArm);
-            } else {
-              var formData = new FormData();
-              formData.append("port", this.value);
-              fetch("/ports/select", {
-                method: "POST",
-                body: formData,
-              }).then((response) => {
-                if (response.ok) {
-                  demoMode = false;
-                  connectToArm();
+            fetch("/ports/close", {method: "POST"}).then((response)=>{
+                if (this.value == "demo") {
+                  canMoveArm = true;
+                  demoMode = true;
+                  areFileBlocked=true;
+                  blockLoadButtons(true);
+                  blockCommandLine(false);
+                  showDialog(alertItem, alertMessage, "s", "DEMO MODE");
+                  blockOptionsButtons(!canMoveArm);
                 } else {
-                  console.error("Cannot connect to arm");
-                  showDialog(
-                    alertItem,
-                    alertMessage,
-                    "e",
-                    "Cannot connect to arm"
-                  );
+                  var formData = new FormData();
+                  formData.append("port", this.value);
+                  fetch("/ports/select", {
+                    method: "POST",
+                    body: formData,
+                  }).then((response) => {
+                    if (response.ok) {
+                      demoMode = false;
+                      connectToArm();
+                    } else {
+                      console.error("Cannot connect to arm");
+                      showDialog(
+                        alertItem,
+                        alertMessage,
+                        "e",
+                        "Cannot connect to arm"
+                      );
+                    }
+                  });
                 }
-              });
-            }
+            });
+
           }
         });
       });
+      if(onSuccess!=null)
+        onSuccess();
     })
     .catch((error) => {
       console.error("ERROR during reading ports list:", error);
@@ -720,9 +739,10 @@ async function fillSavedOptionsList(onLoad){
 /**
  * Function to select connected port
  */
-async function selectConnectedPort() {
+async function selectConnectedPort(onEnd) {
   canMoveArm = false;
   areFileBlocked=true;
+  blockOptionsButtons(true);
   fetch("/ports/last", { method: "GET" }).then((response) => {
     if (response.status !== 204) {
       response.text().then((data) => {
@@ -734,11 +754,15 @@ async function selectConnectedPort() {
             port.checked = true;
             canMoveArm = true;
             areFileBlocked=false;
+            blockOptionsButtons(false);
+            blockCommandLine(false);
           }
         });
         blockLoadButtons(areFileBlocked);
       });
     }
+    if(onEnd!=null)
+        onEnd();
   });
 }
 
@@ -753,11 +777,15 @@ async function connectToArm() {
       if (response.ok) {
         canMoveArm = true;
         areFileBlocked=false;
+        blockOptionsButtons(true);
+        blockCommandLine(false);
         showDialog(alertItem, alertMessage, "s", "Connected to arm");
       } else {
         console.error("Cannot connect to arm");
         canMoveArm = false;
         areFileBlocked=true;
+        blockOptionsButtons(false);
+        blockCommandLine(true);
         showDialog(alertItem, alertMessage, "e", "Cannot connect to arm");
       }
       blockLoadButtons(areFileBlocked);
@@ -880,8 +908,7 @@ async function loadSavedSettings(onLoad, name, id) {
 }
 
 export async function refreshPorts() {
-  fillPortsTable();
-  selectConnectedPort();
+  fillPortsTable(selectConnectedPort);
 }
 /**
 *Function witch verifies and sends GCode from commandInput
@@ -1408,6 +1435,10 @@ stopButton.addEventListener("click",  async function (){
     if (confirm("Are you sure you want to STOP GCode execution?") == true){
         fetch("/arm/stop", {method: "POST"}).then((response) => {
             if (response.ok) {
+                areFileBlocked=false;
+                canMoveArm=true;
+                blockOptionsButtons(false);
+                blockLoadButtons(false);
                 startButtonBox.style.display = "none";
                 stopButtonBox.style.display = "none";
                 pauseButtonBox.style.display = "none";
@@ -1439,9 +1470,12 @@ document.getElementById("consoleButton").addEventListener("click",  async functi
     isConsoleOpen=!isConsoleOpen;
 });
 document.addEventListener("DOMContentLoaded", async function (){
+  blockCommandLine(true);
   fillFilesTable();
-  fillPortsTable();
-  selectConnectedPort();
-  blockOptionsButtons(!canMoveArm);
+  fillPortsTable(function(){
+    selectConnectedPort(function(){
+        blockOptionsButtons(!canMoveArm);
+    });
+  });
   saveMenu.style.top = ""+(parseInt(window.getComputedStyle(optionsMenu).height) - parseInt(window.getComputedStyle(saveMenu).height))+"px";
 });

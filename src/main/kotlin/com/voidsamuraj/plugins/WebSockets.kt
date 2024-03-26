@@ -94,6 +94,7 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
     }
 
     fun stopService() {
+        webSocketHandler.isCurrentDrawing=false
         scope.cancel()
     }
 }

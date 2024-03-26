@@ -34,6 +34,9 @@ fun Route.armRoute() {
             gCodeService.stopService()
             call.respond(HttpStatusCode.OK, "Success")
         }
+        get("/is-drawing"){
+            call.respond(webSocketHandler.isCurrentDrawing)
+        }
         post("/send-command"){
             val formParameters = call.receiveParameters()
             val command = formParameters["command"]
@@ -216,6 +219,15 @@ fun Route.armRoute() {
                     val formParameters = call.receiveParameters()
                     val port = formParameters.getOrFail("port")
                     GCodeSender.setPort(port)
+                    call.respond(HttpStatusCode.OK, "Success")
+                }
+            }
+        }
+        post("/close"){
+            checkUserPermission {
+                if(!webSocketHandler.isCurrentDrawing){
+                    GCodeSender.endCommunication()
+                    GCodeSender.closePort()
                     call.respond(HttpStatusCode.OK, "Success")
                 }
             }

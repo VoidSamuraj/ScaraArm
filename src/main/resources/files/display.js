@@ -587,11 +587,11 @@ toggle.addEventListener("change", function () {
     if (response.ok) {
       rightSide = toggle.checked;
       localStorage.setItem("rightSide", rightSide);
-      location.reload();
-      return true;
+      setTimeout(function() {
+        location.reload();
+      },1000);
     } else {
       console.error("Cannot change direction");
-      return false;
     }
   });
 });
