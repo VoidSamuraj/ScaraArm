@@ -38,7 +38,13 @@ object GCodeSender {
         SUCCESS,
         FAILURE,
         PORT_DISCONNECTED,
-        OUTSIDE_RANGE
+        OUTSIDE_RANGE,
+        ENDSTOP_L_N,
+        ENDSTOP_L_P,
+        ENDSTOP_S_N,
+        ENDSTOP_S_P,
+        ENDSTOP_Z_N,
+        ENDSTOP_Z_P
     }
 
     private var port: SerialPort? = null
@@ -931,8 +937,16 @@ object GCodeSender {
                     if(bytesRead!=-1){
                         val st = String(bytes = bf, offset = 0, length = min(bytesRead,bf.size), charset = Charsets.UTF_8).trim()
                         text += st
-                        if (text.contains("OK", ignoreCase = true))
-                            return StateReturn.SUCCESS
+                        println("RETURN $text")
+                        when {
+                            text.contains("OK", ignoreCase = true) -> return StateReturn.SUCCESS
+                            text.contains("ENDSTOP_L_N", ignoreCase = true) -> return StateReturn.ENDSTOP_L_N
+                            text.contains("ENDSTOP_L_P", ignoreCase = true) -> return StateReturn.ENDSTOP_L_P
+                            text.contains("ENDSTOP_S_N", ignoreCase = true) -> return StateReturn.ENDSTOP_S_N
+                            text.contains("ENDSTOP_S_P", ignoreCase = true) -> return StateReturn.ENDSTOP_S_P
+                            text.contains("ENDSTOP_Z_N", ignoreCase = true) -> return StateReturn.ENDSTOP_Z_N
+                            text.contains("ENDSTOP_Z_P", ignoreCase = true) -> return StateReturn.ENDSTOP_Z_P
+                        }
                     }
                 }
 

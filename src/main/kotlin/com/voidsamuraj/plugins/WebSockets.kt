@@ -84,6 +84,11 @@ class GCodeService(private val webSocketHandler: WebSocketHandler) {
                         webSocketHandler.isCurrentDrawing=false
                         webSocketHandler.sendData("Connection lost")
                     }
+                    else->{
+                        System.err.println("Failed to draw file:${ret.name}")
+                        webSocketHandler.isCurrentDrawing=false
+                        webSocketHandler.sendData("Failed to draw file")
+                    }
                 }
             }else if(!isActive && fName!=null){
                 webSocketHandler.isCurrentDrawing=false

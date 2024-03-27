@@ -77,16 +77,11 @@ fun Route.armRoute() {
                         val ret = GCodeSender.moveBy(L, S)
                         when (ret) {
                             GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
-                            GCodeSender.StateReturn.FAILURE,
-                            GCodeSender.StateReturn.OUTSIDE_RANGE -> call.respond(
-                                HttpStatusCode.InternalServerError,
-                                "Failed to move arm"
-                            )
-
                             GCodeSender.StateReturn.PORT_DISCONNECTED -> {
                                 GCodeSender.closePort()
                                 call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
                             }
+                            else -> call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
                         }
                     }
                 }
@@ -108,16 +103,11 @@ fun Route.armRoute() {
                         val ret = GCodeSender.moveBy(x, y, z, isRightSide!!)
                         when (ret) {
                             GCodeSender.StateReturn.SUCCESS -> call.respond(HttpStatusCode.OK, "Success")
-                            GCodeSender.StateReturn.FAILURE,
-                            GCodeSender.StateReturn.OUTSIDE_RANGE ->  call.respond(
-                                HttpStatusCode.InternalServerError,
-                                "Failed to move arm"
-                            )
-
                             GCodeSender.StateReturn.PORT_DISCONNECTED -> {
                                 GCodeSender.closePort()
                                 call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
                             }
+                            else ->  call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
                         }
                     }
                 }
