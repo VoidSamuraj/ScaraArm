@@ -937,7 +937,6 @@ object GCodeSender {
                     if(bytesRead!=-1){
                         val st = String(bytes = bf, offset = 0, length = min(bytesRead,bf.size), charset = Charsets.UTF_8).trim()
                         text += st
-                        println("RETURN $text")
                         when {
                             text.contains("OK", ignoreCase = true) -> return StateReturn.SUCCESS
                             text.contains("ENDSTOP_L_N", ignoreCase = true) -> return StateReturn.ENDSTOP_L_N

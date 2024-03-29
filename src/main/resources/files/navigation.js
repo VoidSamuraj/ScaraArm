@@ -122,6 +122,10 @@ var isGCodePaused = false;
 var isConsoleOpen = false;
 export var demoMode = false;
 
+
+var commandHistory = [];
+var commandIndex = -1;
+
 portMenu.style.minHeight = firstMenuStyle.height;
 loadMenu.style.minHeight = firstMenuStyle.height;
 optionsMenu.style.minHeight = firstMenuStyle.height;
@@ -923,6 +927,9 @@ function sendGCode(){
             var element = document.createElement("div");
             element.textContent = commandInput.value;
 
+            commandHistory.push(commandInput.value);
+            commandIndex = commandHistory.length;
+
             if(response.ok){
                  var pos=getCurrentPosition();
                  executeCommand(commandInput.value, pos, getIsRightSide(), setToolPosition);
@@ -1455,7 +1462,22 @@ commandInput.addEventListener("keyup", function(event) {
         sendGCode();
     }
 });
-
+commandInput.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (commandIndex > 0) {
+                commandIndex--;
+            }
+            commandInput.value = commandHistory[commandIndex] || '';
+        }
+        else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (commandIndex <= commandHistory.length - 1) {
+                commandIndex++;
+            }
+            commandInput.value = commandHistory[commandIndex] || '';
+        }
+    });
 
 
 document.getElementById("consoleButton").addEventListener("click",  async function (){
