@@ -666,7 +666,6 @@ export async function restoreDrawing(scene, consoleList, onLineRead,xShift,isRig
                     socket.onmessage = function(event) {
                         // Obsługa otrzymanej wiadomości
                         if(event.data == "File processed" || event.data == "Connection lost" || event.data == "File not found" ){
-                            console.log("DANE",event.data);
                             firstDrawnLine=0;
                             socket.close();
                             return;
@@ -867,8 +866,16 @@ export async function restoreDrawing(scene, consoleList, onLineRead,xShift,isRig
       });
 
 }
-
-export function executeCommand(command, currentPos,isRightSide, onEnd){
+/**
+* Function to draw results of command execution.
+* @param{String} command - which will be executed.
+* @param{THREE.Vector3} currentPos - starting position.
+* @param{bool} isRightSide - specifies direction of drawing.
+* @param{callback(THREE.Vector3)} onEnd - function which will execute on end if position changed.
+* @param{callback(Number, Number)} canMove - function to verify if new position is in range. No checking if null.
+* @returns{bool} true if position changed and it is in range; otherwise, false.
+*/
+export function executeCommand(command, currentPos,isRightSide, onEnd, canMove){
         var xPos;
         var yPos;
         var zPos=currentPos.z;
@@ -889,14 +896,15 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
      commands=command.split(' ');
      commands.forEach(command=>{
          var mode = command.substring(0, 3);
-         if(mode == "G90"){
+         if(mode == "G90" || mode == "g90"){
              isCommandRelative = false;
-         }else if(mode == "G91"){
+         }else if(mode == "G91" || mode == "g91"){
              isCommandRelative = true;
          }else{
              var firstCharacter = command.charAt(0);
              switch (firstCharacter) {
                  case "Y":
+                 case "y":
                     if(isRightSide){
                          if(isCommandRelative)
                              xPos+=parseFloat(command.slice(1))*scale;
@@ -911,6 +919,7 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
                      changedSomething=true;
                      break;
                  case "X":
+                 case "x":
                     if(isRightSide){
                          if(isCommandRelative)
                             yPos+=parseFloat(command.slice(1))*scale;
@@ -925,6 +934,7 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
                      changedSomething=true;
                      break;
                  case "Z":
+                 case "z":
                      if(isCommandRelative)
                          zPos+=parseFloat(command.slice(1))*scale;
                      else
@@ -932,6 +942,7 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
                      changedSomething=true;
                      break;
                  case "E":
+                 case "e":
                          isThin = false;
                       break;
                  default:
@@ -939,7 +950,8 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
              }
          }
      });
-     if(changedSomething){
+
+     if(changedSomething && (canMove == null || (isRightSide?canMove(yPos,-xPos):canMove(xPos,-yPos)))){
         let newPos=new THREE.Vector3(xPos, yPos, zPos);
         draw3DLine(
         stlGroup,
@@ -949,7 +961,9 @@ export function executeCommand(command, currentPos,isRightSide, onEnd){
         isThin?0x2828cc:0x0000ff
         );
         onEnd(newPos);
+        return true;
      }
+     return false;
 }
 
 /**

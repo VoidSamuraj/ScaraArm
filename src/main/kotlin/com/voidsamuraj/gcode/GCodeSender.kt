@@ -101,11 +101,11 @@ object GCodeSender {
      * */
     fun getIsPaused()= paused
     // to check if last line is executed and sendGCode paused
-    private var isPaused=false
+    private var isPrinting=false
     /**
      * Function returns if arm is now paused
      */
-    fun getIsNowPaused()= isPaused
+    fun getIsNowPrinting()= isPrinting
 
     /**
      * Function to reset state to unmodified, it not moves arm
@@ -125,6 +125,7 @@ object GCodeSender {
         ARM_SHORT_DEGREES_BY_ROTATION =  116.0 / 25.0  //116x30x25
         ARM_SHORT_ADDITIONAL_ROTATION =  30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
         paused=false
+        isPrinting=false
     }
 
     /**
@@ -310,7 +311,7 @@ object GCodeSender {
                         return@withContext StateReturn.FAILURE
                     }
                 }
-                isPaused=false
+                isPrinting=true
                 FileReader(fin).use { fr ->
                     BufferedReader(fr).use { br ->
                         var line: String? = null
@@ -324,10 +325,10 @@ object GCodeSender {
                                 }
                             } != null && scope.isActive) {
                             while(paused){
-                                isPaused=true
+                                isPrinting=false
                                 delay(1000)
                             }
-                            isPaused=false
+                            isPrinting=true
                             line?.let {
                                 if (line!!.trim().length > 1 && (line!!.contains("G1") || line!!.contains("G90") || line!!.contains("G91")) ) { //filter out commands
                                     val map: MutableMap<String, String> = mutableMapOf(
@@ -442,7 +443,7 @@ object GCodeSender {
                             }
 
                         }
-                        isPaused=true
+                        isPrinting=false
                         endCommunication(printWriter!!)
                         return@withContext StateReturn.SUCCESS
                     }

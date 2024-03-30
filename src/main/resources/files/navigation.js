@@ -1,5 +1,5 @@
 import { formatInt, formatFloat, showDialog, checkIfThatIsGCode} from "/static/helpers.js";
-import {getCurrentPosition, setToolPosition, getIsRightSide} from "/static/display.js";
+import {getCurrentPosition, setToolPosition, getIsRightSide, canMove} from "/static/display.js";
 import {executeCommand} from "/static/elements.js";
 /**
  * File setting listeners to menu
@@ -918,35 +918,70 @@ export async function refreshPorts() {
 *Function witch verifies and sends GCode from commandInput
 */
 function sendGCode(){
-    if(checkIfThatIsGCode(commandInput.value)){
-        var formData = new FormData();
-        formData.append("command", commandInput.value);
-        fetch("/arm/send-command", {method: "POST", body: formData}).then((response) => {
+    var commandText=commandInput.value;
+    if(checkIfThatIsGCode(commandText)){
+        if(demoMode){
             if(consoleList.children.length>=100)
                 consoleList.removeChild(consoleList.firstChild);
             var element = document.createElement("div");
-            element.textContent = commandInput.value;
-
-            commandHistory.push(commandInput.value);
+            element.textContent = commandText;
+            let index = commandHistory.indexOf(commandText);
+            if (index !== -1) {
+                commandHistory.splice(index, 1);
+            }
+            commandHistory.push(commandText);
             commandIndex = commandHistory.length;
+            var pos=getCurrentPosition();
+            let ret=executeCommand(commandText, pos, getIsRightSide(), setToolPosition, canMove);
+            if(ret || (!commandText.toLowerCase().includes('x') && !commandText.toLowerCase().includes('y') && !commandText.toLowerCase().includes('z'))){
+                element.style.color = "green";
+            }else{
+               element.style.color = "red";
+               showDialog(
+                 alertItem,
+                 alertMessage,
+                 "e",
+                 "Position from command line is outside work space"
+               );
+           }
+            consoleList.appendChild(element);
+            element.scrollIntoView();
+            commandInput.value="";
+        }else{
+            var formData = new FormData();
+            formData.append("command", commandText);
 
-            if(response.ok){
-                 var pos=getCurrentPosition();
-                 executeCommand(commandInput.value, pos, getIsRightSide(), setToolPosition);
-                 element.style.color = "green";
-             }else{
-                 element.style.color = "red";
-                 showDialog(
-                   alertItem,
-                   alertMessage,
-                   "e",
-                   "Position from command line is outside work space"
-                 );
-             }
-             consoleList.appendChild(element);
-             element.scrollIntoView();
-             commandInput.value="";
-        });
+            fetch("/arm/send-command", {method: "POST", body: formData}).then((response) => {
+                if(consoleList.children.length>=100)
+                    consoleList.removeChild(consoleList.firstChild);
+                var element = document.createElement("div");
+                element.textContent = commandText;
+
+                let index = commandHistory.indexOf(commandText);
+                if (index !== -1) {
+                    commandHistory.splice(index, 1);
+                }
+                commandHistory.push(commandText);
+                commandIndex = commandHistory.length;
+
+                if(response.ok){
+                     var pos=getCurrentPosition();
+                     executeCommand(commandText, pos, getIsRightSide(), setToolPosition);
+                     element.style.color = "green";
+                 }else{
+                     element.style.color = "red";
+                     showDialog(
+                       alertItem,
+                       alertMessage,
+                       "e",
+                       "Position from command line is outside work space"
+                     );
+                 }
+                 consoleList.appendChild(element);
+                 element.scrollIntoView();
+                 commandInput.value="";
+            });
+        }
     }else{
         showDialog(
           alertItem,
@@ -1488,6 +1523,7 @@ document.getElementById("consoleButton").addEventListener("click",  async functi
     }else{
         consoleMenu.style.bottom = "0px";
         changeBackgroundAnimation(document.getElementById("consoleButtonBox"), 0, 100, 500);
+        commandInput.focus();
     }
     isConsoleOpen=!isConsoleOpen;
 });

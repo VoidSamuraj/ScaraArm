@@ -314,8 +314,7 @@ if (
                   isAngleBetween(
                     MAX_ARM1_ANGLE,
                     MAX_ARM1_ANGLE_COLLISION,
-                    arm1Angle + zoomChange * getRotationPrecision(),
-                    rightSide
+                    arm1Angle + zoomChange * getRotationPrecision()
                   )
                 ) {
                   zoomChange *= getRotationPrecision();
@@ -360,8 +359,7 @@ if (
                   isAngleBetween(
                     MAX_ARM2_ANGLE,
                     null,
-                    arm2Angle + zoomChange * getRotationPrecision(),
-                    rightSide
+                    arm2Angle + zoomChange * getRotationPrecision()
                   )
                 ) {
                   zoomChange *= getRotationPrecision();
@@ -880,29 +878,15 @@ function animate() {
  * @param {number} MAX_ARM_ANGLE - max angle
  * @param {number} MAX_ARM_ANGLE_COLLISION  - max for other side
  * @param {number} armAngle - angle to check
- * @param {boolean} isRightSide - specifies orientation of arm
  * @returns {boolean} - is angle inside range
  */
 function isAngleBetween(
   MAX_ARM_ANGLE,
   MAX_ARM_ANGLE_COLLISION,
-  armAngle,
-  isRightSide
+  armAngle
 ) {
-  var ret =
-    (!isRightSide &&
-      armAngle >= -MAX_ARM_ANGLE &&
-      armAngle <=
-        (MAX_ARM_ANGLE_COLLISION != undefined
-          ? MAX_ARM_ANGLE_COLLISION
-          : MAX_ARM_ANGLE)) ||
-    (isRightSide &&
-      armAngle >=
-        -(MAX_ARM_ANGLE_COLLISION != undefined
-          ? MAX_ARM_ANGLE_COLLISION
-          : MAX_ARM_ANGLE) &&
-      armAngle <= MAX_ARM_ANGLE);
-  return ret;
+ return armAngle >= -MAX_ARM_ANGLE &&
+    armAngle <=(MAX_ARM_ANGLE_COLLISION != undefined ? MAX_ARM_ANGLE_COLLISION: MAX_ARM_ANGLE);
 }
 
 /**
@@ -1022,9 +1006,8 @@ function updateHelper() {
  * @param {number} toolY - x pos of tool
  * @returns {boolean} - if tool is inside radius and angles are in range
  */
-function canMove(toolX, toolY) {
+export function canMove(toolX, toolY) {
   const newRadius = Math.hypot(toolX, toolY);
-
   if (
     newRadius > arm1Length + arm2TotalLength ||
     newRadius <
@@ -1067,12 +1050,12 @@ function canMove(toolX, toolY) {
     !isAngleBetween(
       MAX_ARM1_ANGLE,
       MAX_ARM1_ANGLE_COLLISION,
-      arm1AngleNew,
-      rightSide
+      arm1AngleNew
     )
   )
     return false;
-  if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, rightSide))
+
+  if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew))
     return false;
 
   return true;
@@ -1219,12 +1202,11 @@ function moveToolOnSceneToPosition(checkRotation = true, totalSteps = 20, isRigh
       !isAngleBetween(
         MAX_ARM1_ANGLE,
         MAX_ARM1_ANGLE_COLLISION,
-        arm1AngleNew,
-        isRightSide
+        arm1AngleNew
       )
     )
       canRotate = false;
-    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew))
       canRotate = false;
   }
   let steps = 0; // interpolation steps
@@ -1355,12 +1337,11 @@ function checkIfCanMoveToPosition(vector, isRightSide){
       !isAngleBetween(
         MAX_ARM1_ANGLE,
         MAX_ARM1_ANGLE_COLLISION,
-        arm1AngleNew,
-        isRightSide
+        arm1AngleNew
       )
     )
       canRotate = false;
-    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew, isRightSide))
+    if (!isAngleBetween(MAX_ARM2_ANGLE, null, arm2AngleNew))
       canRotate = false;
 
     return canRotate;

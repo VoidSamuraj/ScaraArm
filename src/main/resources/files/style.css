@@ -519,7 +519,7 @@ table td, table th {
 #loadMenu th:not(:first-child){
     border-top:1px solid #f0cc00;
 }
-#loadMenu td:not(:last-child){
+#loadMenu td{
     border-top:1px solid #f0cc00;
 }
 

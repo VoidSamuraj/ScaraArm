@@ -43,7 +43,7 @@ fun Route.armRoute() {
             if(command!=null){
                 val temp=GCodeSender.getIsPaused()
                 GCodeSender.setPaused(true)
-                while(!GCodeSender.getIsNowPaused()){
+                while(GCodeSender.getIsNowPrinting()){
                     delay(100)
                 }
                 val state= GCodeSender.sendGCodeCommand(command)
