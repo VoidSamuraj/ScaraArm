@@ -33,7 +33,7 @@ class GcodeSenderTest {
     @Test
     fun transition_resultEquals_pass(){
         GCodeSender.resetState()
-        GCodeSender.setTotalSteps(1)
+        //GCodeSender.setTotalSteps(1)
         val method = GCodeSender::class.declaredMemberFunctions
             .firstOrNull { it.name == "transition" }
             ?: throw IllegalStateException("Private method not found")
