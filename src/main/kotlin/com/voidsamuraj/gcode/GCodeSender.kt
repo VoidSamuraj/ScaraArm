@@ -86,6 +86,7 @@ object GCodeSender {
     private val position = doubleArrayOf( /*-R*/0.0, R.toDouble(), 0.0) //200,0,0 //R/
     private val angles = doubleArrayOf( /*DEGREE_BIG_ARM*/ /*-9*/90.0, 180.0 /*DEGREE_SMALL_ARM/2*/) //0,180
     private var maxMovement = 10 // all interpolation steps, divide one command to have linear movement
+    private var maxMovementLine = 5
     private var MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE.steps
     private var ARM_LONG_STEPS_PER_ROTATION = 1.0// 35.0 / 20.0 //1.75
         get() = field * MOTOR_STEPS_PRER_ROTATION
@@ -647,8 +648,9 @@ object GCodeSender {
         isRightSide: Boolean,
     ): List<String> {
         val commands = mutableListOf<String>()
-        val xm = if (yMove != null) (if (isRelative) yMove + position[0] else yMove) else position[0]
-        val ym = if (xMove != null) (if (isRelative) xMove + position[1] else xMove) else position[1]
+        val tmpCommands= mutableListOf<String>()
+        val xm = if (xMove != null) (if (isRelative) xMove + position[0] else xMove) else position[0]
+        val ym = if (yMove != null) (if (isRelative) yMove + position[1] else yMove) else position[1]
         val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
         if (xm != position[0] || ym != position[1]) {
             val newRadius: Double = hypot(xm, ym)
@@ -676,51 +678,56 @@ object GCodeSender {
             //attempt to interpolate
             val deltaX = xm - position[0]
             val deltaY = ym - position[1]
-            val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovement).toInt()
-            if (totalSteps>1) for (steps in 0 until totalSteps) {
+            val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovementLine).toInt()
+            if (totalSteps>1)
+                for (steps in 0 until totalSteps) {
                 if (inSteps) {
                     val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
                     if(lm!=0L)
-                        commands.add("$L$lm")
+                        tmpCommands.add("$L$lm")
                     if(sm!=0L)
-                        commands.add("$S$sm")
+                        tmpCommands.add("$S$sm")
                     // -1 for direction
                     if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
-                        commands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
+                        tmpCommands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
                     }
                 } else {
                     val lm=alphaChange / totalSteps
                     val sm=betaChange / totalSteps
                     if(lm!=0.0)
-                        commands.add("$L$lm")
+                        tmpCommands.add("$L$lm")
                     if(sm!=0.0)
-                        commands.add("$S$sm")
+                        tmpCommands.add("$S$sm")
                 }
                 if (speed != null && speed != -1.0 && speed != 0.0)
-                    commands.add("F${(speed * speedrate).toLong()}")
+                    tmpCommands.add("F${(speed * speedrate).toLong()}")
+                commands.add(tmpCommands.joinToString(" "))
+                tmpCommands.clear()
             } else {
                 if (inSteps) {
                     val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
                     if(lm!=0L)
-                        commands.add("$L$lm")
+                        tmpCommands.add("$L$lm")
                     if(sm!=0L)
-                        commands.add("$S$sm")
+                        tmpCommands.add("$S$sm")
                     // -1 for direction
                     if (zm != position[2]) {
                         //need to check if works with relative and absolute mode
-                        commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
+                        tmpCommands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
                     }
                 } else {
                     if(alphaChange!=0.0)
-                        commands.add("$L$alphaChange")
+                        tmpCommands.add("$L$alphaChange")
                     if(betaChange!=0.0)
-                        commands.add("$S$betaChange")
+                        tmpCommands.add("$S$betaChange")
                 }
                 if (speed != null && speed != -1.0 && speed != 0.0)
-                    commands.add("F${(speed * speedrate).toLong()}")
+                    tmpCommands.add("F${(speed * speedrate).toLong()}")
+                commands.add(tmpCommands.joinToString(" "))
+                tmpCommands.clear()
             }
             if (!alphaAdd.isNaN()) angles[0] = alphaAdd
             if (!betaAdd.isNaN()) angles[1] = betaAdd
@@ -732,121 +739,7 @@ object GCodeSender {
             commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
             position[2] = zm
         }
-        return commands
-    }
 
-
-    /**
-     * Version for testing
-     *
-     */
-    private fun transition2(
-        angleS: Double?,
-        angleL: Double?,
-        xMove: Double?,
-        yMove: Double?,
-        zMove: Double?,
-        speed: Double?,
-        inSteps: Boolean,
-        isRightSide: Boolean,
-    ): List<String> {
-        val commands = mutableListOf<String>()
-        val ym = if (yMove != null) (if (isRelative) yMove + position[1] else yMove) else position[1]
-        val xm = if (xMove != null) (if (isRelative) xMove + position[0] else xMove) else position[0]
-        val zm = if (zMove != null) (if (isRelative) zMove + position[2] else zMove) else position[2]
-        //println("POSNOW ${position[0]} ${position[1]}  $xm $ym")
-        if (xm != position[0] || ym != position[1]) {
-           // println("XM YM $xm $ym")
-            val newRadius: Double = hypot(xm, ym)
-            if (newRadius > R) {
-                System.err.println("Object is outside workspace MAX_RADIUS($R)<$newRadius")
-                commands.add(";outside")
-            } else if(newRadius<minRadius){
-                commands.add(";outside")
-                System.err.println("Object is outside workspace $newRadius<MIN_RADIUS($minRadius)")
-            }
-            val gammaDegrees: Double = atan2(ym, xm) //absolute degree angle to R
-            val gamma = if (gammaDegrees < 0) gammaDegrees + 2 * PI else gammaDegrees
-            val toBeta =
-                (arm1Length * arm1Length + arm2Length * arm2Length - xm * xm - ym * ym) / (2 * arm1Length * arm2Length)
-            val beta: Double = acos(toBeta) //between  arms
-            val toAlpha =
-                (xm * xm + ym * ym + arm1Length * arm1Length - arm2Length * arm2Length) / (2 * arm1Length * newRadius)
-            //println("xm ym newRad $xm $ym $newRadius")
-            val alpha: Double = acos(toAlpha) //between first arm and R
-            val angle = gamma + alpha
-            var alphaAdd: Double = Math.toDegrees(angle)
-            var betaAdd: Double = Math.toDegrees(beta)
-            if (alphaAdd.isNaN()) alphaAdd = 0.0
-            if (betaAdd.isNaN()) betaAdd = 0.0
-            //println("aa $alphaAdd  ba $betaAdd ga $gamma $alpha")
-            val alphaChange: Double = if (alphaAdd == 0.0) 0.0 else angles[0] - alphaAdd
-            val betaChange: Double = if (betaAdd == 0.0) 0.0 else angles[1] - betaAdd
-            //attempt to interpolate
-            val deltaX = xm - position[0]
-            val deltaY = ym - position[1]
-            val totalSteps = if((angleS!=null && angleL != null && (angleS == 0.0 || angleL == 0.0 )) || (angleS != null && angleL == null) || (angleS == null && angleL != null))
-                1
-            else
-                ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovement).toInt()
-
-            println("TOTALSTEPS: $totalSteps")
-            if (totalSteps>1) for (steps in 0 until totalSteps) {
-                if (inSteps) {
-                    val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
-                    val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
-                    if(lm!=0L)
-                        commands.add("$L$lm")
-                    if(sm!=0L)
-                        commands.add("$S$sm")
-                    // -1 for direction
-                    if (zm != position[2]) {
-                        //need to check if works with relative and absolute mode
-                        commands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
-                    }
-                } else {
-                    val lm=alphaChange / totalSteps
-                    val sm=betaChange / totalSteps
-                    if(lm!=0.0)
-                        commands.add("$L$lm")
-                    if(sm!=0.0)
-                        commands.add("$S$sm")
-                }
-                if (speed != null && speed != -1.0 && speed != 0.0)
-                    commands.add("F${(speed * speedrate).toLong()}")
-            } else {
-                if (inSteps) {
-                    val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
-                    val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
-                    if(lm!=0L)
-                        commands.add("$L$lm")
-                    if(sm!=0L)
-                        commands.add("$S$sm")
-                    // -1 for direction
-                    if (zm != position[2]) {
-                        //need to check if works with relative and absolute mode
-                        commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
-                    }
-                } else {
-                    if(alphaChange!=0.0)
-                        commands.add("$L$alphaChange")
-                    if(betaChange!=0.0)
-                        commands.add("$S$betaChange")
-                }
-                if (speed != null && speed != -1.0 && speed != 0.0)
-                    commands.add("F${(speed * speedrate).toLong()}")
-            }
-            if (alphaAdd != 0.0)
-                angles[0] =/* angleL?:*/alphaAdd
-            if (betaAdd != 0.0) angles[1] = /*angleS?:*/betaAdd
-            //println("NEWPOS $xm $ym")
-            if (xm != position[0]) position[0] = xm
-            if (ym != position[1]) position[1] = ym
-            if (zm != position[2]) position[2] = zm
-        } else if (zm != position[2]) {
-            commands.add("Z${zm.toLong() * MOTOR_STEPS_PRER_ROTATION * -1}")
-            position[2] = zm
-        }
         return commands
     }
 
@@ -1022,7 +915,7 @@ object GCodeSender {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-        val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
+         val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
         try {
             if (!isPortOpen)
                 if(openPort()==StateReturn.FAILURE){
@@ -1030,18 +923,21 @@ object GCodeSender {
                     return StateReturn.FAILURE
                 }
             for (line in lines) {
+                println(line)
                 printWriter!!.write(line)
                 printWriter!!.flush()
 
                 for (i in 1..3) {
-                    when (isOKReturned(bufferedInputStream!!)){
+                    val ret = isOKReturned(bufferedInputStream!!)
+                    when (ret){
                         StateReturn.SUCCESS -> break
                         StateReturn.PORT_DISCONNECTED->{
                             port=null
                             System.err.println("Arm is disconnected")
                             return StateReturn.PORT_DISCONNECTED
                         }
-                        else->{}
+                        StateReturn.FAILURE -> {}
+                        else->{return ret}
                     }
                     if (i == 3){
                         System.err.println("Arm is not responding")

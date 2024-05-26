@@ -20,10 +20,11 @@ class GCodeSenderTest {
     fun testEndStops() {
         var ret:GCodeSender.StateReturn
         var i=0
+        val move = 100.0
 
         // MOTOR L
         while( i <= 360){
-            ret =GCodeSender.moveBy(10.0,0.0)
+            ret =GCodeSender.moveBy(move,0.0)
             if(ret == GCodeSender.StateReturn.ENDSTOP_L_N) {
                 assertTrue(true)
                 break
@@ -35,7 +36,7 @@ class GCodeSenderTest {
             fail<String>("No signal from EndStop_L_N")
         i=0
         while( i <= 360){
-            ret =GCodeSender.moveBy(-10.0,0.0)
+            ret =GCodeSender.moveBy(-move,0.0)
             if(ret == GCodeSender.StateReturn.ENDSTOP_L_P) {
                 assertTrue(true)
                 break
@@ -51,7 +52,7 @@ class GCodeSenderTest {
 
         //MOTOR S
         while( i <= 360){
-            ret =GCodeSender.moveBy(0.0,10.0)
+            ret =GCodeSender.moveBy(0.0,move)
             if(ret == GCodeSender.StateReturn.ENDSTOP_S_N) {
                 assertTrue(true)
                 break
@@ -65,7 +66,7 @@ class GCodeSenderTest {
             fail<String>("No signal from EndStop_S_N")
         i=0
         while( i <= 360){
-            ret =GCodeSender.moveBy(0.0,-10.0)
+            ret =GCodeSender.moveBy(0.0,-move)
             if(ret == GCodeSender.StateReturn.ENDSTOP_S_P) {
                 assertTrue(true)
                 break
@@ -79,4 +80,11 @@ class GCodeSenderTest {
 
     }
 
+
+    @Test
+    fun testMove(){
+        val ret = GCodeSender.moveBy(xMove = null, yMove = -50.0, zMove = null, rightSide =  true)
+        assertEquals(ret, GCodeSender.StateReturn.SUCCESS)
+
+    }
 }
