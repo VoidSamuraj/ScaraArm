@@ -247,12 +247,14 @@ object GCodeSender {
     /**
      * Function sending file to scara arm by defined port
      * @param fileToSend path of file which need to be made by [makeGCodeFile]
+     * @param scope scope of webService connected to function
+     * @param onLineRead function for execution webServiceCode
      * @return [StateReturn]
      * @see makeGCodeFile
      * @see StateReturn
      *
      */
-    suspend fun sendGCode(fileToSend: String,scope: CoroutineScope, onLineRead:suspend (line:String)->Unit):StateReturn {
+    suspend fun sendGCode(fileToSend: String,scope: CoroutineScope?=null, onLineRead:(suspend (line:String)->Unit)?=null):StateReturn {
         val tempIsRelative=isRelative
         try {
             if(!isRightSide){
@@ -324,7 +326,7 @@ object GCodeSender {
                                     else
                                         it.substring(0, index)
                                 }
-                            } != null && scope.isActive) {
+                            } != null && (scope == null || scope.isActive)) {
                             while(paused){
                                 isPrinting=false
                                 delay(1000)
@@ -402,7 +404,8 @@ object GCodeSender {
                                     mapToWeb["LT"] = lineThickness.toString()
                                     mapToWeb["isRightSide"] = isRightSide.toString()
                                     val jsonObject = JsonObject(mapToWeb.mapValues { JsonPrimitive(it.value) })
-                                    onLineRead(jsonObject.toString()) // send data to websocket
+                                    if(onLineRead!=null)
+                                        onLineRead(jsonObject.toString()) // send data to websocket
 
                                     if(isMoving) {
                                         //sending data to arm
@@ -467,6 +470,7 @@ object GCodeSender {
         }
         return StateReturn.SUCCESS
     }
+
 
     /**
      *  initializes communication, sends START flag and waits for response OK, then connection is established
@@ -581,6 +585,62 @@ object GCodeSender {
         } catch (exception: IOException) {
             System.err.println("makeGcodeFileError:${exception.stackTrace[0].lineNumber}  $exception")
         }
+    }
+
+    /**
+     * Function for arm homing. It moves both arms to min pos, then to max pos, then to center
+     * @return [StateReturn] representing homing result
+     */
+    fun homeArm():StateReturn{
+        val move = 10.0
+        var ret:StateReturn
+        var counter = 0
+
+        while(true) {
+            ret = moveBy(firstArmRelativeAngle = -50.0)
+            when(ret){
+                StateReturn.ENDSTOP_L_P->break
+                StateReturn.SUCCESS->{}
+                else-> return ret
+            }
+        }
+        while(true) {
+            ret = moveBy(firstArmRelativeAngle = move)
+            ++counter
+            when(ret){
+                StateReturn.ENDSTOP_L_N->break
+                StateReturn.SUCCESS->{}
+                else-> return ret
+            }
+        }
+
+        ret=moveBy(firstArmRelativeAngle = -(move*counter/2))
+        if(ret != StateReturn.SUCCESS) return ret
+
+        counter=0
+
+        while(true) {
+            ret = moveBy(secondArmRelativeAngle = -50.0)
+            when(ret){
+                StateReturn.ENDSTOP_S_P->break
+                StateReturn.SUCCESS->{}
+                else-> return ret
+            }
+        }
+
+        while(true) {
+            ret = moveBy(secondArmRelativeAngle =move)
+            ++counter
+            when(ret){
+                StateReturn.ENDSTOP_S_N->break
+                StateReturn.SUCCESS->{}
+                else-> return ret
+            }
+        }
+
+        ret= moveBy(secondArmRelativeAngle =-(move*counter/2))
+
+        return ret
     }
 
     /**
@@ -744,8 +804,8 @@ object GCodeSender {
     }
 
     private fun transitionAngles(
-        angleL: Double?,
-        angleS: Double?,
+        angleL: Double?=null,
+        angleS: Double?=null,
         zMove: Double?,
         speed: Double?,
         inSteps: Boolean,
@@ -823,9 +883,9 @@ object GCodeSender {
                 if (speed != null && speed != -1.0 && speed != 0.0)
                     commands.add("F${(speed * speedrate).toLong()}")
             }
-            if (angleL != 0.0)
-                angles[0] +=angleL!!
-            if (angleS != 0.0) angles[1] += angleS!!
+            if (angleL!=null && angleL != 0.0)
+                angles[0] +=angleL
+            if (angleS != null && angleS != 0.0) angles[1] += angleS!!
             //println("NEWPOS $xm $ym")
             if (xPos != position[0]) position[0] = xPos
             if (yPos != position[1]) position[1] = yPos
@@ -911,17 +971,19 @@ object GCodeSender {
      * @return [StateReturn]
      * @see StateReturn
      */
-    fun moveBy(xMove: Double?, yMove: Double?, zMove: Double?, rightSide: Boolean):StateReturn {
+    fun moveBy(xMove: Double?=null, yMove: Double?=null, zMove: Double?=null, rightSide: Boolean):StateReturn {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
          val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
         try {
-            if (!isPortOpen)
+            if (!isPortOpen){
                 if(openPort()==StateReturn.FAILURE){
                     System.err.println("Port is not opened")
                     return StateReturn.FAILURE
                 }
+            }else
+                startCommunication(printWriter!!, bufferedInputStream!!)
             for (line in lines) {
                 println(line)
                 printWriter!!.write(line)
@@ -971,7 +1033,7 @@ object GCodeSender {
      * @return [StateReturn]
      * @see StateReturn
      */
-    fun moveBy(firstArmRelativeAngle: Double?, secondArmRelativeAngle: Double?):StateReturn {
+    fun moveBy(firstArmRelativeAngle: Double?=null, secondArmRelativeAngle: Double?=null):StateReturn {
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
        // println("MOVEBY START  $firstArmRelativeAngle + ${angles[0]}, $secondArmRelativeAngle + ${angles[1]}")
@@ -988,12 +1050,13 @@ object GCodeSender {
         val lines: List<String> = transitionAngles(firstArmRelativeAngle, secondArmRelativeAngle, null, null, true, isRightSide).filter { it!="" && it !=";outside" }
         isRelative = isRelativeCp
         try {
-            if (!isPortOpen)
-                if(openPort()==StateReturn.FAILURE){
+            if (!isPortOpen) {
+                if (openPort() == StateReturn.FAILURE) {
                     System.err.println("Port is not opened")
                     return StateReturn.FAILURE
                 }
-
+            }else
+                startCommunication(printWriter!!, bufferedInputStream!!)
             for (line in lines) {
                 //println("LINE $line")
                 printWriter!!.write(line)
@@ -1055,7 +1118,6 @@ object GCodeSender {
                     if(bytesRead!=-1){
                         val st = String(bytes = bf, offset = 0, length = min(bytesRead,bf.size), charset = Charsets.UTF_8).trim()
                         text += st
-                        println("RETURNEDD $st")
                         when {
                             text.contains("ENDSTOP_L_N", ignoreCase = true) -> return StateReturn.ENDSTOP_L_N
                             text.contains("ENDSTOP_L_P", ignoreCase = true) -> return StateReturn.ENDSTOP_L_P
