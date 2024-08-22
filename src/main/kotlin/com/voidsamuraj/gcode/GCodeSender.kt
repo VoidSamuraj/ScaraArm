@@ -53,6 +53,9 @@ object GCodeSender {
     private var printWriter:PrintWriter? = null
     private var SERIAL_PORT = "ttyACM0" //"COM5";
     private const val MAX_ARM_MOVEMENT = 55.0
+    private var armLCenterDistance = 0
+    private var armSCenterDistance = 0
+
     /**
      * sets port and closes previous connections
      * @param port should look like: Linux - "/dev/ttyACM0", Windows - "COM5"
@@ -89,11 +92,11 @@ object GCodeSender {
     private var maxMovementLine = 5
     private var MOTOR_STEPS_PRER_ROTATION = StepsMode.ONE.steps
     private var ARM_LONG_STEPS_PER_ROTATION = 1.0// 35.0 / 20.0 //1.75
-        get() = field * MOTOR_STEPS_PRER_ROTATION
+    get() = field * MOTOR_STEPS_PRER_ROTATION
     private var ARM_SHORT_DEGREES_BY_ROTATION = 1.0// 116.0 / 25.0  //116x30x25
-        get() = field * MOTOR_STEPS_PRER_ROTATION
+    get() = field * MOTOR_STEPS_PRER_ROTATION
     private var ARM_SHORT_ADDITIONAL_ROTATION =  0.0//30 / 116.0  //116x30x25  /(30D/25D) (116D/30D)
-        get() = field * MOTOR_STEPS_PRER_ROTATION
+    get() = field * MOTOR_STEPS_PRER_ROTATION
 
     //flag to set pause
     private var paused=false
@@ -221,6 +224,20 @@ object GCodeSender {
             1
     }
 
+    /**
+     * set Arm L distance to center from min angle
+     * @param distance in steps
+     */
+    fun setArmLCenterDistance(distance:Int) {
+        armLCenterDistance=distance
+    }
+    /**
+     * set Arm S distance to center from min angle
+     * @param distance in steps
+     */
+    fun setArmSCenterDistance(distance:Int) {
+        armSCenterDistance=distance
+    }
 
     /**
      * Get connected port name or null
@@ -588,59 +605,245 @@ object GCodeSender {
     }
 
     /**
-     * Function for arm homing. It moves both arms to min pos, then to max pos, then to center
+     * Function which is checking 4 times if [isOKReturned] returns null on success, in other cases [StateReturn]
+     * @return null on [StateReturn.SUCCESS] or [StateReturn.PORT_DISCONNECTED] when connection is lost. After 4 unsuccessfully attempts [StateReturn.FAILURE]
+     */
+    fun waitForOk():StateReturn?{
+        for (i in 1..3) {
+            when (isOKReturned(bufferedInputStream!!)) {
+                StateReturn.SUCCESS -> {
+                    print("WaitForOK Success")
+                    break
+                }
+                StateReturn.PORT_DISCONNECTED -> {
+                    System.err.println("Arm is disconnected")
+                    return StateReturn.PORT_DISCONNECTED
+                }
+
+                else -> {}
+            }
+            if (i == 3) {
+                System.err.println("Arm is not responding")
+                return StateReturn.FAILURE
+            }
+        }
+        return null
+    }
+
+    /**
+     * Function to calculate angle between center and min position for arms and save it
+     */
+    fun calibrate():Triple<StateReturn,Int,Int> {
+        val bigMove = 15.0
+        var ret: StateReturn
+        var counter = 0
+        // send command to turn off intepolation
+        if (!isPortOpen)
+            if(openPort()==StateReturn.FAILURE){
+                System.err.println("Port is not opened")
+                return Triple(StateReturn.FAILURE,armLCenterDistance,armSCenterDistance)
+            }
+        printWriter!!.write("I0 O0")
+        printWriter!!.flush()
+        waitForOk()?.let { return Triple(it,armLCenterDistance,armSCenterDistance) }
+        //move arm to 1 endstop
+        while (true) {
+            ret = moveBy(firstArmRelativeAngle = -100.0)
+            when (ret) {
+                StateReturn.ENDSTOP_L_P -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+        //calculate bigger steps
+        while (true) {
+            ret = moveBy(firstArmRelativeAngle = bigMove)
+            ++counter
+            when (ret) {
+                StateReturn.ENDSTOP_L_N -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+        //move back and calculate precise steps
+        --counter
+        ret= moveBy(firstArmRelativeAngle = -(bigMove * counter))
+        when (ret) {
+            StateReturn.SUCCESS -> {}
+            else -> {
+                printWriter!!.write("I1 O1")
+                printWriter!!.flush()
+                return Triple(ret,armLCenterDistance,armSCenterDistance)
+            }
+        }
+        armLCenterDistance = (counter*bigMove).toInt()
+        counter=0
+
+        //turn on interpolation for smooth end
+        printWriter!!.write("I1 O1")
+        printWriter!!.flush()
+        waitForOk()?.let { println("Calibrating NO OK"+it); return Triple(it,armLCenterDistance,armSCenterDistance) }
+
+        while (true) {
+            ret = moveBy(firstArmRelativeAngle = -1.0)
+            ++counter
+            when (ret) {
+                StateReturn.ENDSTOP_L_P -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+
+        armLCenterDistance += counter
+        armLCenterDistance/=2
+
+        //turn off interpolation
+        printWriter!!.write("I0 O0")
+        printWriter!!.flush()
+
+        waitForOk()?.let { return Triple(it,armLCenterDistance,armSCenterDistance) }
+
+        //center L arm
+        ret = moveBy(firstArmRelativeAngle = armLCenterDistance.toDouble())
+        if (ret != StateReturn.SUCCESS) return Triple(ret,armLCenterDistance,armSCenterDistance)
+        counter = 0
+        //move arm to 1 endstop
+        while (true) {
+            ret = moveBy(secondArmRelativeAngle = -100.0)
+            when (ret) {
+                StateReturn.ENDSTOP_S_P -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+
+        //calculate bigger steps
+        while (true) {
+            ret = moveBy(secondArmRelativeAngle = bigMove)
+            ++counter
+            when (ret) {
+                StateReturn.ENDSTOP_S_N -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+        //move back and calculate precise steps
+        --counter
+        moveBy(secondArmRelativeAngle = -(bigMove * counter))
+        armSCenterDistance = (counter*bigMove).toInt()
+        counter=0
+
+        //turn on interpolation for smooth end
+        printWriter!!.write("I1 O1")
+        printWriter!!.flush()
+        waitForOk()?.let { return Triple(it,armLCenterDistance,armSCenterDistance) }
+        while (true) {
+            ret = moveBy(secondArmRelativeAngle = -1.0)
+            ++counter
+            when (ret) {
+                StateReturn.ENDSTOP_S_P -> break
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
+            }
+        }
+        armSCenterDistance += counter
+        armSCenterDistance/=2
+
+        //turn off interpolation
+        printWriter!!.write("I0 O0")
+        printWriter!!.flush()
+        waitForOk()?.let { return Triple(it,armLCenterDistance,armSCenterDistance) }
+        ret = moveBy(secondArmRelativeAngle = armSCenterDistance.toDouble())
+        //turn on interpolation
+        printWriter!!.write("I1 O1")
+        printWriter!!.flush()
+
+        return Triple(ret,armLCenterDistance,armSCenterDistance)
+    }
+
+
+    /**
+     * Function for arm homing.Requires arm to be calibrated
      * @return [StateReturn] representing homing result
      */
-    fun homeArm():StateReturn{
-        val move = 10.0
+    fun homeArm():Triple<StateReturn,Int,Int>{
         var ret:StateReturn
-        var counter = 0
+        var returnedCalib: Triple<StateReturn, Int, Int>?=null
+        if(armLCenterDistance != 0 && armSCenterDistance !=0) {
+            returnedCalib = calibrate()
+            when (returnedCalib.first) {
+                StateReturn.SUCCESS -> {}
+                else -> {
+                    return returnedCalib
+                }
+            }
+        }
+        printWriter!!.write("I0 O0")
+        printWriter!!.flush()
+        waitForOk()?.let { return Triple(it,armLCenterDistance,armSCenterDistance) }
 
+        //move to 1 endstop
         while(true) {
-            ret = moveBy(firstArmRelativeAngle = -50.0)
+            ret = moveBy(firstArmRelativeAngle = -100.0)
             when(ret){
                 StateReturn.ENDSTOP_L_P->break
                 StateReturn.SUCCESS->{}
-                else-> return ret
+                else-> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
             }
         }
+        //center arm 1
+        ret=moveBy(firstArmRelativeAngle = armLCenterDistance.toDouble())
+        if(ret != StateReturn.SUCCESS) return Triple(ret,armLCenterDistance,armSCenterDistance)
+
+        //move to 1 endstop
         while(true) {
-            ret = moveBy(firstArmRelativeAngle = move)
-            ++counter
-            when(ret){
-                StateReturn.ENDSTOP_L_N->break
-                StateReturn.SUCCESS->{}
-                else-> return ret
-            }
-        }
-
-        ret=moveBy(firstArmRelativeAngle = -(move*counter/2))
-        if(ret != StateReturn.SUCCESS) return ret
-
-        counter=0
-
-        while(true) {
-            ret = moveBy(secondArmRelativeAngle = -50.0)
+            ret = moveBy(secondArmRelativeAngle = -100.0)
             when(ret){
                 StateReturn.ENDSTOP_S_P->break
                 StateReturn.SUCCESS->{}
-                else-> return ret
+                else-> {
+                    printWriter!!.write("I1 O1")
+                    printWriter!!.flush()
+                    return Triple(ret,armLCenterDistance,armSCenterDistance)
+                }
             }
         }
-
-        while(true) {
-            ret = moveBy(secondArmRelativeAngle =move)
-            ++counter
-            when(ret){
-                StateReturn.ENDSTOP_S_N->break
-                StateReturn.SUCCESS->{}
-                else-> return ret
-            }
-        }
-
-        ret= moveBy(secondArmRelativeAngle =-(move*counter/2))
-
-        return ret
+        //center arm 2
+        ret= moveBy(secondArmRelativeAngle = armSCenterDistance.toDouble())
+        //turn on interpolation
+        printWriter!!.write("I1 O1")
+        printWriter!!.flush()
+        if(returnedCalib != null)
+            return Triple(ret,armLCenterDistance,armSCenterDistance)
+        return Triple(ret,0,0)
     }
 
     /**
@@ -741,31 +944,31 @@ object GCodeSender {
             val totalSteps = ceil(sqrt(deltaX * deltaX + deltaY * deltaY)/maxMovementLine).toInt()
             if (totalSteps>1)
                 for (steps in 0 until totalSteps) {
-                if (inSteps) {
-                    val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
-                    val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
-                    if(lm!=0L)
-                        tmpCommands.add("$L$lm")
-                    if(sm!=0L)
-                        tmpCommands.add("$S$sm")
-                    // -1 for direction
-                    if (zm != position[2]) {
-                        //need to check if works with relative and absolute mode
-                        tmpCommands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
+                    if (inSteps) {
+                        val lm=(alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
+                        val sm=((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
+                        if(lm!=0L)
+                            tmpCommands.add("$L$lm")
+                        if(sm!=0L)
+                            tmpCommands.add("$S$sm")
+                        // -1 for direction
+                        if (zm != position[2]) {
+                            //need to check if works with relative and absolute mode
+                            tmpCommands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
+                        }
+                    } else {
+                        val lm=alphaChange / totalSteps
+                        val sm=betaChange / totalSteps
+                        if(lm!=0.0)
+                            tmpCommands.add("$L$lm")
+                        if(sm!=0.0)
+                            tmpCommands.add("$S$sm")
                     }
+                    if (speed != null && speed != -1.0 && speed != 0.0)
+                        tmpCommands.add("F${(speed * speedrate).toLong()}")
+                    commands.add(tmpCommands.joinToString(" "))
+                    tmpCommands.clear()
                 } else {
-                    val lm=alphaChange / totalSteps
-                    val sm=betaChange / totalSteps
-                    if(lm!=0.0)
-                        tmpCommands.add("$L$lm")
-                    if(sm!=0.0)
-                        tmpCommands.add("$S$sm")
-                }
-                if (speed != null && speed != -1.0 && speed != 0.0)
-                    tmpCommands.add("F${(speed * speedrate).toLong()}")
-                commands.add(tmpCommands.joinToString(" "))
-                tmpCommands.clear()
-            } else {
                 if (inSteps) {
                     val lm=(alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
                     val sm=((-betaChange * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
@@ -791,7 +994,7 @@ object GCodeSender {
             }
             if (!alphaAdd.isNaN()) angles[0] = alphaAdd
             if (!betaAdd.isNaN()) angles[1] = betaAdd
-           // println("NEWPOS $xm $ym")
+            // println("NEWPOS $xm $ym")
             if (xm != position[0]) position[0] = xm
             if (ym != position[1]) position[1] = ym
             if (zm != position[2]) position[2] = zm
@@ -829,35 +1032,36 @@ object GCodeSender {
 
             val alphaChange= angleL?:0.0
             val betaChange: Double = angleS?:0.0
-            println("TOTALSTEPS: $totalSteps")
-            if (totalSteps>1) for (steps in 0 until totalSteps) {
-                if (inSteps) {
-                    if (angleL != null && angleL != 0.0){
-                        val lm = (alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
-                        if (lm != 0L)
+            //println("TOTALSTEPS: $totalSteps")
+            if (totalSteps>1)
+                for (steps in 0 until totalSteps) {
+                    if (inSteps) {
+                        if (angleL != null && angleL != 0.0){
+                            val lm = (alphaChange / totalSteps * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
+                            if (lm != 0L)
+                                commands.add("$L$lm")
+                        }
+                        if (angleS != null && angleS != 0.0) {
+                            val sm = ((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
+                            if (sm != 0L)
+                                commands.add("$S$sm")
+                        }
+                        // -1 for direction
+                        if (zm != position[2]) {
+                            //need to check if works with relative and absolute mode
+                            commands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
+                        }
+                    } else {
+                        val lm=alphaChange / totalSteps
+                        val sm=betaChange / totalSteps
+                        if(lm!=0.0 && angleL != null && angleL != 0.0)
                             commands.add("$L$lm")
-                    }
-                    if (angleS != null && angleS != 0.0) {
-                        val sm = ((-betaChange / totalSteps * ARM_SHORT_DEGREES_BY_ROTATION + alphaChange / totalSteps * ARM_SHORT_ADDITIONAL_ROTATION) / 360 * if (isRightSide) 1 else -1).toLong()
-                        if (sm != 0L)
+                        if(sm!=0.0 && angleS != null && angleS != 0.0)
                             commands.add("$S$sm")
                     }
-                    // -1 for direction
-                    if (zm != position[2]) {
-                        //need to check if works with relative and absolute mode
-                        commands.add("Z${zm.toLong() / totalSteps * MOTOR_STEPS_PRER_ROTATION * -1}")
-                    }
+                    if (speed != null && speed != -1.0 && speed != 0.0)
+                        commands.add("F${(speed * speedrate).toLong()}")
                 } else {
-                    val lm=alphaChange / totalSteps
-                    val sm=betaChange / totalSteps
-                    if(lm!=0.0 && angleL != null && angleL != 0.0)
-                        commands.add("$L$lm")
-                    if(sm!=0.0 && angleS != null && angleS != 0.0)
-                        commands.add("$S$sm")
-                }
-                if (speed != null && speed != -1.0 && speed != 0.0)
-                    commands.add("F${(speed * speedrate).toLong()}")
-            } else {
                 if (inSteps) {
                     if (angleL != null && angleL != 0.0) {
                         val lm = (alphaChange * ARM_LONG_STEPS_PER_ROTATION / 360 * if (isRightSide) 1 else -1).toLong()
@@ -975,39 +1179,24 @@ object GCodeSender {
         isRightSide = rightSide
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-         val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
+        val lines: List<String> = transition(position[0]+(xMove?:0.0), position[1]+(yMove?:0.0), position[2]+(zMove?:0.0), null, true, isRightSide).filter { it!="" }
         try {
             if (!isPortOpen){
                 if(openPort()==StateReturn.FAILURE){
                     System.err.println("Port is not opened")
                     return StateReturn.FAILURE
+                }else{
+                    startCommunication(printWriter!!, bufferedInputStream!!)
                 }
-            }else
-                startCommunication(printWriter!!, bufferedInputStream!!)
+            }
+
             for (line in lines) {
                 println(line)
                 printWriter!!.write(line)
                 printWriter!!.flush()
-
-                for (i in 1..3) {
-                    val ret = isOKReturned(bufferedInputStream!!)
-                    when (ret){
-                        StateReturn.SUCCESS -> break
-                        StateReturn.PORT_DISCONNECTED->{
-                            port=null
-                            System.err.println("Arm is disconnected")
-                            return StateReturn.PORT_DISCONNECTED
-                        }
-                        StateReturn.FAILURE -> {}
-                        else->{return ret}
-                    }
-                    if (i == 3){
-                        System.err.println("Arm is not responding")
-                        return StateReturn.FAILURE
-                    }
-                }
+                waitForOk()?.let { return it }
             }
-            endCommunication(printWriter!!)
+            //endCommunication(printWriter!!)
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -1036,16 +1225,16 @@ object GCodeSender {
     fun moveBy(firstArmRelativeAngle: Double?=null, secondArmRelativeAngle: Double?=null):StateReturn {
         val anglesCp: DoubleArray = angles.clone()
         val positionCp: DoubleArray = position.clone()
-       // println("MOVEBY START  $firstArmRelativeAngle + ${angles[0]}, $secondArmRelativeAngle + ${angles[1]}")
-       // val firstArmAngle: Double = (if (firstArmRelativeAngle != null) firstArmRelativeAngle + angles[0] else angles[0]) * Math.PI / 180
-       // val secondArmAngle: Double = ((if (secondArmRelativeAngle != null) secondArmRelativeAngle + angles[1] else angles[1]) - 180) * Math.PI / 180
-     //   val xPos: Double = arm1Length * cos(firstArmAngle) + arm2Length * cos(secondArmAngle + firstArmAngle)
-      //  val yPos: Double = arm1Length * sin(firstArmAngle) + arm2Length * sin(secondArmAngle + firstArmAngle)
+        // println("MOVEBY START  $firstArmRelativeAngle + ${angles[0]}, $secondArmRelativeAngle + ${angles[1]}")
+        // val firstArmAngle: Double = (if (firstArmRelativeAngle != null) firstArmRelativeAngle + angles[0] else angles[0]) * Math.PI / 180
+        // val secondArmAngle: Double = ((if (secondArmRelativeAngle != null) secondArmRelativeAngle + angles[1] else angles[1]) - 180) * Math.PI / 180
+        //   val xPos: Double = arm1Length * cos(firstArmAngle) + arm2Length * cos(secondArmAngle + firstArmAngle)
+        //  val yPos: Double = arm1Length * sin(firstArmAngle) + arm2Length * sin(secondArmAngle + firstArmAngle)
         val isRelativeCp = isRelative
         isRelative = false
         //println("POSNOW ${positionCp[0]} ${positionCp[1]}")
-        println("AnglesNOw ${angles[0]}  ${angles[1]}")
-       // println("POSF ${xPos} ${yPos}")
+        //println("AnglesNOw ${angles[0]}  ${angles[1]}")
+        // println("POSF ${xPos} ${yPos}")
         //val lines: List<String> = transition2(firstArmAngle, secondArmAngle,xPos, yPos, position[2], null, true, isRightSide).filter { it!="" && it !=";outside" }
         val lines: List<String> = transitionAngles(firstArmRelativeAngle, secondArmRelativeAngle, null, null, true, isRightSide).filter { it!="" && it !=";outside" }
         isRelative = isRelativeCp
@@ -1054,16 +1243,16 @@ object GCodeSender {
                 if (openPort() == StateReturn.FAILURE) {
                     System.err.println("Port is not opened")
                     return StateReturn.FAILURE
-                }
-            }else
-                startCommunication(printWriter!!, bufferedInputStream!!)
+                }else
+                    startCommunication(printWriter!!, bufferedInputStream!!)
+            }
             for (line in lines) {
                 //println("LINE $line")
                 printWriter!!.write(line)
                 printWriter!!.flush()
                 for(i in 1..3){
                     val ret =isOKReturned(bufferedInputStream!!)
-                   // println("CO MAM $ret")
+                    // println("CO MAM $ret")
                     when (ret){
                         StateReturn.SUCCESS -> break
                         StateReturn.PORT_DISCONNECTED->{
@@ -1081,7 +1270,7 @@ object GCodeSender {
                     }
                 }
             }
-            endCommunication(printWriter!!)
+            //endCommunication(printWriter!!)
         } catch (ex: Exception) {
             when(ex){
                 is IOException,
@@ -1107,8 +1296,8 @@ object GCodeSender {
      */
     private fun isOKReturned(bins:BufferedInputStream):StateReturn{
         var text=""
-        //2000 ms limit
-        for(i in 1 until 200) {
+        //3000 ms limit
+        for(i in 1 until 600) {
             val bf = ByteArray(1024)
             try {
                 if (bins.available()>0) {

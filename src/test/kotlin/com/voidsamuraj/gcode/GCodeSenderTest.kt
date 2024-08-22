@@ -16,7 +16,7 @@ class GCodeSenderTest {
         GCodeSender.openPort()
     }
 
-  //  @Test
+    @Test
     fun testEndStops() {
         var ret:GCodeSender.StateReturn
         var i=0

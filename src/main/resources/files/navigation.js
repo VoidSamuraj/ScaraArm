@@ -26,6 +26,8 @@ const precisionMoveInput = document.getElementById("precision-move");
 const precisionUnit = document.getElementById("precisionUnit");
 const precisionRotationInput = document.getElementById("precision-rotate");
 const precisionRotationUnit = document.getElementById("precisionUnitDegree");
+const homeButton = document.getElementById("homeButton");
+const calibrateButton = document.getElementById("calibrateButton");
 
 //options menu
 const direction = document.getElementById("switch");
@@ -83,6 +85,9 @@ var movePrecision = localStorage.getItem("movePrecision") || 10;
 var moveUnit = localStorage.getItem("moveUnit") || "mm";
 var rotatePrecision = localStorage.getItem("rotatePrecision") || 1;
 var rotateUnit = localStorage.getItem("rotateUnit") || "1";
+
+var firstArmCenter=localStorage.getItem("firstArmCenter") || 0;
+var secondArmCenter=localStorage.getItem("secondArmCenter") || 0;
 
 precisionMoveInput.value = movePrecision;
 precisionUnit.value = moveUnit;
@@ -814,6 +819,10 @@ async function saveSettings(name,id) {
   formData.append("extraRatio", armAdditionalRatio.value);
   formData.append("name", name);
   formData.append("id", id);
+  if(firstArmCenter!=0)
+    formData.append("firstArmCenter", firstArmCenter);
+  if(secondArmCenter!=0)
+    formData.append("secondArmCenter", secondArmCenter);
 
   fetch("/files/options/save", {
     method: "POST",
@@ -836,6 +845,11 @@ async function setSettings() {
   formData.append("arm1Ratio", arm1Ratio.value);
   formData.append("arm2Ratio", arm2Ratio.value);
   formData.append("extraRatio", armAdditionalRatio.value);
+  if(firstArmCenter!=0)
+    formData.append("firstArmCenter", firstArmCenter);
+  if(secondArmCenter!=0)
+    formData.append("secondArmCenter", secondArmCenter);
+
   fetch("/files/options/set", {
     method: "POST",
     body: formData,
@@ -895,6 +909,14 @@ async function loadSavedSettings(onLoad, name, id) {
                 case "extraRatio":
                   armAdditionalRatio.value = parseFloat(values[1].trim()).toFixed(2);
                   localStorage.setItem("armAdditionalRatio", armAdditionalRatio.value);
+                  break;
+                case "extraRatio":
+                  firstArmCenter = parseInt(values[1].trim());
+                  localStorage.setItem("firstArmCenter", firstArmCenter);
+                  break;
+                case "secondArmCenter":
+                  secondArmCenter = parseInt(values[1].trim());
+                  localStorage.setItem("secondArmCenter", secondArmCenter);
                   break;
                 default:
                   break;
@@ -1138,6 +1160,57 @@ document.getElementById("portButton").addEventListener("click", function () {
   fillPortsTable();
 });
 
+homeButton.addEventListener("click", function () {
+                  fetch("/arm/movement/home", {
+                    method: "GET"
+                  }).then((response) => {
+                    if (response.ok) {
+                        return response.json()
+                    } else {
+                      console.error("Arm homing error");
+                      showDialog(
+                        alertItem,
+                        alertMessage,
+                        "e",
+                        "Arm homing error"
+                      );
+                    }
+                  }) .then((data) => {
+                        if(data["first"] == "SUCCESS" && data["second"] != 0 && data["third"] != 0){
+                            firstArmCenter=data["second"]
+                            secondArmCenter=data["third"]
+                            localStorage.setItem("firstArmCenter", firstArmCenter);
+                            localStorage.setItem("secondArmCenter", secondArmCenter);
+                        }
+                  });;
+});
+
+calibrateButton.addEventListener("click", function () {
+                  fetch("/arm/movement/calibrate", {
+                    method: "GET"
+                  }).then((response) => {
+                    if (response.ok) {
+                        return response.json()
+                    }
+                    else {
+                      console.error("Arm calibrating error");
+                      showDialog(
+                        alertItem,
+                        alertMessage,
+                        "e",
+                        "Arm calibrating error"
+                      );
+                    }
+                  })
+                   .then((data) => {
+                        if(data["first"] == "SUCCESS"){
+                            firstArmCenter=data["second"]
+                            secondArmCenter=data["third"]
+                            localStorage.setItem("firstArmCenter", firstArmCenter);
+                            localStorage.setItem("secondArmCenter", secondArmCenter);
+                        }
+                   });
+});
 ////    Load menu
 
 /**

@@ -112,6 +112,47 @@ fun Route.armRoute() {
                     }
                 }
             }
+            get("/calibrate"){
+                checkUserPermission {
+                    if(!webSocketHandler.isCurrentDrawing){
+                        if (!GCodeSender.isPortOpen)
+                            if (GCodeSender.openPort() == GCodeSender.StateReturn.FAILURE) {
+                                call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                                return@checkUserPermission
+                            }
+                        val ret = GCodeSender.calibrate()
+                        print("CALIBRATE "+ret)
+                        when (ret.first) {
+                            GCodeSender.StateReturn.SUCCESS -> call.respond(ret)
+                            GCodeSender.StateReturn.PORT_DISCONNECTED -> {
+                                GCodeSender.closePort()
+                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                            }
+                            else ->  call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
+                        }
+                    }
+                }
+            }
+            post("/home"){
+                checkUserPermission {
+                    if(!webSocketHandler.isCurrentDrawing){
+                        if (!GCodeSender.isPortOpen)
+                            if (GCodeSender.openPort() == GCodeSender.StateReturn.FAILURE) {
+                                call.respond(HttpStatusCode.InternalServerError, "Failed to open port")
+                                return@checkUserPermission
+                            }
+                        val ret = GCodeSender.homeArm()
+                        when (ret.first) {
+                            GCodeSender.StateReturn.SUCCESS -> call.respond(ret)
+                            GCodeSender.StateReturn.PORT_DISCONNECTED -> {
+                                GCodeSender.closePort()
+                                call.respond(HttpStatusCode.ServiceUnavailable, "Connection lost")
+                            }
+                            else ->  call.respond(HttpStatusCode.InternalServerError, "Failed to move arm")
+                        }
+                    }
+                }
+            }
         }
         route("/set"){
             post("/length"){

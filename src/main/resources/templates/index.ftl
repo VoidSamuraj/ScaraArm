@@ -70,6 +70,10 @@
                   </select>
                </div>
             </li>
+               <li>
+                  <img id="homeButton" class="icons button" src="static/icon/home.svg" title="Arm homing" alt="arm homing" style="width:48px; height:48px; flex-grow:1; margin: 10px; margin-left:6.25%;">
+                  <img id="calibrateButton" class="icons button" src="static/icon/wrench.svg" title="Calibrate arm" alt="calibrate" style="width:48px; height:48px; flex-grow:1; margin: 10px; margin-right:6.25%;">
+               </li>
          </ul>
       </nav>
       <nav id="loadMenu">
@@ -159,7 +163,7 @@
                 <span class="slot__label" >Arm 2 ratio</span>
                 </label>
                 </li>
-                <li title="This is additional gear ratio, needed when motor for arm 2 is not fixed to arm 1. In other case specify 0." 
+                <li title="This is additional gear ratio, needed when motor for arm 2 is not fixed to arm 1. In other case specify 0."
                 class="button button-no-hover menu-button menu-button-no-hover">
                 <input id="armAdditionalRatio" class="range" type="number" min="0">
                 <label for="armAdditionalRatio" class="slot">
@@ -200,7 +204,7 @@
                         <th>Load</th>
                      </tr>
                   </thead>
-                
+
                   <div class="scroll-list"><hr>
                     <tbody class="radioList"></tbody>
                   </div>
@@ -256,11 +260,12 @@
       <script>
           const expirationText = "${expiration}";
           const lifeText = "${lifeTime}";
-         
+
           var byInterval=false;
           var expirationTime=parseInt(expirationText.replace(/\s+/g, "").replace(/,/g, ""));
           const lifeTime=parseInt(lifeText.replace(/\s+/g, "").replace(/,/g, ""))*1000;
-         
+
+
           function check(){
               let currentTime = Date.now();
               if (currentTime >= expirationTime) {
@@ -277,7 +282,7 @@
           function extend(){
               let xhr = new XMLHttpRequest();
               xhr.open('POST', '/user/refresh-token-expiration');
-         
+
               xhr.onload = function() {
                   if (xhr.status === 200) {
                       expirationTime=Date.now()+lifeTime;

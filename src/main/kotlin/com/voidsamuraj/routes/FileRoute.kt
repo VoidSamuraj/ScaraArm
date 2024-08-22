@@ -164,6 +164,8 @@ fun Route.fileRoute(){
                                         "arm1Ratio" ->param[1].toDouble().let{GCodeSender.setArm1GearRatio(it)}
                                         "arm2Ratio" ->param[1].toDouble().let{GCodeSender.setArm2GearRatio(it)}
                                         "extraRatio" ->param[1].toDouble().let{GCodeSender.setArmAdditionalGearRatio(it)}
+                                        "firstArmCenter"-> param[1].toInt().let {  GCodeSender.setArmLCenterDistance(it)}
+                                        "secondArmCenter"-> param[1].toInt().let { GCodeSender.setArmLCenterDistance(it)}
                                     }
                                 }
                             }
@@ -203,6 +205,8 @@ fun Route.fileRoute(){
                 formParameters.getOrFail("arm1Ratio").toDouble().let {GCodeSender.setArm1GearRatio(it)}
                 formParameters.getOrFail("arm2Ratio").toDouble().let {GCodeSender.setArm2GearRatio(it)}
                 formParameters.getOrFail("extraRatio").toDouble().let {GCodeSender.setArmAdditionalGearRatio(it) }
+                formParameters["firstArmCenter"]?.toInt()?.let { GCodeSender.setArmLCenterDistance(it) }
+                formParameters["secondArmCenter"]?.toInt()?.let { GCodeSender.setArmSCenterDistance(it) }
                 call.respond(HttpStatusCode.OK,"Settings saved.")
             }
             post("/save"){
@@ -236,6 +240,8 @@ fun Route.fileRoute(){
                         formParameters.getOrFail("arm1Ratio").toDouble().let { sb.append("arm1Ratio: $it\n") }
                         formParameters.getOrFail("arm2Ratio").toDouble().let { sb.append("arm2Ratio: $it\n") }
                         formParameters.getOrFail("extraRatio").toDouble().let { sb.append("extraRatio: $it\n") }
+                        formParameters["firstArmCenter"]?.toInt()?.let { sb.append("armLCenterDistance: $it\n") }
+                        formParameters["secondArmCenter"]?.toInt()?.let { sb.append("armSCenterDistance: $it\n") }
                         val writer = file.bufferedWriter()
                         writer.write(sb.toString())
                         writer.flush()
