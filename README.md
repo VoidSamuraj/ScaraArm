@@ -20,9 +20,21 @@ Ktor server to control Scara arm
 - visualization of the G-Code file, arm movement.
 - accounts and private files.
 
+
 ## Usage
-![Screenshot 1](assets/images/screenshot1.png)
-![Screenshot 2](assets/images/screenshot2.png)
+
+<p align="center">
+    
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot1.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot2.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot3.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot4.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot5.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot6.jpg?raw=true"  width="48%"/> 
+  <img src="https://github.com/VoidSamuraj/ScaraArm/blob/master/assets/images/screenshot7.jpg?raw=true"  width="48%"/> 
+    
+</p>
+
 ## Installation
 
 - server works with robotic arm based on <a href="https://github.com/VoidSamuraj/Arduino-Scara-Arm">Arduino-Scara-Arm</a>
